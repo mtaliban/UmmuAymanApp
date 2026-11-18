@@ -1,0 +1,34 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+pubspec.lock
+build/
+
+# Android
+android/.gradle/
+android/captures/
+android/local.properties
+android/key.properties
+android/ummu-ayman-release.jks
+*.iml
+
+# iOS
+ios/.symlinks/
+ios/Flutter/ephemeral/
+ios/Pods/
+ios/*.xcworkspace/xcuserdata/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# macOS
+.DS_Store
+
+# Picha za design na video — hifadhi Google Drive au WhatsApp
+picha/
+*.mp4
+*.mov
