@@ -1,14 +1,6 @@
-import java.util.Properties
-
 plugins {
     id("com.android.application")
     id("dev.flutter.flutter-gradle-plugin")
-}
-
-val keyProperties = Properties()
-val keyPropertiesFile = rootProject.file("key.properties")
-if (keyPropertiesFile.exists()) {
-    keyPropertiesFile.inputStream().use { keyProperties.load(it) }
 }
 
 android {
@@ -32,10 +24,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file(keyProperties.getProperty("storeFile") ?: "../ummu-ayman-release.jks")
-            storePassword = keyProperties.getProperty("storePassword") ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
-            keyAlias = keyProperties.getProperty("keyAlias") ?: System.getenv("KEY_ALIAS") ?: ""
-            keyPassword = keyProperties.getProperty("keyPassword") ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
+            storeFile = file("../../android/ummu-ayman-release.jks")
+            storePassword = "ummuayman2024"
+            keyAlias = "ummu-ayman"
+            keyPassword = "ummuayman2024"
         }
     }
 
