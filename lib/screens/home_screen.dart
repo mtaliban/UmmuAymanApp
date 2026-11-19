@@ -139,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Padding(padding: EdgeInsets.fromLTRB(2, 0, 2, 4), child: Text('Bado hakuna risiti', style: TextStyle(fontSize: 13, color: C.muted)))
               else
                 for (final r in x.receipts)
-                  _ReceiptRow(r: r, onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReceiptViewScreen(receipt: r)))),
+                  _ReceiptRow(r: r, onTap: () => showReceiptDialog(context, r)),
             ]),
           );
         },
