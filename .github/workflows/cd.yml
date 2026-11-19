@@ -37,7 +37,7 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Build APKs (split per ABI — ndogo zaidi)
+      - name: Build APKs
         run: flutter build apk --release --split-per-abi
 
       - name: Rename APKs
@@ -47,7 +47,6 @@ jobs:
           cd build/app/outputs/flutter-apk/
           mv app-arm64-v8a-release.apk   ummu-ayman-v${VERSION}-arm64.apk
           mv app-armeabi-v7a-release.apk ummu-ayman-v${VERSION}-arm32.apk
-          mv app-x86_64-release.apk      ummu-ayman-v${VERSION}-x86.apk
 
       - name: Delete old latest release
         run: gh release delete latest --yes 2>/dev/null || true
@@ -61,31 +60,26 @@ jobs:
           name: "Ummu Ayman — Toleo Jipya"
           prerelease: false
           body: |
-            ## Ummu Ayman Outfits 🛍️
+            ## Ummu Ayman Outfits
             **Version:** ${{ env.VERSION }} &nbsp;|&nbsp; **Build:** #${{ github.run_number }}
 
             ---
 
-            ### 📲 Pakua APK — Chagua moja tu
+            ### Pakua APK
 
-            | Faili | Simu | Ukubwa |
-            |-------|------|--------|
-            | **`arm64`** ✅ | Simu zote za kisasa (2016+) | ~10 MB |
-            | `arm32` | Simu za zamani sana | ~9 MB |
-            | `x86` | Emulator/PC tu | ~10 MB |
-
-            > **Shaka?** Chagua `arm64` — inafanya kazi simu nyingi.
+            | Faili | Simu |
+            |-------|------|
+            | **`arm64`** ✅ | Simu zote za kisasa (Samsung, Tecno, Infinix, nk) |
+            | `arm32` | Simu za zamani sana (kabla ya 2015) |
 
             ---
 
-            ### ⚙️ Jinsi ya Kuinstall
+            ### Jinsi ya Kuinstall
             1. Bonyeza faili la `arm64` hapa chini — ipakuliwe
             2. Fungua simu → **Settings → Security → Install unknown apps** → washa
             3. Fungua APK → **Install**
-            4. Tayari ✅
           files: |
             build/app/outputs/flutter-apk/ummu-ayman-v${{ env.VERSION }}-arm64.apk
             build/app/outputs/flutter-apk/ummu-ayman-v${{ env.VERSION }}-arm32.apk
-            build/app/outputs/flutter-apk/ummu-ayman-v${{ env.VERSION }}-x86.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
