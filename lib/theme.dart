@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Rangi: nyeupe inayong'aa + bluu ya bahari moja.
 /// Kijani = sahihi/faida (PIN), Nyekundu = kosa / imeisha / futa tu.
@@ -26,12 +25,13 @@ class C {
 ThemeData buildTheme() {
   final base = ThemeData(
     useMaterial3: true,
+    fontFamily: 'Inter',
     colorScheme: ColorScheme.fromSeed(seedColor: C.blue, primary: C.blue, surface: Colors.white),
     scaffoldBackgroundColor: Colors.white,
     splashFactory: InkRipple.splashFactory,
   );
   return base.copyWith(
-    textTheme: GoogleFonts.interTextTheme(base.textTheme).apply(bodyColor: C.text, displayColor: C.text),
+    textTheme: base.textTheme.apply(fontFamily: 'Inter', bodyColor: C.text, displayColor: C.text),
     appBarTheme: const AppBarTheme(
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.white,

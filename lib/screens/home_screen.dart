@@ -6,6 +6,8 @@ import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/ui.dart';
 import 'pin_screen.dart';
+import 'receipts_screen.dart';
+import 'shell.dart';
 
 /// NYUMBANI
 ///  - Faida halisi ya leo (kubwa) + Mauzo / Mtaji / Gharama
@@ -81,7 +83,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   opacity: a,
                   child: SlideTransition(position: Tween(begin: Offset(child.key == const ValueKey(1) ? .08 : -.08, 0), end: Offset.zero).animate(a), child: child),
                 ),
-                child: _tab == 0 ? KeyedSubtree(key: const ValueKey(0), child: _StockGrid(d)) : KeyedSubtree(key: const ValueKey(1), child: _SoldTable(d.soldToday)),
+                child: _tab == 0
+                    ? KeyedSubtree(key: const ValueKey(0), child: _StockGrid(d))
+                    : KeyedSubtree(key: const ValueKey(1), child: _SoldTable(d.soldToday, onReload: _reload)),
               ),
             ]),
           );
@@ -126,7 +130,14 @@ class _StockGrid extends StatelessWidget {
   final HomeData d;
   const _StockGrid(this.d);
   @override
-  Widget build(BuildContext context) => Column(children: [
+  Widget build(BuildContext context) => d.products.isEmpty
+      ? EmptyState(
+          icon: Icons.view_in_ar_outlined,
+          title: 'Bado hakuna bidhaa',
+          text: 'Ongeza bidhaa ya kwanza kwenye Stock,\nitaonekana hapa pamoja na idadi yake.',
+          actions: [SmallButton('+ Ongeza bidhaa', onTap: () => Shell.of(context)?.go(2))],
+        )
+      : Column(children: [
         const SizedBox(height: 14),
         GridView.builder(
           shrinkWrap: true,
@@ -222,9 +233,27 @@ class _ProductDialog extends StatelessWidget {
 
 class _SoldTable extends StatelessWidget {
   final List<SoldRow> rows;
-  const _SoldTable(this.rows);
+  final VoidCallback onReload;
+  const _SoldTable(this.rows, {required this.onReload});
+
+  Future<void> _newReceipt(BuildContext context) async {
+    await Navigator.of(context).push<Receipt>(MaterialPageRoute(builder: (_) => const NewReceiptScreen()));
+    onReload();
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (rows.isEmpty) {
+      return EmptyState(
+        icon: Icons.receipt_long_outlined,
+        title: 'Bado hakuna mauzo leo',
+        text: 'Ukitengeneza risiti au ukiandika\nMauzo ya leo, yataonekana hapa.',
+        actions: [
+          SmallButton('Risiti mpya', onTap: () => _newReceipt(context)),
+          SmallButton('Mauzo ya leo', onTap: () => Shell.of(context)?.go(1)),
+        ],
+      );
+    }
     final q = rows.fold<int>(0, (a, r) => a + r.qty);
     final b = rows.fold<int>(0, (a, r) => a + r.qty * r.buying);
     final s = rows.fold<int>(0, (a, r) => a + r.qty * r.selling);
@@ -244,8 +273,6 @@ class _SoldTable extends StatelessWidget {
                 tableCell(w[i], Text(t, textAlign: i == 0 ? TextAlign.left : TextAlign.right, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: C.muted, letterSpacing: .4))),
             ]),
           ),
-          if (rows.isEmpty)
-            const Padding(padding: EdgeInsets.all(18), child: Text('Bado hakuna mauzo leo', style: TextStyle(color: C.muted))),
           for (final x in rows)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

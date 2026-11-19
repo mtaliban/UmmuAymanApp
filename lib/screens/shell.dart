@@ -43,12 +43,13 @@ class ShellState extends State<Shell> {
 
   @override
   Widget build(BuildContext context) {
+    // Icons za mstari mwembamba tu (hazijai) — zote outline, zinatofautishwa kwa rangi
     const items = [
-      ('Nyumbani', Icons.home_outlined, Icons.home_rounded),
-      ('Mauzo', Icons.edit_outlined, Icons.edit_rounded),
-      ('Stock', Icons.inventory_2_outlined, Icons.inventory_2_rounded),
-      ('Ripoti', Icons.bar_chart_outlined, Icons.bar_chart_rounded),
-      ('Risiti', Icons.description_outlined, Icons.description_rounded),
+      ('Nyumbani', Icons.home_outlined),
+      ('Mauzo', Icons.edit_outlined),
+      ('Stock', Icons.inventory_2_outlined),
+      ('Ripoti', Icons.bar_chart_outlined),
+      ('Risiti', Icons.description_outlined),
     ];
     return Scaffold(
       body: AnimatedSwitcher(duration: const Duration(milliseconds: 180), child: _page()),
@@ -69,7 +70,7 @@ class ShellState extends State<Shell> {
                         width: 56,
                         height: 30,
                         decoration: BoxDecoration(color: i == _tab ? C.blue2 : Colors.transparent, borderRadius: BorderRadius.circular(15)),
-                        child: Icon(i == _tab ? items[i].$3 : items[i].$2, size: 22, color: i == _tab ? C.blue : const Color(0xFF4B5563)),
+                        child: Icon(items[i].$2, size: 22, color: i == _tab ? C.blue : const Color(0xFF9CA3AF)),
                       ),
                       const SizedBox(height: 4),
                       Text(items[i].$1,

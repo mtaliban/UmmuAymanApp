@@ -30,6 +30,14 @@ class UmmuAymanApp extends StatelessWidget {
         title: 'Ummu Ayman',
         debugShowCheckedModeBanner: false,
         theme: buildTheme(),
+        // Ukubwa wa maandishi ubaki kama kwenye muundo hata simu ikiwa na font kubwa
+        builder: (context, child) {
+          final mq = MediaQuery.of(context);
+          return MediaQuery(
+            data: mq.copyWith(textScaler: mq.textScaler.clamp(minScaleFactor: 1.0, maxScaleFactor: 1.0)),
+            child: child!,
+          );
+        },
         // App inafunguka moja kwa moja kwenye PIN (hakuna splash).
         home: logged ? const Shell() : const PinScreen(),
       );

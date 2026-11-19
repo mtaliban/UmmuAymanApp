@@ -542,6 +542,35 @@ void showError(BuildContext context, Object e) {
     ));
 }
 
+/// Ukurasa tupu (Chaguo A): duara la bluu hafifu + icon nyeusi, kichwa, maelezo, vitufe vidogo
+class EmptyState extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String text;
+  final List<Widget> actions;
+  const EmptyState({super.key, required this.icon, required this.title, required this.text, this.actions = const []});
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 46, 20, 24),
+        child: Column(children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: const BoxDecoration(color: C.blue2, shape: BoxShape.circle),
+            child: Icon(icon, size: 32, color: C.text),
+          ),
+          const SizedBox(height: 16),
+          Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          Text(text, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, color: C.muted, height: 1.5)),
+          if (actions.isNotEmpty) ...[
+            const SizedBox(height: 18),
+            Wrap(spacing: 8, runSpacing: 8, alignment: WrapAlignment.center, children: actions),
+          ],
+        ]),
+      );
+}
+
 class Loading extends StatelessWidget {
   const Loading({super.key});
   @override

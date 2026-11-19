@@ -12,7 +12,6 @@ dependencies:
   http: ^1.2.1
   shared_preferences: ^2.2.3
   intl: '>=0.19.0 <0.21.0'
-  google_fonts: ^6.2.1
   url_launcher: ^6.3.0
   pdf: ^3.11.0
   printing: ^5.13.1
@@ -27,3 +26,16 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Font ya Inter iko ndani ya app (haihitaji intaneti)
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Regular.ttf
+        - asset: assets/fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Inter-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Inter-ExtraBold.ttf
+          weight: 800
