@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 
 import '../api/api.dart';
 import '../models/models.dart';
+import '../services/pdf.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/ui.dart';
@@ -32,6 +34,8 @@ class _SalesScreenState extends State<SalesScreen> {
   List<Variant> _variants = [];
   bool _saved = false;
   bool _saving = false;
+  bool _pdfBusy = false;
+  Shop? _shop;
   int _newIndex = -1, _newExp = -1;
 
   // dirisha
@@ -61,6 +65,9 @@ class _SalesScreenState extends State<SalesScreen> {
       f.addListener(() => setState(() {}));
     }
     _load();
+    Api.i.shop().then((s) {
+      if (mounted) setState(() => _shop = s);
+    });
   }
 
   @override
@@ -217,6 +224,37 @@ class _SalesScreenState extends State<SalesScreen> {
     return false;
   }
 
+  // ------------------------------------------------------------ PDF / shiriki
+  Shop get _shopInfo => _shop ?? Shop(name: 'UMMU AYMAN OUTFITS', phone: '', email: '');
+
+  String get _pdfName => 'Mauzo-${dateShort(_day).replaceAll(' ', '-')}.pdf';
+
+  Future<void> _downloadPdf() async {
+    if (_pdfBusy) return;
+    setState(() => _pdfBusy = true);
+    try {
+      final bytes = await dailyPdf(shop: _shopInfo, date: _day, lines: _all, expenses: _exps);
+      await Printing.layoutPdf(onLayout: (_) async => bytes, name: _pdfName);
+    } catch (e) {
+      if (mounted) showError(context, e);
+    } finally {
+      if (mounted) setState(() => _pdfBusy = false);
+    }
+  }
+
+  Future<void> _sharePdf() async {
+    if (_pdfBusy) return;
+    setState(() => _pdfBusy = true);
+    try {
+      final bytes = await dailyPdf(shop: _shopInfo, date: _day, lines: _all, expenses: _exps);
+      await Printing.sharePdf(bytes: bytes, filename: _pdfName);
+    } catch (e) {
+      if (mounted) showError(context, e);
+    } finally {
+      if (mounted) setState(() => _pdfBusy = false);
+    }
+  }
+
   Future<void> _persist() async {
     try {
       await Api.i.saveDaily(_day, _lines, _exps);
@@ -343,7 +381,15 @@ class _SalesScreenState extends State<SalesScreen> {
                         Statement(sales: _sales, capital: _capital, expenses: _expenses),
                         const SizedBox(height: 12),
                         Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                          SmallButton(_saved ? 'Hariri' : 'Hifadhi', busy: _saving, color: _saved ? C.text2 : C.blue, onTap: _saved ? () => setState(() => _saved = false) : _save),
+                          SmallButton('Pakua PDF', color: C.text2, busy: _pdfBusy, icon: const Icon(Icons.download_rounded, size: 14, color: C.text2), onTap: _downloadPdf),
+                          const SizedBox(width: 8),
+                          SmallButton('Shiriki', color: C.text2, icon: const Icon(Icons.share_outlined, size: 13, color: C.text2), onTap: _sharePdf),
+                          const SizedBox(width: 8),
+                          SmallButton(_saved ? 'Hariri' : 'Hifadhi',
+                              busy: _saving,
+                              filled: !_saved,
+                              color: _saved ? C.text2 : C.blue,
+                              onTap: _saved ? () => setState(() => _saved = false) : _save),
                         ]),
                       ],
                     ),
@@ -361,7 +407,12 @@ class _SalesScreenState extends State<SalesScreen> {
         ]),
       );
 
-  Widget _card(SaleLine l, {String? tag, bool tagBlue = false, Color? bg, bool highlight = false, VoidCallback? onTap}) => Padding(
+  Widget _card(SaleLine l, {String? tag, bool tagBlue = false, Color? bg, bool highlight = false, VoidCallback? onTap}) {
+    // Bidhaa isiyo kwenye stock ina alama yake (haiathiri stock ya dukani).
+    final t = tag ?? (l.variantId.isEmpty ? 'nje ya stock' : null);
+    final tBg = tagBlue ? C.blue2 : (tag != null ? C.soft : const Color(0xFFF3F4F6));
+    final tFg = tagBlue ? C.blue : (tag != null ? C.text2 : C.muted);
+    return Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Box(
           radius: 12,
@@ -372,11 +423,11 @@ class _SalesScreenState extends State<SalesScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(child: Text(l.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700))),
-              if (tag != null)
+              if (t != null)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                  decoration: BoxDecoration(color: tagBlue ? C.blue2 : C.soft, borderRadius: BorderRadius.circular(4)),
-                  child: Text(tag, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: tagBlue ? C.blue : C.text2)),
+                  decoration: BoxDecoration(color: tBg, borderRadius: BorderRadius.circular(4)),
+                  child: Text(t, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: tFg)),
                 ),
             ]),
             const SizedBox(height: 7),
@@ -389,6 +440,7 @@ class _SalesScreenState extends State<SalesScreen> {
           ]),
         ),
       );
+  }
 
   Widget _totalLine() => Container(
         padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 11),

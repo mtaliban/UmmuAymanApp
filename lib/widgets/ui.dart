@@ -152,7 +152,8 @@ class SmallButton extends StatelessWidget {
   final bool busy;
   final Color color;
   final Widget? icon;
-  const SmallButton(this.label, {super.key, this.onTap, this.busy = false, this.color = C.blue, this.icon});
+  final bool filled; // true = bluu iliyojaa, maandishi meupe
+  const SmallButton(this.label, {super.key, this.onTap, this.busy = false, this.color = C.blue, this.icon, this.filled = false});
   @override
   Widget build(BuildContext context) => InkWell(
         onTap: busy ? null : onTap,
@@ -161,13 +162,17 @@ class SmallButton extends StatelessWidget {
           height: 30,
           constraints: const BoxConstraints(minWidth: 70),
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: color)),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: color),
+            color: filled ? color : null,
+          ),
           alignment: Alignment.center,
           child: busy
-              ? DotsLoader(color: color)
+              ? DotsLoader(color: filled ? Colors.white : color)
               : Row(mainAxisSize: MainAxisSize.min, children: [
                   if (icon != null) ...[icon!, const SizedBox(width: 6)],
-                  Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color)),
+                  Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: filled ? Colors.white : color)),
                 ]),
         ),
       );
