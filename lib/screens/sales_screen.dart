@@ -6,54 +6,58 @@ import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/ui.dart';
 
-/// MAUZO YA LEO — daftari la jioni
-///  1. Bidhaa zilizouzwa: mistari ya risiti ipo tayari ("risiti 0003"), anaendelea kuandika chini yake.
-///     Mstari: andika jina -> orodha inashuka chini ya mstari -> gusa aina (au Ijayo = ya kwanza)
-///            -> Idadi -> Ijayo -> Selling (imejaa kutoka stock, anaweza kubadilisha) -> Ijayo -> mstari mpya.
-///     Buying inajaa yenyewe; Profit inajihesabu.
-///  2. Gharama: jina lolote -> kiasi -> Ijayo.
-///  3. Hesabu ya leo: Mauzo, Mtaji, Faida ya bidhaa, Gharama, Faida halisi.
-///  4. Kitufe kidogo: Hifadhi -> (vidoti) -> Hariri.
+/// MAUZO YA LEO — kadi + dirisha linaloelea juu ya kibodi
+///  1. BIDHAA ZILIZOUZWA: kadi (IDADI · SELLING · BUYING · FAIDA) + kitufe `+ Ongeza`.
+///  2. Dirisha (Bidhaa | Gharama): tafuta -> gusa aina -> Idadi -> Bei -> Next.
+///     Bidhaa isiyo kwenye stock: Idadi · Selling · Buying.
+///  3. Jumla · Mauzo · Faida, GHARAMA + Jumla, Hesabu ya leo, Hifadhi/Hariri.
 class SalesScreen extends StatefulWidget {
   const SalesScreen({super.key});
   @override
   State<SalesScreen> createState() => _SalesScreenState();
 }
 
+enum _Tab { bidhaa, gharama }
+
 class _SalesScreenState extends State<SalesScreen> {
   final _day = dayOnly(DateTime.now());
+  final _scroll = ScrollController();
   bool _loading = true;
   Object? _error;
 
   List<SaleLine> _receiptLines = [];
   List<SaleLine> _lines = [];
-  List<SaleLine> _savedLines = []; // zilizohifadhiwa (zimeshatoka stock)
+  List<SaleLine> _savedLines = [];
   List<Expense> _exps = [];
   List<Variant> _variants = [];
   bool _saved = false;
   bool _saving = false;
+  int _newIndex = -1, _newExp = -1;
 
-  // mhariri wa mstari wa mauzo
-  int _editIndex = -1; // -1 = mstari mpya
-  Variant? _sel;
-  final _nameC = TextEditingController();
-  final _qtyC = TextEditingController();
-  final _sellC = TextEditingController();
-  final _nameF = FocusNode();
-  final _qtyF = FocusNode();
-  final _sellF = FocusNode();
-
-  // mhariri wa gharama
+  // dirisha
+  bool _open = false;
+  _Tab _tab = _Tab.bidhaa;
+  int _editIndex = -1;
   int _expIndex = -1;
-  final _eNameC = TextEditingController();
-  final _eAmtC = TextEditingController();
+  Variant? _sel;
+
+  final _q = TextEditingController();
+  final _qty = TextEditingController();
+  final _price = TextEditingController();
+  final _buy = TextEditingController();
+  final _eName = TextEditingController();
+  final _eAmt = TextEditingController();
+  final _qF = FocusNode();
+  final _qtyF = FocusNode();
+  final _priceF = FocusNode();
+  final _buyF = FocusNode();
   final _eNameF = FocusNode();
   final _eAmtF = FocusNode();
 
   @override
   void initState() {
     super.initState();
-    for (final f in [_nameF, _qtyF, _sellF, _eNameF, _eAmtF]) {
+    for (final f in [_qF, _qtyF, _priceF, _buyF, _eNameF, _eAmtF]) {
       f.addListener(() => setState(() {}));
     }
     _load();
@@ -61,10 +65,11 @@ class _SalesScreenState extends State<SalesScreen> {
 
   @override
   void dispose() {
-    for (final c in [_nameC, _qtyC, _sellC, _eNameC, _eAmtC]) {
+    _scroll.dispose();
+    for (final c in [_q, _qty, _price, _buy, _eName, _eAmt]) {
       c.dispose();
     }
-    for (final f in [_nameF, _qtyF, _sellF, _eNameF, _eAmtF]) {
+    for (final f in [_qF, _qtyF, _priceF, _buyF, _eNameF, _eAmtF]) {
       f.dispose();
     }
     super.dispose();
@@ -77,9 +82,8 @@ class _SalesScreenState extends State<SalesScreen> {
     });
     try {
       final r = await Future.wait([Api.i.daily(_day), Api.i.products()]);
-      final d = r[0] as DailySheet;
       _variants = (r[1] as List<Product>).expand((p) => p.variants).toList();
-      _apply(d);
+      _apply(r[0] as DailySheet);
     } catch (e) {
       _error = e;
     }
@@ -92,8 +96,9 @@ class _SalesScreenState extends State<SalesScreen> {
     _savedLines = d.lines.map((l) => SaleLine(variantId: l.variantId, name: l.name, qty: l.qty, selling: l.selling, buying: l.buying)).toList();
     _exps = d.expenses;
     _saved = d.savedAt != null;
-    _resetEditor();
-    _resetExp();
+    _newIndex = -1;
+    _newExp = -1;
+    _closeWindow();
   }
 
   // ------------------------------------------------------------ hesabu
@@ -101,14 +106,16 @@ class _SalesScreenState extends State<SalesScreen> {
   int get _sales => _all.fold(0, (a, l) => a + l.sales);
   int get _capital => _all.fold(0, (a, l) => a + l.capital);
   int get _expenses => _exps.fold(0, (a, e) => a + e.amount);
+  int get _qtyAll => _all.fold(0, (a, l) => a + l.qty);
 
-  /// zilizopo kwa aina hii (stock ya sasa + zilizohifadhiwa awali leo - zilizoandikwa kwenye mistari mingine)
   int _available(String vid, {int exceptIndex = -1}) {
-    final v = _variants.firstWhere((x) => x.id == vid);
+    final i = _variants.indexWhere((x) => x.id == vid);
+    if (i < 0) return 0;
+    final v = _variants[i];
     final saved = _savedLines.where((l) => l.variantId == vid).fold<int>(0, (a, l) => a + l.qty);
     var used = 0;
-    for (var i = 0; i < _lines.length; i++) {
-      if (i != exceptIndex && _lines[i].variantId == vid) used += _lines[i].qty;
+    for (var k = 0; k < _lines.length; k++) {
+      if (k != exceptIndex && _lines[k].variantId == vid) used += _lines[k].qty;
     }
     return v.qty + saved - used;
   }
@@ -117,140 +124,179 @@ class _SalesScreenState extends State<SalesScreen> {
         if (mounted) f.requestFocus();
       });
 
-  // ------------------------------------------------------------ mhariri wa mauzo
-  void _resetEditor() {
+  Future<void> _scrollEnd() async {
+    await Future.delayed(const Duration(milliseconds: 80));
+    if (!_scroll.hasClients) return;
+    await _scroll.animateTo(_scroll.position.maxScrollExtent, duration: const Duration(milliseconds: 280), curve: Curves.easeOut);
+  }
+
+  // ------------------------------------------------------------ dirisha
+  void _closeWindow() {
+    _open = false;
+    _tab = _Tab.bidhaa;
     _editIndex = -1;
+    _expIndex = -1;
     _sel = null;
-    _nameC.clear();
-    _qtyC.clear();
-    _sellC.clear();
+    _q.clear();
+    _qty.clear();
+    _price.clear();
+    _buy.clear();
+    _eName.clear();
+    _eAmt.clear();
+  }
+
+  void _closeAndUnfocus() {
+    setState(_closeWindow);
+    FocusScope.of(context).unfocus();
+  }
+
+  void _openAdd() {
+    if (_saved) return;
+    setState(() {
+      _closeWindow();
+      _open = true;
+    });
+    _focusLater(_qF);
+  }
+
+  void _openEdit(int i) {
+    if (_saved) return;
+    final l = _lines[i];
+    setState(() {
+      _closeWindow();
+      _open = true;
+      _editIndex = i;
+      final idx = _variants.indexWhere((v) => v.id == l.variantId);
+      _sel = idx < 0 ? null : _variants[idx];
+      _q.text = l.name;
+      _qty.text = '${l.qty}';
+      _price.text = money(l.selling);
+      _buy.text = l.buying > 0 ? money(l.buying) : '';
+    });
+    _focusLater(_qtyF);
+  }
+
+  void _openExpense(int i) {
+    if (_saved) return;
+    setState(() {
+      _closeWindow();
+      _open = true;
+      _tab = _Tab.gharama;
+      _expIndex = i;
+      _eName.text = _exps[i].name;
+      _eAmt.text = money(_exps[i].amount);
+    });
+    _focusLater(_eAmtF);
   }
 
   List<Variant> get _matches {
-    final q = _nameC.text.trim();
-    if (q.isEmpty || (_sel != null && _sel!.name == _nameC.text)) return [];
-    return _variants.where((v) => nameMatches(v.name, q)).take(5).toList();
+    final q = _q.text.trim();
+    if (q.isEmpty || (_sel != null && _sel!.name == _q.text)) return [];
+    return _variants.where((v) => nameMatches(v.name, q)).take(6).toList();
   }
+
+  bool get _noMatch => _sel == null && _q.text.trim().length >= 2 && _matches.isEmpty;
 
   void _pick(Variant v) {
     setState(() {
       _sel = v;
-      _nameC.text = v.name;
-      _sellC.text = money(v.selling);
+      _q.text = v.name;
+      _price.text = money(v.selling);
+      _qty.clear();
     });
     _focusLater(_qtyF);
   }
 
-  void _onNameSubmit(String _) {
-    if (_sel == null || _sel!.name != _nameC.text) {
-      final m = _matches;
-      if (m.isEmpty) {
-        showError(context, 'Bidhaa "${_nameC.text}" haipo kwenye stock');
-        _nameF.requestFocus();
-        return;
-      }
-      _pick(m.first);
+  int get _avail => _sel == null ? 0 : _available(_sel!.id, exceptIndex: _editIndex);
+
+  bool get _canNext {
+    if (_tab == _Tab.gharama) return _eName.text.trim().isNotEmpty && parseMoney(_eAmt.text) > 0;
+    final q = parseMoney(_qty.text), p = parseMoney(_price.text);
+    if (_sel != null) return q > 0 && p > 0 && q <= _avail;
+    if (_editIndex >= 0 || _noMatch) return q > 0 && p > 0 && parseMoney(_buy.text) > 0;
+    return false;
+  }
+
+  Future<void> _persist() async {
+    try {
+      await Api.i.saveDaily(_day, _lines, _exps);
+    } catch (e) {
+      if (mounted) showError(context, e);
+    }
+  }
+
+  Future<void> _next() async {
+    if (!_canNext) return;
+    if (_tab == _Tab.gharama) {
+      final e = Expense(name: _eName.text.trim(), amount: parseMoney(_eAmt.text));
+      setState(() {
+        if (_expIndex >= 0) {
+          _exps[_expIndex] = e;
+        } else {
+          _exps.add(e);
+        }
+        _newExp = _expIndex >= 0 ? _expIndex : _exps.length - 1;
+        _expIndex = -1;
+        _eName.clear();
+        _eAmt.clear();
+      });
+      _focusLater(_eNameF);
+      await _persist();
+      return;
+    }
+
+    final q = parseMoney(_qty.text), p = parseMoney(_price.text);
+    final b = parseMoney(_buy.text);
+    final SaleLine line;
+    if (_sel != null) {
+      line = SaleLine(variantId: _sel!.id, name: _sel!.name, qty: q, selling: p, buying: _sel!.buying, stockSelling: _sel!.selling);
     } else {
-      _qtyF.requestFocus();
+      final name = _q.text.trim();
+      line = SaleLine(variantId: '', name: name[0].toUpperCase() + name.substring(1), qty: q, selling: p, buying: b);
     }
-  }
-
-  void _onQtySubmit(String _) {
-    final v = _sel;
-    final q = parseMoney(_qtyC.text);
-    if (v != null && q > 0) {
-      final avail = _available(v.id, exceptIndex: _editIndex);
-      if (q > avail) {
-        showError(context, '${v.name}: zipo $avail tu');
-        return _qtyF.requestFocus();
-      }
-    }
-    _sellF.requestFocus();
-    _sellC.selection = TextSelection(baseOffset: 0, extentOffset: _sellC.text.length);
-  }
-
-  void _commitLine([String? _]) {
-    final v = _sel;
-    final q = parseMoney(_qtyC.text);
-    final s = parseMoney(_sellC.text);
-    if (v == null) return _nameF.requestFocus();
-    if (q <= 0) {
-      showError(context, 'Andika idadi');
-      return _qtyF.requestFocus();
-    }
-    if (s <= 0) {
-      showError(context, 'Andika bei');
-      return _sellF.requestFocus();
-    }
-    final avail = _available(v.id, exceptIndex: _editIndex);
-    if (q > avail) {
-      showError(context, '${v.name}: zipo $avail tu');
-      return _qtyF.requestFocus();
-    }
-    final line = SaleLine(variantId: v.id, name: v.name, qty: q, selling: s, buying: v.buying, stockSelling: v.selling);
     setState(() {
       if (_editIndex >= 0) {
         _lines[_editIndex] = line;
+        _newIndex = _editIndex;
       } else {
         _lines.add(line);
+        _newIndex = _lines.length - 1;
       }
-      _resetEditor();
+      _editIndex = -1;
+      _sel = null;
+      _q.clear();
+      _qty.clear();
+      _price.clear();
+      _buy.clear();
     });
-    _focusLater(_nameF);
+    _focusLater(_qF);
+    _scrollEnd();
+    await _persist();
   }
 
-  void _editLine(int i) {
-    if (_saved) return;
-    final l = _lines[i];
+  Future<void> _deleteLine() async {
+    if (_editIndex < 0) return;
+    final name = _lines[_editIndex].name;
+    final ok = await confirmDelete(context, title: 'Ondoa $name?', message: 'Mstari huu utaondolewa kwenye mauzo ya leo.');
+    if (!ok) return;
     setState(() {
-      _editIndex = i;
-      _sel = _variants.firstWhere((v) => v.id == l.variantId);
-      _nameC.text = l.name;
-      _qtyC.text = '${l.qty}';
-      _sellC.text = money(l.selling);
+      _lines.removeAt(_editIndex);
+      _newIndex = -1;
+      _closeWindow();
     });
-    _focusLater(_qtyF);
+    FocusScope.of(context).unfocus();
+    await _persist();
   }
 
-  Future<void> _deleteLine(int i) async {
-    if (_saved) return;
-    final ok = await confirmDelete(context, title: 'Ondoa ${_lines[i].name}?', message: 'Mstari huu utaondolewa kwenye mauzo ya leo.');
-    if (ok) setState(() => _lines.removeAt(i));
-  }
-
-  // ------------------------------------------------------------ mhariri wa gharama
-  void _resetExp() {
-    _expIndex = -1;
-    _eNameC.clear();
-    _eAmtC.clear();
-  }
-
-  void _commitExp([String? _]) {
-    final n = _eNameC.text.trim();
-    final a = parseMoney(_eAmtC.text);
-    if (n.isEmpty) return _eNameF.requestFocus();
-    if (a <= 0) return _eAmtF.requestFocus();
-    setState(() {
-      final e = Expense(name: n[0].toUpperCase() + n.substring(1), amount: a);
-      if (_expIndex >= 0) {
-        _exps[_expIndex] = e;
-      } else {
-        _exps.add(e);
-      }
-      _resetExp();
-    });
-    _eNameF.requestFocus();
-  }
-
-  // ------------------------------------------------------------ hifadhi / hariri
+  // ------------------------------------------------------------ hifadhi
   Future<void> _save() async {
     FocusScope.of(context).unfocus();
     setState(() => _saving = true);
     try {
-      final d = await Future.wait([Api.i.saveDaily(_day, _lines, _exps), Future.delayed(const Duration(milliseconds: 700))]);
+      final r = await Future.wait([Api.i.saveDaily(_day, _lines, _exps), Future.delayed(const Duration(milliseconds: 700))]);
       final p = await Api.i.products();
       _variants = p.expand((x) => x.variants).toList();
-      setState(() => _apply(d[0] as DailySheet));
+      setState(() => _apply(r[0] as DailySheet));
     } catch (e) {
       if (mounted) showError(context, e);
     } finally {
@@ -259,214 +305,378 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   // ------------------------------------------------------------ UI
-  static const _w = <double?>[20, null, 40, 70, 58, 62];
-
   @override
   Widget build(BuildContext context) {
-    final kb = MediaQuery.of(context).viewInsets.bottom > 0;
     return Scaffold(
       appBar: pageBar('Mauzo ya leo', subtitle: dateLong(_day)),
       body: _loading
           ? const Loading()
           : _error != null
               ? ErrorView(_error!, onRetry: _load)
-              : Column(children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => FocusScope.of(context).unfocus(),
-                      child: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 40), children: [
-                        const SectionTitle('Bidhaa zilizouzwa', padding: EdgeInsets.fromLTRB(2, 18, 2, 6)),
-                        const TableHead(['#', 'BIDHAA', 'IDADI', 'SELLING', 'BUYING', 'PROFIT'], _w),
-                        for (var i = 0; i < _receiptLines.length; i++) _row(i + 1, _receiptLines[i]),
-                        for (var i = 0; i < _lines.length; i++)
-                          if (i == _editIndex && !_saved) _editorRow(_receiptLines.length + i + 1) else _row(_receiptLines.length + i + 1, _lines[i], onTap: () => _editLine(i), onLong: () => _deleteLine(i)),
-                        if (!_saved && _editIndex == -1) _editorRow(_all.length + 1),
-                        if (!_saved && (_nameF.hasFocus) && _matches.isNotEmpty) _dropdown(),
-                        _totalRow(),
+              : Stack(children: [
+                  GestureDetector(
+                    onTap: () => FocusScope.of(context).unfocus(),
+                    child: ListView(
+                      controller: _scroll,
+                      padding: EdgeInsets.fromLTRB(16, 0, 16, _open ? 330 : 40),
+                      children: [
+                        if (_receiptLines.isNotEmpty) ...[
+                          const SectionTitle('Kutoka risiti', padding: EdgeInsets.fromLTRB(2, 18, 2, 8)),
+                          for (final l in _receiptLines) _card(l, tag: 'Risiti ${l.receiptNo}', tagBlue: true, bg: C.receiptBg),
+                        ],
+                        _head(),
+                        if (_lines.isEmpty && _receiptLines.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.fromLTRB(2, 4, 2, 6),
+                            child: Text('Bado hujaandika mauzo ya leo — gusa “+ Ongeza”.', style: TextStyle(fontSize: 13, color: C.muted)),
+                          ),
+                        for (final (i, l) in _lines.indexed)
+                          _card(l, highlight: i == _newIndex, onTap: _saved ? null : () => _openEdit(i)),
+                        _totalLine(),
                         const SectionTitle('Gharama'),
-                        const TableHead(['#', 'JINA', 'KIASI'], [20, null, 110]),
-                        for (var i = 0; i < _exps.length; i++)
-                          if (i == _expIndex && !_saved) _expEditor(i + 1) else _expRow(i + 1, _exps[i], i),
-                        if (!_saved && _expIndex == -1) _expEditor(_exps.length + 1),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-                          child: Row(children: [
-                            const Expanded(child: Text('Jumla', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800))),
-                            Text(money(_expenses), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, fontFeatures: tabular)),
-                          ]),
-                        ),
+                        if (_exps.isEmpty)
+                          const Padding(padding: EdgeInsets.fromLTRB(2, 2, 2, 8), child: Text('Bado hakuna gharama', style: TextStyle(fontSize: 13.5, color: C.muted)))
+                        else
+                          for (final (i, e) in _exps.indexed) _expRow(e, i),
+                        _expTotal(),
                         const SectionTitle('Hesabu ya leo'),
                         Statement(sales: _sales, capital: _capital, expenses: _expenses),
                         const SizedBox(height: 12),
                         Row(mainAxisAlignment: MainAxisAlignment.end, children: [
                           SmallButton(_saved ? 'Hariri' : 'Hifadhi', busy: _saving, color: _saved ? C.text2 : C.blue, onTap: _saved ? () => setState(() => _saved = false) : _save),
                         ]),
-                      ]),
+                      ],
                     ),
                   ),
-                  if (kb) _liveBar(),
+                  if (_open) _window(),
                 ]),
     );
   }
 
-  Widget _num(double? w, String t, {bool bold = false, Color? color}) => tableCell(
-      w, Text(t, textAlign: TextAlign.right, style: TextStyle(fontSize: 13, fontWeight: bold ? FontWeight.w800 : FontWeight.w400, color: color, fontFeatures: tabular)));
+  Widget _head() => Padding(
+        padding: const EdgeInsets.fromLTRB(2, 18, 2, 10),
+        child: Row(children: [
+          const Expanded(child: Text('BIDHAA ZILIZOUZWA', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .9))),
+          if (!_saved) TopButton('Ongeza', onTap: _openAdd),
+        ]),
+      );
 
-  Widget _row(int n, SaleLine l, {VoidCallback? onTap, VoidCallback? onLong}) => InkWell(
-        onTap: onTap,
-        onLongPress: onLong,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
-          child: Row(children: [
-            tableCell(_w[0], Text('$n', style: const TextStyle(fontSize: 11, color: C.faint))),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(l.name, maxLines: 2, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
-                if (l.fromReceipt) Text('risiti ${l.receiptNo}', style: const TextStyle(fontSize: 10.5, color: C.faint)),
-              ]),
-            ),
-            _num(_w[2], '${l.qty}'),
-            _num(_w[3], money(l.selling)),
-            _num(_w[4], money(l.buying), color: C.text2),
-            _num(_w[5], money(l.profit), bold: true),
+  Widget _card(SaleLine l, {String? tag, bool tagBlue = false, Color? bg, bool highlight = false, VoidCallback? onTap}) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Box(
+          radius: 12,
+          color: highlight ? C.blue3 : bg,
+          border: highlight ? C.blue : null,
+          onTap: onTap,
+          padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(child: Text(l.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700))),
+              if (tag != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(color: tagBlue ? C.blue2 : C.soft, borderRadius: BorderRadius.circular(4)),
+                  child: Text(tag, style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: tagBlue ? C.blue : C.text2)),
+                ),
+            ]),
+            const SizedBox(height: 7),
+            Row(children: [
+              Expanded(child: MiniStat('Idadi', '${l.qty}')),
+              Expanded(child: MiniStat('Selling', money(l.selling))),
+              Expanded(child: MiniStat('Buying', money(l.buying))),
+              Expanded(child: MiniStat('Faida', money(l.profit), bold: true, color: C.blue)),
+            ]),
           ]),
         ),
       );
 
-  Widget _editorRow(int n) {
-    final v = _sel;
-    final q = parseMoney(_qtyC.text);
-    final s = parseMoney(_sellC.text);
-    return Container(
-      decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: C.line))),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-      child: Row(children: [
-        tableCell(_w[0], Text('$n', style: const TextStyle(fontSize: 11, color: C.faint))),
-        if (v == null)
-          Expanded(
-            child: InlineInput(
-              controller: _nameC,
-              focus: _nameF,
-              outlined: true,
-              align: TextAlign.left,
-              hint: 'Andika jina la bidhaa…',
-              onChanged: (_) => setState(() {}),
-              onSubmitted: _onNameSubmit,
-            ),
-          )
-        else ...[
-          Expanded(
-            child: InkWell(
-              // gusa jina kubadilisha bidhaa
-              onTap: () {
-                setState(() {
-                  _sel = null;
-                  _qtyC.clear();
-                  _sellC.clear();
-                });
-                _focusLater(_nameF);
+  Widget _totalLine() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 11),
+        decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.text, width: 1.5))),
+        child: Row(children: [
+          Expanded(child: Text('Jumla · $_qtyAll', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800))),
+          Text('Mauzo ${money(_sales)}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.muted, fontFeatures: tabular)),
+          const SizedBox(width: 12),
+          Text('Faida ${money(_sales - _capital)}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular)),
+        ]),
+      );
+
+  Widget _expRow(Expense e, int i) => InkWell(
+        onTap: _saved ? null : () => _openExpense(i),
+        onLongPress: _saved
+            ? null
+            : () async {
+                if (await confirmDelete(context, title: 'Ondoa ${e.name}?', message: 'Gharama hii itaondolewa.')) {
+                  setState(() {
+                    _exps.removeAt(i);
+                    _newExp = -1;
+                  });
+                  await _persist();
+                }
               },
-              child: Text(v.name, maxLines: 2, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
-            ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 11),
+          decoration: BoxDecoration(
+            color: i == _newExp ? C.blue3 : null,
+            border: const Border(bottom: BorderSide(color: C.line)),
           ),
-          tableCell(_w[2], InlineInput(controller: _qtyC, focus: _qtyF, number: true, align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: _onQtySubmit)),
-          tableCell(_w[3], InlineInput(controller: _sellC, focus: _sellF, number: true, onChanged: (_) => setState(() {}), onSubmitted: _commitLine)),
-          _num(_w[4], money(v.buying), color: C.text2),
-          _num(_w[5], q > 0 && s > 0 ? money(q * (s - v.buying)) : '', bold: true),
-        ],
-      ]),
+          child: Row(children: [
+            Expanded(child: Text(e.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
+            Text(money(e.amount), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, fontFeatures: tabular)),
+          ]),
+        ),
+      );
+
+  Widget _expTotal() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 11),
+        decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.text, width: 1.5))),
+        child: Row(children: [
+          const Expanded(child: Text('Jumla', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800))),
+          Text(money(_expenses), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, fontFeatures: tabular)),
+        ]),
+      );
+
+  // ------------------------------------------------------------ dirisha linaloelea
+  Widget _window() {
+    final kb = MediaQuery.of(context).viewInsets.bottom;
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 180),
+      left: 12,
+      right: 12,
+      bottom: kb + 10,
+      child: Material(
+        color: Colors.white,
+        elevation: 10,
+        shadowColor: const Color(0x2E111827),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: const BorderSide(color: C.winBorder)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(child: _editIndex >= 0 ? const Text('Rekebisha', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)) : _tabs()),
+              _closeX(),
+            ]),
+            const SizedBox(height: 12),
+            if (_tab == _Tab.gharama) _expenseForm() else _bidhaaForm(),
+          ]),
+        ),
+      ),
     );
   }
 
-  /// orodha ya aina inashuka CHINI ya mstari unaoandikwa
-  Widget _dropdown() => Container(
-        margin: const EdgeInsets.fromLTRB(24, 2, 0, 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-          boxShadow: const [BoxShadow(color: Color(0x1A000000), blurRadius: 22, offset: Offset(0, 8))],
+  Widget _tabs() => Row(children: [
+        for (final (i, label) in const ['Bidhaa', 'Gharama'].indexed)
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => setState(() {
+              _tab = _Tab.values[i];
+              _editIndex = -1;
+              _qty.clear();
+              _price.clear();
+              _buy.clear();
+              _q.clear();
+              _sel = null;
+            }),
+            child: Container(
+              margin: const EdgeInsets.only(right: 18),
+              padding: const EdgeInsets.only(bottom: 3),
+              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: _tab.index == i ? C.blue : Colors.transparent, width: 2))),
+              child: Text(label, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: _tab.index == i ? C.blue : C.faint)),
+            ),
+          ),
+      ]);
+
+  Widget _closeX() => InkWell(
+        onTap: _closeAndUnfocus,
+        customBorder: const CircleBorder(),
+        child: Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(color: C.soft, shape: BoxShape.circle, border: Border.all(color: Color(0xFFE5E7EB))),
+          child: const Icon(Icons.close_rounded, size: 17, color: C.text),
         ),
-        child: Column(children: [
+      );
+
+  Widget _bidhaaForm() {
+    final q = parseMoney(_qty.text);
+    final over = _sel != null && q > _avail;
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      _WinField(
+        controller: _q,
+        focus: _qF,
+        hint: 'Tafuta bidhaa…',
+        readOnly: _editIndex >= 0,
+        suffix: _sel == null ? null : Text('zipo $_avail', style: const TextStyle(fontSize: 12, color: C.muted)),
+        onChanged: (_) => setState(() {
+          if (_sel != null && _q.text != _sel!.name) {
+            _sel = null;
+            _price.clear();
+          }
+        }),
+        onSubmitted: (_) {
+          if (_matches.isNotEmpty) _pick(_matches.first);
+        },
+      ),
+      if (_matches.isNotEmpty)
+        Column(children: [
           for (final (i, v) in _matches.indexed)
             InkWell(
               onTap: () => _pick(v),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
                 decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: Color(0xFFF1F2F5)))),
                 child: Row(children: [
-                  Expanded(child: Text(v.name, style: TextStyle(fontSize: 14.5, fontWeight: i == 0 ? FontWeight.w700 : FontWeight.w500, color: C.text2))),
-                  Text('zipo ${v.qty} · ${money(v.selling)}', style: TextStyle(fontSize: 12, color: v.qty == 0 ? C.red : C.muted)),
+                  Expanded(child: _bold(v.name, _q.text)),
+                  Text('zipo ${v.qty} · ${money(v.selling)}', style: const TextStyle(fontSize: 12, color: C.muted)),
                 ]),
               ),
             ),
         ]),
-      );
-
-  Widget _totalRow() => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 11),
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.text, width: 1.5))),
-        child: Row(children: [
-          tableCell(_w[0], const SizedBox()),
-          const Expanded(child: Text('Jumla', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800))),
-          _num(_w[2], '${_all.fold<int>(0, (a, l) => a + l.qty)}', bold: true),
-          tableCell(190, Text(money(_sales - _capital), textAlign: TextAlign.right, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular))),
+      if (_noMatch || (_editIndex >= 0 && _sel == null))
+        const Padding(padding: EdgeInsets.only(top: 6), child: Text('Haipo kwenye stock — jaza bei mwenyewe', style: TextStyle(fontSize: 11.5, color: C.muted))),
+      if (_sel != null || _noMatch || _editIndex >= 0) ...[
+        const SizedBox(height: 10),
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          _labelled('Idadi', _WinField(controller: _qty, focus: _qtyF, hint: '', number: true, width: 56, align: TextAlign.center, error: over, onChanged: (_) => setState(() {}))),
+          const SizedBox(width: 8),
+          _labelled(
+            _sel != null || _editIndex >= 0 ? 'Bei' : 'Selling',
+            _WinField(controller: _price, focus: _priceF, hint: '', number: true, width: 92, align: TextAlign.right, onChanged: (_) => setState(() {})),
+          ),
+          if (_sel == null) ...[
+            const SizedBox(width: 8),
+            _labelled('Buying', _WinField(controller: _buy, focus: _buyF, hint: '', number: true, width: 88, align: TextAlign.right, onChanged: (_) => setState(() {}))),
+          ],
+          const Spacer(),
+          _nextBtn(_editIndex >= 0 ? 'Hifadhi' : 'Next'),
         ]),
-      );
-
-  Widget _expRow(int n, Expense e, int i) => InkWell(
-        onTap: _saved
-            ? null
-            : () => setState(() {
-                  _expIndex = i;
-                  _eNameC.text = e.name;
-                  _eAmtC.text = money(e.amount);
-                  _eAmtF.requestFocus();
-                }),
-        onLongPress: _saved
-            ? null
-            : () async {
-                if (await confirmDelete(context, title: 'Ondoa ${e.name}?', message: 'Gharama hii itaondolewa.')) setState(() => _exps.removeAt(i));
-              },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 13),
-          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
-          child: Row(children: [
-            tableCell(20, Text('$n', style: const TextStyle(fontSize: 11, color: C.faint))),
-            Expanded(child: Text(e.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
-            SizedBox(width: 110, child: Text(money(e.amount), textAlign: TextAlign.right, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, fontFeatures: tabular))),
-          ]),
-        ),
-      );
-
-  Widget _expEditor(int n) => Container(
-        decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: C.line))),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        child: Row(children: [
-          tableCell(20, Text('$n', style: const TextStyle(fontSize: 11, color: C.faint))),
-          Expanded(
-            child: InlineInput(
-              controller: _eNameC,
-              focus: _eNameF,
-              outlined: true,
-              align: TextAlign.left,
-              hint: 'Jina la gharama…',
-              onChanged: (_) => setState(() {}),
-              onSubmitted: (_) => _eAmtF.requestFocus(),
+        if (over)
+          Padding(padding: const EdgeInsets.only(top: 6), child: Text('${_sel!.name}: zipo $_avail tu', style: const TextStyle(fontSize: 12.5, color: C.red, fontWeight: FontWeight.w600))),
+        if (_editIndex >= 0)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: _deleteLine,
+              style: TextButton.styleFrom(foregroundColor: C.red, padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+              child: const Text('Futa bidhaa hii', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.red)),
             ),
           ),
-          const SizedBox(width: 8),
-          SizedBox(width: 110, child: InlineInput(controller: _eAmtC, focus: _eAmtF, number: true, outlined: true, hint: 'Kiasi', onSubmitted: _commitExp)),
-        ]),
-      );
+      ] else
+        Align(alignment: Alignment.centerRight, child: Padding(padding: const EdgeInsets.only(top: 10), child: _nextBtn('Next'))),
+    ]);
+  }
 
-  Widget _liveBar() => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: C.line))),
-        child: Row(children: [
-          Expanded(child: Text('Mauzo ${money(_sales)}', style: const TextStyle(fontSize: 12.5, color: C.muted, fontFeatures: tabular))),
-          Text('Faida ${money(_sales - _capital)}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular)),
-        ]),
-      );
+  Widget _expenseForm() => Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        Expanded(
+          child: _labelled(
+            'Jina la gharama',
+            _WinField(controller: _eName, focus: _eNameF, hint: '', onChanged: (_) => setState(() {}), onSubmitted: (_) => _eAmtF.requestFocus()),
+          ),
+        ),
+        const SizedBox(width: 8),
+        _labelled('Kiasi', _WinField(controller: _eAmt, focus: _eAmtF, hint: '', number: true, width: 92, align: TextAlign.right, onChanged: (_) => setState(() {}))),
+        const SizedBox(width: 8),
+        _nextBtn('Next'),
+      ]);
+
+  Widget _labelled(String label, Widget field) => Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: C.muted)),
+        const SizedBox(height: 4),
+        field,
+      ]);
+
+  Widget _nextBtn(String label) {
+    final on = _canNext;
+    return Opacity(
+      opacity: on ? 1 : .4,
+      child: InkWell(
+        onTap: on ? _next : null,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          height: 34,
+          padding: const EdgeInsets.fromLTRB(14, 0, 10, 0),
+          decoration: BoxDecoration(color: C.blue, borderRadius: BorderRadius.circular(8)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+            const SizedBox(width: 2),
+            const Icon(Icons.chevron_right_rounded, size: 18, color: Colors.white),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _bold(String n, String query) {
+    final q = query.trim();
+    final lower = n.toLowerCase();
+    if (q.isEmpty || !lower.startsWith(q.toLowerCase())) {
+      return Text(n, style: const TextStyle(fontSize: 14.5, color: C.text));
+    }
+    final k = q.length.clamp(0, n.length);
+    return Text.rich(TextSpan(style: const TextStyle(fontSize: 14.5, color: C.text), children: [
+      TextSpan(text: n.substring(0, k), style: const TextStyle(fontWeight: FontWeight.w800)),
+      TextSpan(text: n.substring(k)),
+    ]));
+  }
+}
+
+/// Kisanduku cha dirisha: urefu 38, radius 7, mpaka #D1D5DB (bluu 1.5 ukiwa umegusa)
+class _WinField extends StatelessWidget {
+  final TextEditingController controller;
+  final FocusNode focus;
+  final String hint;
+  final bool number;
+  final bool readOnly;
+  final TextAlign align;
+  final double? width;
+  final bool error;
+  final Widget? suffix;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  const _WinField({
+    required this.controller,
+    required this.focus,
+    this.hint = '',
+    this.number = false,
+    this.readOnly = false,
+    this.align = TextAlign.left,
+    this.width,
+    this.error = false,
+    this.suffix,
+    this.onChanged,
+    this.onSubmitted,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    OutlineInputBorder b(Color c, double w) => OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: BorderSide(color: c, width: w));
+    return SizedBox(
+      width: width,
+      height: 38,
+      child: TextField(
+        controller: controller,
+        focusNode: focus,
+        readOnly: readOnly,
+        textAlign: align,
+        textInputAction: TextInputAction.next,
+        keyboardType: number ? TextInputType.number : TextInputType.text,
+        textCapitalization: number ? TextCapitalization.none : TextCapitalization.sentences,
+        inputFormatters: [if (number) MoneyInput()],
+        onChanged: onChanged,
+        onSubmitted: onSubmitted,
+        style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500, fontFeatures: tabular),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: hint,
+          hintStyle: const TextStyle(color: C.faint, fontWeight: FontWeight.w400),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          suffixIcon: suffix == null ? null : Padding(padding: const EdgeInsets.only(right: 10), child: suffix),
+          suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+          enabledBorder: b(error ? C.red : C.field, 1),
+          focusedBorder: b(error ? C.red : C.blue, 1.5),
+          border: b(C.field, 1),
+        ),
+      ),
+    );
+  }
 }

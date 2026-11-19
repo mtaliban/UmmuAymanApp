@@ -13,6 +13,8 @@ class C {
   static const faint = Color(0xFF9CA3AF);
   static const line = Color(0xFFECEEF2);
   static const field = Color(0xFFD1D5DB);
+  static const winBorder = Color(0xFFCBD5E1); // mpaka wa dirisha la kujaza
+  static const receiptBg = Color(0xFFFAFBFC); // kadi za "kutoka risiti"
   static const soft = Color(0xFFF8F9FB);
   static const head = Color(0xFFFAFBFC);
   static const green = Color(0xFF16A34A);
