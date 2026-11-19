@@ -37,39 +37,55 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Build release APK
-        run: flutter build apk --release
+      - name: Build APKs (split per ABI — ndogo zaidi)
+        run: flutter build apk --release --split-per-abi
 
-      - name: Rename APK
+      - name: Rename APKs
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr '+' '-')
-          cp build/app/outputs/flutter-apk/app-release.apk \
-             build/app/outputs/flutter-apk/ummu-ayman-v${VERSION}.apk
-          echo "APK_NAME=ummu-ayman-v${VERSION}.apk" >> $GITHUB_ENV
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          cd build/app/outputs/flutter-apk/
+          mv app-arm64-v8a-release.apk   ummu-ayman-v${VERSION}-arm64.apk
+          mv app-armeabi-v7a-release.apk ummu-ayman-v${VERSION}-arm32.apk
+          mv app-x86_64-release.apk      ummu-ayman-v${VERSION}-x86.apk
 
       - name: Delete old latest release
         run: gh release delete latest --yes 2>/dev/null || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create latest release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
-          name: "Ummu Ayman — Toleo la Hivi Karibuni"
-          prerelease: true
+          name: "Ummu Ayman — Toleo Jipya"
+          prerelease: false
           body: |
-            **Toleo jipya limebuildiwa kiotomatiki.**
+            ## Ummu Ayman Outfits 🛍️
+            **Version:** ${{ env.VERSION }} &nbsp;|&nbsp; **Build:** #${{ github.run_number }}
 
-            ### Jinsi ya Kuinstall (Android)
-            1. Bonyeza `.apk` hapa chini uipakue
-            2. Fungua simu → Settings → Security → **Install unknown apps** → washa
-            3. Fungua APK uliyopakua → **Install**
-            4. Tayari — fungua Ummu Ayman
+            ---
 
-            > Version: ${{ env.VERSION }}
-            > Built: ${{ github.run_number }} (${{ github.sha }})
-          files: build/app/outputs/flutter-apk/${{ env.APK_NAME }}
+            ### 📲 Pakua APK — Chagua moja tu
+
+            | Faili | Simu | Ukubwa |
+            |-------|------|--------|
+            | **`arm64`** ✅ | Simu zote za kisasa (2016+) | ~10 MB |
+            | `arm32` | Simu za zamani sana | ~9 MB |
+            | `x86` | Emulator/PC tu | ~10 MB |
+
+            > **Shaka?** Chagua `arm64` — inafanya kazi simu nyingi.
+
+            ---
+
+            ### ⚙️ Jinsi ya Kuinstall
+            1. Bonyeza faili la `arm64` hapa chini — ipakuliwe
+            2. Fungua simu → **Settings → Security → Install unknown apps** → washa
+            3. Fungua APK → **Install**
+            4. Tayari ✅
+          files: |
+            build/app/outputs/flutter-apk/ummu-ayman-v${{ env.VERSION }}-arm64.apk
+            build/app/outputs/flutter-apk/ummu-ayman-v${{ env.VERSION }}-arm32.apk
+            build/app/outputs/flutter-apk/ummu-ayman-v${{ env.VERSION }}-x86.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
