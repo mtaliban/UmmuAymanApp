@@ -115,6 +115,10 @@ class _SalesScreenState extends State<SalesScreen> {
     return v.qty + saved - used;
   }
 
+  void _focusLater(FocusNode f) => WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) f.requestFocus();
+      });
+
   // ------------------------------------------------------------ mhariri wa mauzo
   void _resetEditor() {
     _editIndex = -1;
@@ -136,7 +140,7 @@ class _SalesScreenState extends State<SalesScreen> {
       _nameC.text = v.name;
       _sellC.text = money(v.selling);
     });
-    _qtyF.requestFocus();
+    _focusLater(_qtyF);
   }
 
   void _onNameSubmit(String _) {
@@ -185,7 +189,7 @@ class _SalesScreenState extends State<SalesScreen> {
       }
       _resetEditor();
     });
-    _nameF.requestFocus();
+    _focusLater(_nameF);
   }
 
   void _editLine(int i) {
@@ -198,7 +202,7 @@ class _SalesScreenState extends State<SalesScreen> {
       _qtyC.text = '${l.qty}';
       _sellC.text = money(l.selling);
     });
-    _qtyF.requestFocus();
+    _focusLater(_qtyF);
   }
 
   Future<void> _deleteLine(int i) async {
@@ -248,7 +252,7 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   // ------------------------------------------------------------ UI
-  static const _w = <double?>[20, null, 32, 64, 60, 62];
+  static const _w = <double?>[20, null, 40, 70, 58, 62];
 
   @override
   Widget build(BuildContext context) {
@@ -326,27 +330,45 @@ class _SalesScreenState extends State<SalesScreen> {
 
   Widget _editorRow(int n) {
     final v = _sel;
+    final q = parseMoney(_qtyC.text);
+    final s = parseMoney(_sellC.text);
     return Container(
-      color: C.blue3,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+      decoration: const BoxDecoration(color: C.blue3, border: Border(bottom: BorderSide(color: C.blueLine))),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       child: Row(children: [
         tableCell(_w[0], Text('$n', style: const TextStyle(fontSize: 11, color: C.faint))),
-        Expanded(
-          child: InlineInput(
-            controller: _nameC,
-            focus: _nameF,
-            align: TextAlign.left,
-            hint: 'Andika bidhaa…',
-            onChanged: (_) => setState(() {
-              if (_sel != null && _sel!.name != _nameC.text) _sel = null;
-            }),
-            onSubmitted: _onNameSubmit,
+        if (v == null)
+          Expanded(
+            child: InlineInput(
+              controller: _nameC,
+              focus: _nameF,
+              outlined: true,
+              align: TextAlign.left,
+              hint: 'Andika jina la bidhaa…',
+              onChanged: (_) => setState(() {}),
+              onSubmitted: _onNameSubmit,
+            ),
+          )
+        else ...[
+          Expanded(
+            child: InkWell(
+              // gusa jina kubadilisha bidhaa
+              onTap: () {
+                setState(() {
+                  _sel = null;
+                  _qtyC.clear();
+                  _sellC.clear();
+                });
+                _focusLater(_nameF);
+              },
+              child: Text(v.name, maxLines: 2, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+            ),
           ),
-        ),
-        tableCell(_w[2], InlineInput(controller: _qtyC, focus: _qtyF, number: true, onChanged: (_) => setState(() {}), onSubmitted: _onQtySubmit)),
-        tableCell(_w[3], InlineInput(controller: _sellC, focus: _sellF, number: true, onChanged: (_) => setState(() {}), onSubmitted: _commitLine)),
-        _num(_w[4], v == null ? '' : money(v.buying), color: C.text2),
-        _num(_w[5], ''),
+          tableCell(_w[2], InlineInput(controller: _qtyC, focus: _qtyF, number: true, align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: _onQtySubmit)),
+          tableCell(_w[3], InlineInput(controller: _sellC, focus: _sellF, number: true, onChanged: (_) => setState(() {}), onSubmitted: _commitLine)),
+          _num(_w[4], money(v.buying), color: C.text2),
+          _num(_w[5], q > 0 && s > 0 ? money(q * (s - v.buying)) : '', bold: true),
+        ],
       ]),
     );
   }
@@ -383,7 +405,7 @@ class _SalesScreenState extends State<SalesScreen> {
           tableCell(_w[0], const SizedBox()),
           const Expanded(child: Text('Jumla', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800))),
           _num(_w[2], '${_all.fold<int>(0, (a, l) => a + l.qty)}', bold: true),
-          tableCell(186, Text(money(_sales - _capital), textAlign: TextAlign.right, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular))),
+          tableCell(190, Text(money(_sales - _capital), textAlign: TextAlign.right, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular))),
         ]),
       );
 
@@ -413,13 +435,23 @@ class _SalesScreenState extends State<SalesScreen> {
       );
 
   Widget _expEditor(int n) => Container(
-        color: C.blue3,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        decoration: const BoxDecoration(color: C.blue3, border: Border(bottom: BorderSide(color: C.blueLine))),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         child: Row(children: [
           tableCell(20, Text('$n', style: const TextStyle(fontSize: 11, color: C.faint))),
-          Expanded(child: InlineInput(controller: _eNameC, focus: _eNameF, align: TextAlign.left, hint: 'Jina la gharama…', onSubmitted: (_) => _eAmtF.requestFocus())),
+          Expanded(
+            child: InlineInput(
+              controller: _eNameC,
+              focus: _eNameF,
+              outlined: true,
+              align: TextAlign.left,
+              hint: 'Mf. Usafirishaji, Bando…',
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) => _eAmtF.requestFocus(),
+            ),
+          ),
           const SizedBox(width: 8),
-          SizedBox(width: 110, child: InlineInput(controller: _eAmtC, focus: _eAmtF, number: true, hint: '0', onSubmitted: _commitExp)),
+          SizedBox(width: 110, child: InlineInput(controller: _eAmtC, focus: _eAmtF, number: true, outlined: true, hint: 'Kiasi', onSubmitted: _commitExp)),
         ]),
       );
 
@@ -428,21 +460,25 @@ class _SalesScreenState extends State<SalesScreen> {
     final names = _expNames.where((n) => q.isEmpty || n.toLowerCase().startsWith(q)).take(6).toList();
     if (names.isEmpty) return const SizedBox();
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 0, 4),
-      child: Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final n in names)
-          InkWell(
-            onTap: () {
-              _eNameC.text = n;
-              _eAmtF.requestFocus();
-            },
-            borderRadius: BorderRadius.circular(18),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE5E7EB))),
-              child: Text(n, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.text2)),
+      padding: const EdgeInsets.fromLTRB(24, 10, 0, 6),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Gusa jina, au andika jipya', style: TextStyle(fontSize: 11.5, color: C.muted)),
+        const SizedBox(height: 6),
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final n in names)
+            InkWell(
+              onTap: () {
+                _eNameC.text = n;
+                _eAmtF.requestFocus();
+              },
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE5E7EB))),
+                child: Text(n, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.text2)),
+              ),
             ),
-          ),
+        ]),
       ]),
     );
   }

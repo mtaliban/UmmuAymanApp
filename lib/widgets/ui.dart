@@ -316,7 +316,7 @@ class TableHead extends StatelessWidget {
         decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.text, width: 1.5))),
         child: Row(children: [
           for (var i = 0; i < cols.length; i++)
-            _cell(widths[i], Text(cols[i], textAlign: i == 0 ? TextAlign.left : TextAlign.right, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: C.blue, letterSpacing: .4))),
+            _cell(widths[i], Text(cols[i], textAlign: (i == 0 || widths[i] == null) ? TextAlign.left : TextAlign.right, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: C.blue, letterSpacing: .4))),
         ]),
       );
 }
@@ -403,15 +403,19 @@ class InlineInput extends StatelessWidget {
   final bool number;
   final TextAlign align;
   final String hint;
+
+  /// true = kisanduku kinaonekana hata kisipoguswa (mstari wa kijivu). false = kinaonekana kama maandishi tu mpaka ukiguse.
+  final bool outlined;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
-  const InlineInput({super.key, required this.controller, required this.focus, this.number = false, this.align = TextAlign.right, this.hint = '', this.onChanged, this.onSubmitted});
+  const InlineInput({super.key, required this.controller, required this.focus, this.number = false, this.align = TextAlign.right, this.hint = '', this.outlined = false, this.onChanged, this.onSubmitted});
   @override
   Widget build(BuildContext context) {
-    final b = OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: const BorderSide(color: C.blue, width: 1.8));
-    final idle = OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: const BorderSide(color: Colors.transparent));
+    final on = OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: C.blue, width: 1.6));
+    final idle = OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: outlined ? C.field : Colors.transparent, width: 1));
     return SizedBox(
-      height: 34,
+      height: 40,
       child: TextField(
         controller: controller,
         focusNode: focus,
@@ -422,17 +426,18 @@ class InlineInput extends StatelessWidget {
         inputFormatters: [if (number) MoneyInput()],
         onChanged: onChanged,
         onSubmitted: onSubmitted,
-        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, fontFeatures: tabular),
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, fontFeatures: tabular),
         decoration: InputDecoration(
           isDense: true,
           hintText: hint,
-          hintStyle: const TextStyle(color: C.faint, fontWeight: FontWeight.w500),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          hintStyle: const TextStyle(color: C.faint, fontWeight: FontWeight.w400),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
           filled: true,
-          fillColor: Colors.white,
+          // kisanduku cheupe tu kikiwa kinaandikwa au kikiwa "outlined"; vinginevyo kinachanganyika na mstari
+          fillColor: (focus.hasFocus || outlined) ? Colors.white : Colors.transparent,
           enabledBorder: idle,
           border: idle,
-          focusedBorder: b,
+          focusedBorder: on,
         ),
       ),
     );

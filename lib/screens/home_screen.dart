@@ -4,6 +4,7 @@ import '../api/api.dart';
 import '../models/models.dart';
 import '../theme.dart';
 import '../utils/format.dart';
+import '../widgets/app_icons.dart';
 import '../widgets/ui.dart';
 import 'pin_screen.dart';
 import 'receipts_screen.dart';
@@ -45,6 +46,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  PopupMenuItem<String> _menuItem(String v, String icon, String text) => PopupMenuItem<String>(
+        value: v,
+        height: 46,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        child: Row(children: [
+          AppIcon(icon, size: 18),
+          const SizedBox(width: 10),
+          Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text)),
+        ]),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,10 +65,17 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.more_vert, color: C.muted),
             color: Colors.white,
             surfaceTintColor: Colors.white,
+            elevation: 6,
+            shadowColor: const Color(0x33111827),
+            offset: const Offset(0, 44),
+            constraints: const BoxConstraints(minWidth: 200, maxWidth: 200),
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: C.line)),
             onSelected: _menu,
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'pin', child: Text('Badilisha PIN')),
-              PopupMenuItem(value: 'toka', child: Text('Toka')),
+            itemBuilder: (_) => [
+              _menuItem('pin', AppIcons.key, 'Badilisha PIN'),
+              const PopupMenuDivider(height: 1),
+              _menuItem('toka', AppIcons.logOut, 'Toka'),
             ],
           )),
       body: FutureBuilder<HomeData>(

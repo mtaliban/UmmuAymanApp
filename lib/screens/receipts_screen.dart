@@ -209,7 +209,7 @@ class _NewReceiptScreenState extends State<NewReceiptScreen> {
     }
   }
 
-  static const _w = <double?>[null, 30, 64, 64, 72];
+  static const _w = <double?>[null, 38, 66, 60, 70];
 
   @override
   Widget build(BuildContext context) {
@@ -305,8 +305,9 @@ class _NewReceiptScreenState extends State<NewReceiptScreen> {
             child: InlineInput(
               controller: _n,
               focus: _fn,
+              outlined: true,
               align: TextAlign.left,
-              hint: 'Andika bidhaa…',
+              hint: 'Andika jina la bidhaa…',
               onChanged: (_) => setState(() {
                 if (_sel != null && _sel!.name != _n.text) _sel = null;
               }),

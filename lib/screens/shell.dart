@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import '../widgets/app_icons.dart';
 import 'home_screen.dart';
 import 'receipts_screen.dart';
 import 'reports_screen.dart';
@@ -43,13 +44,13 @@ class ShellState extends State<Shell> {
 
   @override
   Widget build(BuildContext context) {
-    // Icons za mstari mwembamba tu (hazijai) — zote outline, zinatofautishwa kwa rangi
+    // Icons za mstari mwembamba (Chaguo B) — zinatofautishwa kwa rangi
     const items = [
-      ('Nyumbani', Icons.home_outlined),
-      ('Mauzo', Icons.edit_outlined),
-      ('Stock', Icons.inventory_2_outlined),
-      ('Ripoti', Icons.bar_chart_outlined),
-      ('Risiti', Icons.description_outlined),
+      ('Nyumbani', AppIcons.house),
+      ('Mauzo', AppIcons.pencil),
+      ('Stock', AppIcons.package),
+      ('Ripoti', AppIcons.chart),
+      ('Risiti', AppIcons.fileText),
     ];
     return Scaffold(
       body: AnimatedSwitcher(duration: const Duration(milliseconds: 180), child: _page()),
@@ -70,7 +71,7 @@ class ShellState extends State<Shell> {
                         width: 56,
                         height: 30,
                         decoration: BoxDecoration(color: i == _tab ? C.blue2 : Colors.transparent, borderRadius: BorderRadius.circular(15)),
-                        child: Icon(items[i].$2, size: 22, color: i == _tab ? C.blue : const Color(0xFF9CA3AF)),
+                        child: Center(child: AppIcon(items[i].$2, size: 22, color: i == _tab ? C.blue : const Color(0xFF4B5563))),
                       ),
                       const SizedBox(height: 4),
                       Text(items[i].$1,

@@ -15,6 +15,7 @@ dependencies:
   url_launcher: ^6.3.0
   pdf: ^3.11.0
   printing: ^5.13.1
+  flutter_svg: ^2.0.10
   # Firebase Cloud Messaging - washa ukiongeza google-services.json yako
   # firebase_core: ^3.6.0
   # firebase_messaging: ^15.1.3
