@@ -84,7 +84,7 @@ Code yote ya mtandao iko `lib/api/api.dart` (`HttpApi`). Token inahifadhiwa kwen
 | Ripoti (`reports_screen.dart`) | `GET /reports/week|month|year?date=`, `GET /reports/day/{date}` |
 
 ## 6. Notifications (Firebase)
-1. https://console.firebase.google.com → Add project → **Add app → Android**, package: `com.ummuayman.ummu_ayman`
+1. https://console.firebase.google.com → Add project → **Add app → Android**, package: `com.ummuayman.app`
 2. Pakua `google-services.json` → weka `android/app/`
 3. Rahisi zaidi:
    ```bash

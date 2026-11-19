@@ -1,4 +1,4 @@
-package com.ummuayman.ummu_ayman
+package com.ummuayman.app
 
 import io.flutter.embedding.android.FlutterActivity
 
