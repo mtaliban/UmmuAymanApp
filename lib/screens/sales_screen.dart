@@ -30,7 +30,6 @@ class _SalesScreenState extends State<SalesScreen> {
   List<SaleLine> _savedLines = []; // zilizohifadhiwa (zimeshatoka stock)
   List<Expense> _exps = [];
   List<Variant> _variants = [];
-  List<String> _expNames = [];
   bool _saved = false;
   bool _saving = false;
 
@@ -77,10 +76,9 @@ class _SalesScreenState extends State<SalesScreen> {
       _error = null;
     });
     try {
-      final r = await Future.wait([Api.i.daily(_day), Api.i.products(), Api.i.expenseNames()]);
+      final r = await Future.wait([Api.i.daily(_day), Api.i.products()]);
       final d = r[0] as DailySheet;
       _variants = (r[1] as List<Product>).expand((p) => p.variants).toList();
-      _expNames = r[2] as List<String>;
       _apply(d);
     } catch (e) {
       _error = e;
@@ -158,6 +156,15 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   void _onQtySubmit(String _) {
+    final v = _sel;
+    final q = parseMoney(_qtyC.text);
+    if (v != null && q > 0) {
+      final avail = _available(v.id, exceptIndex: _editIndex);
+      if (q > avail) {
+        showError(context, '${v.name}: zipo $avail tu');
+        return _qtyF.requestFocus();
+      }
+    }
     _sellF.requestFocus();
     _sellC.selection = TextSelection(baseOffset: 0, extentOffset: _sellC.text.length);
   }
@@ -281,7 +288,6 @@ class _SalesScreenState extends State<SalesScreen> {
                         for (var i = 0; i < _exps.length; i++)
                           if (i == _expIndex && !_saved) _expEditor(i + 1) else _expRow(i + 1, _exps[i], i),
                         if (!_saved && _expIndex == -1) _expEditor(_exps.length + 1),
-                        if (!_saved && _eNameF.hasFocus) _expChips(),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
                           child: Row(children: [
@@ -311,7 +317,7 @@ class _SalesScreenState extends State<SalesScreen> {
         onLongPress: onLong,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.blueLine))),
+          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
           child: Row(children: [
             tableCell(_w[0], Text('$n', style: const TextStyle(fontSize: 11, color: C.faint))),
             Expanded(
@@ -333,7 +339,7 @@ class _SalesScreenState extends State<SalesScreen> {
     final q = parseMoney(_qtyC.text);
     final s = parseMoney(_sellC.text);
     return Container(
-      decoration: const BoxDecoration(color: C.blue3, border: Border(bottom: BorderSide(color: C.blueLine))),
+      decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: C.line))),
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
       child: Row(children: [
         tableCell(_w[0], Text('$n', style: const TextStyle(fontSize: 11, color: C.faint))),
@@ -425,7 +431,7 @@ class _SalesScreenState extends State<SalesScreen> {
               },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 13),
-          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.blueLine))),
+          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
           child: Row(children: [
             tableCell(20, Text('$n', style: const TextStyle(fontSize: 11, color: C.faint))),
             Expanded(child: Text(e.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
@@ -435,7 +441,7 @@ class _SalesScreenState extends State<SalesScreen> {
       );
 
   Widget _expEditor(int n) => Container(
-        decoration: const BoxDecoration(color: C.blue3, border: Border(bottom: BorderSide(color: C.blueLine))),
+        decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: C.line))),
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         child: Row(children: [
           tableCell(20, Text('$n', style: const TextStyle(fontSize: 11, color: C.faint))),
@@ -445,7 +451,7 @@ class _SalesScreenState extends State<SalesScreen> {
               focus: _eNameF,
               outlined: true,
               align: TextAlign.left,
-              hint: 'Mf. Usafirishaji, Bando…',
+              hint: 'Jina la gharama…',
               onChanged: (_) => setState(() {}),
               onSubmitted: (_) => _eAmtF.requestFocus(),
             ),
@@ -454,34 +460,6 @@ class _SalesScreenState extends State<SalesScreen> {
           SizedBox(width: 110, child: InlineInput(controller: _eAmtC, focus: _eAmtF, number: true, outlined: true, hint: 'Kiasi', onSubmitted: _commitExp)),
         ]),
       );
-
-  Widget _expChips() {
-    final q = _eNameC.text.toLowerCase();
-    final names = _expNames.where((n) => q.isEmpty || n.toLowerCase().startsWith(q)).take(6).toList();
-    if (names.isEmpty) return const SizedBox();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 10, 0, 6),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Gusa jina, au andika jipya', style: TextStyle(fontSize: 11.5, color: C.muted)),
-        const SizedBox(height: 6),
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          for (final n in names)
-            InkWell(
-              onTap: () {
-                _eNameC.text = n;
-                _eAmtF.requestFocus();
-              },
-              borderRadius: BorderRadius.circular(18),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0xFFE5E7EB))),
-                child: Text(n, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.text2)),
-              ),
-            ),
-        ]),
-      ]),
-    );
-  }
 
   Widget _liveBar() => Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
