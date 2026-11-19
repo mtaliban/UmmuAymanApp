@@ -9,8 +9,8 @@ import '../widgets/ui.dart';
 /// UKURASA WA BIDHAA (mf. Kanzu)
 ///  - Juu kulia: "+ Aina" -> dirisha katikati (jina, idadi, buying, selling)
 ///  - Idadi · Mtaji · Faida ukiuza
-///  - Kila aina ni kadi: Zipo/Buying/Selling + Faida kimoja/Mtaji/Faida zote
-///  - Gusa kadi -> dirisha: Ongeza idadi, badilisha bei, "Futa aina hii"
+///  - Kila aina ni kadi: ZIPO/Buying/Selling + Faida kimoja
+///  - Gusa kadi -> kadi inajifungua ndani ya orodha: Ongeza idadi, bei, "Futa aina hii"
 ///  - Bidhaa isiyo na aina: kadi moja + "+ Aina" ikipata aina baadaye
 class ProductScreen extends StatefulWidget {
   final String productId;
@@ -23,6 +23,7 @@ class _ProductScreenState extends State<ProductScreen> {
   Product? _p;
   Object? _error;
   String? _hl;
+  String? _editing;
 
   @override
   void initState() {
@@ -56,12 +57,19 @@ class _ProductScreenState extends State<ProductScreen> {
     }
   }
 
-  Future<void> _edit(Variant v) async {
-    final changed = await showCenterDialog<bool>(context, builder: (_) => _EditTypeDialog(product: _p!, v: v));
-    if (changed == true) {
+  void _open(Variant v) => setState(() {
+        _editing = v.id;
+        _hl = null;
+      });
+
+  void _close() => setState(() => _editing = null);
+
+  Future<void> _done(Variant v) async {
+    setState(() {
+      _editing = null;
       _hl = v.id;
-      await _load();
-    }
+    });
+    await _load();
   }
 
   Future<void> _deleteProduct() async {
@@ -109,15 +117,24 @@ class _ProductScreenState extends State<ProductScreen> {
                       ]),
                     ),
                     for (final v in p.variants) ...[
-                      _TypeCard(v, highlight: v.id == _hl, onTap: () => _edit(v)),
+                      if (v.id == _editing)
+                        _TypeEditor(
+                          key: ValueKey('edit-${v.id}'),
+                          product: p,
+                          v: v,
+                          onClose: _close,
+                          onSaved: () => _done(v),
+                        )
+                      else
+                        _TypeCard(v, highlight: v.id == _hl, onTap: () => _open(v)),
                       const SizedBox(height: 8),
                     ],
-                    if (!p.hasTypes)
+                    if (!p.hasTypes && _editing == null)
                       const Padding(
                         padding: EdgeInsets.only(top: 4),
                         child: Text('Bidhaa hii haina aina. Ikipata aina, bonyeza "+ Aina" juu.', style: TextStyle(fontSize: 12.5, color: C.muted)),
                       ),
-                    const SizedBox(height: 26),
+                    const SizedBox(height: 22),
                     Center(
                       child: TextButton(
                         onPressed: _deleteProduct,
@@ -161,6 +178,130 @@ class _TypeCard extends StatelessWidget {
           Expanded(child: MiniStat('Selling', money(v.selling))),
           Expanded(child: MiniStat('Faida', money(v.profitEach), bold: true, color: C.blue)),
         ]),
+      ]),
+    );
+  }
+}
+
+/// Kadi ya aina iliyofunguliwa ndani ya orodha (picha 8/8)
+class _TypeEditor extends StatefulWidget {
+  final Product product;
+  final Variant v;
+  final VoidCallback onClose;
+  final Future<void> Function() onSaved;
+  const _TypeEditor({super.key, required this.product, required this.v, required this.onClose, required this.onSaved});
+  @override
+  State<_TypeEditor> createState() => _TypeEditorState();
+}
+
+class _TypeEditorState extends State<_TypeEditor> {
+  final _add = TextEditingController();
+  late final _b = TextEditingController(text: money(widget.v.buying));
+  late final _s = TextEditingController(text: money(widget.v.selling));
+  final _fq = FocusNode(), _fb = FocusNode(), _fs = FocusNode();
+  bool _busy = false;
+
+  Future<void> _save() async {
+    setState(() => _busy = true);
+    try {
+      await Api.i.updateVariant(widget.v.id, addQty: parseMoney(_add.text), buying: parseMoney(_b.text), selling: parseMoney(_s.text));
+      await widget.onSaved();
+    } catch (e) {
+      if (mounted) showError(context, e);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _delete() async {
+    final single = !widget.product.hasTypes;
+    final ok = await confirmDelete(context,
+        title: 'Futa ${widget.v.name}?',
+        message: '${single ? 'Bidhaa' : 'Aina'} hii na idadi yake (${widget.v.qty}) zitaondolewa kwenye stock.');
+    if (!ok) return;
+    try {
+      if (single) {
+        await Api.i.deleteProduct(widget.product.id);
+        if (mounted) Navigator.pop(context);
+      } else {
+        await Api.i.deleteVariant(widget.v.id);
+        await widget.onSaved();
+      }
+    } catch (e) {
+      if (mounted) showError(context, e);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final add = parseMoney(_add.text);
+    final after = widget.v.qty + add;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(13, 12, 13, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: C.winBorder),
+        boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 18, offset: Offset(0, 6))],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(
+            child: Text(widget.v.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800)),
+          ),
+          InkWell(
+            onTap: widget.onClose,
+            customBorder: const CircleBorder(),
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: const BoxDecoration(color: Color(0xFFF3F4F6), shape: BoxShape.circle),
+              child: const Icon(Icons.close, size: 16, color: C.text2),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 2),
+        Text('Zipo ${widget.v.qty}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+        const SizedBox(height: 10),
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(
+            width: 102,
+            child: DialogField(label: 'Ongeza idadi', controller: _add, focus: _fq, number: true, hint: '0', autofocus: true, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fb.requestFocus()),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: DialogField(label: 'Buying', controller: _b, focus: _fb, money: true, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fs.requestFocus()),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: DialogField(label: 'Selling', controller: _s, focus: _fs, money: true, onChanged: (_) => setState(() {}), onSubmitted: (_) => _save()),
+          ),
+        ]),
+        const SizedBox(height: 10),
+        Row(children: [
+          Expanded(
+            child: Text.rich(
+              TextSpan(children: [
+                const TextSpan(text: 'Zitakuwa ', style: TextStyle(fontSize: 13.5, color: C.muted)),
+                TextSpan(text: '$after', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: C.text, fontFeatures: tabular)),
+              ]),
+            ),
+          ),
+          PrimaryButton('Hifadhi', busy: _busy, onTap: _save),
+        ]),
+        TextButton(
+          onPressed: _delete,
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+            minimumSize: const Size(0, 26),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            alignment: Alignment.centerLeft,
+          ),
+          child: Text(
+            widget.product.hasTypes ? 'Futa aina hii' : 'Futa bidhaa hii',
+            style: const TextStyle(color: C.red, fontWeight: FontWeight.w700, fontSize: 13),
+          ),
+        ),
       ]),
     );
   }
@@ -218,88 +359,6 @@ class _AddTypeDialogState extends State<_AddTypeDialog> {
           CalcStrip('Mtaji ${money(q * b)}', 'Faida ${money(q * (s - b))}'),
         ],
         const SizedBox(height: 4),
-      ]),
-    );
-  }
-}
-
-class _EditTypeDialog extends StatefulWidget {
-  final Product product;
-  final Variant v;
-  const _EditTypeDialog({required this.product, required this.v});
-  @override
-  State<_EditTypeDialog> createState() => _EditTypeDialogState();
-}
-
-class _EditTypeDialogState extends State<_EditTypeDialog> {
-  late final _zipo = TextEditingController(text: '${widget.v.qty}');
-  final _add = TextEditingController();
-  late final _b = TextEditingController(text: money(widget.v.buying));
-  late final _s = TextEditingController(text: money(widget.v.selling));
-  final _fb = FocusNode(), _fs = FocusNode();
-  bool _busy = false;
-
-  Future<void> _save() async {
-    setState(() => _busy = true);
-    try {
-      await Api.i.updateVariant(widget.v.id, addQty: parseMoney(_add.text), buying: parseMoney(_b.text), selling: parseMoney(_s.text));
-      if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      if (mounted) showError(context, e);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _delete() async {
-    final single = !widget.product.hasTypes;
-    final ok = await confirmDelete(context,
-        title: 'Futa ${widget.v.name}?', message: '${single ? 'Bidhaa' : 'Aina'} hii na idadi yake (${widget.v.qty}) zitaondolewa kwenye stock.');
-    if (!ok) return;
-    try {
-      if (single) {
-        await Api.i.deleteProduct(widget.product.id);
-      } else {
-        await Api.i.deleteVariant(widget.v.id);
-      }
-      if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      if (mounted) showError(context, e);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final add = parseMoney(_add.text), b = parseMoney(_b.text), s = parseMoney(_s.text);
-    final after = widget.v.qty + add;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        DialogHeader(widget.v.name, over: widget.product.hasTypes ? widget.product.name : null),
-        const SizedBox(height: 14),
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(width: 76, child: Field(label: 'Zipo', controller: _zipo, readOnly: true)),
-          const SizedBox(width: 8),
-          Expanded(child: Field(label: 'Ongeza idadi', controller: _add, number: true, hint: '0', autofocus: true, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fb.requestFocus())),
-        ]),
-        const SizedBox(height: 10),
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: Field(label: 'Buying', controller: _b, focus: _fb, money: true, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fs.requestFocus())),
-          const SizedBox(width: 8),
-          Expanded(child: Field(label: 'Selling', controller: _s, focus: _fs, money: true, action: TextInputAction.done, onChanged: (_) => setState(() {}), onSubmitted: (_) => _save())),
-        ]),
-        const SizedBox(height: 10),
-        CalcStrip('Zitakuwa ${widget.v.qty} → $after', 'Faida ukiuza ${money(after * (s - b))}'),
-        const SizedBox(height: 12),
-        Row(children: [
-          TextButton(
-            onPressed: _delete,
-            style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 30)),
-            child: Text(widget.product.hasTypes ? 'Futa aina hii' : 'Futa bidhaa hii', style: const TextStyle(color: C.red, fontWeight: FontWeight.w700, fontSize: 13.5)),
-          ),
-          const Spacer(),
-          SmallButton('Hifadhi', busy: _busy, onTap: _save),
-        ]),
       ]),
     );
   }

@@ -11,196 +11,322 @@ import '../widgets/ui.dart';
 
 // ======================================================================= RISITI (orodha ya siku)
 class ReceiptsScreen extends StatefulWidget {
-  const ReceiptsScreen({super.key});
+  final DateTime? initialDay;
+  const ReceiptsScreen({super.key, this.initialDay});
   @override
   State<ReceiptsScreen> createState() => _ReceiptsScreenState();
 }
 
 class _ReceiptsScreenState extends State<ReceiptsScreen> {
-  DateTime _day = dayOnly(DateTime.now());
+  late DateTime _day = dayOnly(widget.initialDay ?? DateTime.now());
   late Future<List<Receipt>> _f;
+  final List<ReceiptItem> _draft = [];
   String? _hl;
+  String _nextNo = '0001';
 
   @override
   void initState() {
     super.initState();
-    _f = Api.i.receipts(_day);
-  }
-
-  void _load() => setState(() => _f = Api.i.receipts(_day));
-
-  void _move(int d) {
-    final n = _day.add(Duration(days: d));
-    if (n.isAfter(dayOnly(DateTime.now()))) return;
-    _day = n;
     _load();
   }
 
-  Future<void> _new() async {
-    final r = await Navigator.of(context).push<Receipt>(MaterialPageRoute(builder: (_) => const NewReceiptScreen()));
-    _day = dayOnly(DateTime.now());
-    _hl = r?.id;
-    _load();
+  void _load() {
+    setState(() => _f = Api.i.receipts(_day));
+    _nextNumber();
   }
+
+  /// Namba inayokuja (mf. "0006") — inaonekana kwenye kichwa cha fomu.
+  Future<void> _nextNumber() async {
+    try {
+      final list = await _f;
+      var max = 0;
+      for (final r in list) {
+        final n = int.tryParse(r.number.replaceAll(RegExp(r'[^0-9]'), ''));
+        if (n != null && n > max) max = n;
+      }
+      if (mounted) setState(() => _nextNo = (max + 1).toString().padLeft(4, '0'));
+    } catch (_) {}
+  }
+
+  Future<void> _history() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReceiptHistoryScreen()));
+    if (mounted) _load();
+  }
+
+  Future<void> _new([int edit = -1]) async {
+    FocusScope.of(context).unfocus();
+    final r = await showModalBottomSheet<Receipt>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => NewReceiptSheet(
+        items: _draft,
+        number: _nextNo,
+        editIndex: edit,
+        onChanged: () => setState(() {}),
+      ),
+    );
+    if (!mounted) return;
+    if (r == null) {
+      _nextNumber();
+      return;
+    }
+    setState(() {
+      _draft.clear();
+      _day = dayOnly(DateTime.now());
+      _hl = r.id;
+    });
+    _load();
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReceiptViewScreen(receipt: r)));
+    if (mounted) _load();
+  }
+
+  Widget _empty() => Center(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 70),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 66,
+              height: 66,
+              decoration: const BoxDecoration(color: C.blue2, shape: BoxShape.circle),
+              child: const Icon(Icons.description_outlined, size: 28, color: C.text),
+            ),
+            const SizedBox(height: 16),
+            const Text('Bado hakuna risiti', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800)),
+          ]),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
     final isToday = _day == dayOnly(DateTime.now());
     return Scaffold(
-      appBar: pageBar('Risiti', action: TopButton('Risiti mpya', onTap: _new)),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 10, 16, 30), children: [
-        Row(children: [
-          IconButton(onPressed: () => _move(-1), icon: const Icon(Icons.chevron_left_rounded, color: C.blue)),
-          Expanded(child: Text(dateLong(_day), textAlign: TextAlign.center, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700))),
-          IconButton(onPressed: isToday ? null : () => _move(1), icon: Icon(Icons.chevron_right_rounded, color: isToday ? const Color(0xFFCBD5E1) : C.blue)),
-        ]),
-        FutureBuilder<List<Receipt>>(
-          future: _f,
-          builder: (c, s) {
-            if (s.connectionState != ConnectionState.done) return const Loading();
-            if (s.hasError) return ErrorView(s.error!, onRetry: _load);
-            final list = s.data!;
-            final total = list.fold<int>(0, (a, r) => a + r.paid);
-            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              SectionTitle('Risiti ${list.length}', trailing: 'TSh ${money(total)}', color: C.blue, padding: const EdgeInsets.fromLTRB(2, 10, 2, 8)),
-              if (list.isEmpty)
-                const Box(padding: EdgeInsets.all(22), child: Text('Hakuna risiti siku hii.', textAlign: TextAlign.center, style: TextStyle(color: C.muted)))
-              else
-                Box(
-                  child: Column(children: [
-                    for (var i = 0; i < list.length; i++)
-                      InkWell(
-                        onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReceiptViewScreen(receipt: list[i]))),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-                          decoration: BoxDecoration(color: list[i].id == _hl ? C.blue3 : null, border: i == 0 ? null : const Border(top: BorderSide(color: C.line))),
-                          child: Row(children: [
-                            Expanded(
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Text('Na. ${list[i].number} · ${list[i].customerName}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
-                                const SizedBox(height: 2),
-                                Text('${hhmm(list[i].createdAt)} · ${list[i].itemsText}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.muted)),
-                              ]),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(money(list[i].paid), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, fontFeatures: tabular)),
-                          ]),
-                        ),
+      appBar: pageBar(
+        'Risiti',
+        subtitle: isToday ? 'Leo' : dateShort(_day),
+        back: widget.initialDay != null,
+        action: SmallButton('Historia',
+            color: C.text2, icon: const Icon(Icons.history_rounded, size: 14, color: C.text2), onTap: _history),
+      ),
+      body: Column(children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 16, 16, 10),
+          child: Row(children: [
+            Expanded(
+              child: Text(
+                isToday ? 'RISITI ZA LEO' : 'RISITI ZA ${dateShort(_day).toUpperCase()}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .9),
+              ),
+            ),
+            TopButton('Risiti mpya', onTap: _new),
+          ]),
+        ),
+        Expanded(
+          child: FutureBuilder<List<Receipt>>(
+            future: _f,
+            builder: (c, s) {
+              if (s.connectionState != ConnectionState.done) return const Loading();
+              if (s.hasError) return ErrorView(s.error!, onRetry: _load);
+              final list = s.data!;
+              if (list.isEmpty && _draft.isEmpty) return _empty();
+              final paid = _draft.fold<int>(0, (a, e) => a + e.amount);
+              final qty = _draft.fold<int>(0, (a, e) => a + e.qty);
+              return ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 30), children: [
+                for (final (i, it) in _draft.indexed) ...[
+                  _DraftCard(it, highlight: i == _draft.length - 1, onTap: () => _new(i)),
+                  const SizedBox(height: 8),
+                ],
+                if (_draft.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(2, 6, 2, 16),
+                    child: Row(children: [
+                      Expanded(
+                        child: Text('Kulipwa · $qty', style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800)),
                       ),
-                  ]),
-                ),
-            ]);
-          },
+                      Text(money(paid),
+                          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular)),
+                    ]),
+                  ),
+                if (list.isNotEmpty)
+                  Box(
+                    child: Column(children: [
+                      for (var i = 0; i < list.length; i++)
+                        InkWell(
+                          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReceiptViewScreen(receipt: list[i]))),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+                            decoration: BoxDecoration(color: list[i].id == _hl ? C.blue3 : null, border: i == 0 ? null : const Border(top: BorderSide(color: C.line))),
+                            child: Row(children: [
+                              Expanded(
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                  Text('Na. ${list[i].number} · ${list[i].customerName}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+                                  const SizedBox(height: 2),
+                                  Text('${hhmm(list[i].createdAt)} · ${list[i].itemsText}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.muted)),
+                                ]),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(money(list[i].paid), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, fontFeatures: tabular)),
+                            ]),
+                          ),
+                        ),
+                    ]),
+                  ),
+              ]);
+            },
+          ),
         ),
       ]),
     );
   }
 }
 
-// ======================================================================= RISITI MPYA
-/// Mteja (jina + WhatsApp) -> Bidhaa kama daftari: jina -> orodha chini -> Idadi -> Bei -> Punguzo -> Ijayo
-/// -> Jumla / Punguzo / Imelipwa -> "Tengeneza risiti"
-class NewReceiptScreen extends StatefulWidget {
-  const NewReceiptScreen({super.key});
+/// Kadi ya bidhaa iliyoongezwa kwenye risiti (picha 5/9 na 6/9)
+class _DraftCard extends StatelessWidget {
+  final ReceiptItem it;
+  final bool highlight;
+  final VoidCallback onTap;
+  const _DraftCard(this.it, {required this.highlight, required this.onTap});
   @override
-  State<NewReceiptScreen> createState() => _NewReceiptScreenState();
+  Widget build(BuildContext context) => Box(
+        onTap: onTap,
+        color: highlight ? C.blue3 : null,
+        border: highlight ? C.blue : null,
+        padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(it.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Row(children: [
+            Expanded(child: MiniStat('Idadi', '${it.qty}')),
+            Expanded(child: MiniStat('Bei', money(it.price))),
+            Expanded(child: MiniStat('Punguzo', it.discount > 0 ? money(it.discount) : '–')),
+            Expanded(child: MiniStat('Kiasi', money(it.amount), bold: true, color: C.blue)),
+          ]),
+        ]),
+      );
 }
 
-class _NewReceiptScreenState extends State<NewReceiptScreen> {
-  final _cName = TextEditingController(), _cPhone = TextEditingController();
-  final _fPhone = FocusNode();
-  List<Variant> _variants = [];
-  final List<ReceiptItem> _items = [];
-  bool _busy = false;
+// ======================================================================= FOMU YA RISITI MPYA (chini)
+class NewReceiptSheet extends StatefulWidget {
+  final List<ReceiptItem> items;
+  final String number;
+  final int editIndex;
+  final VoidCallback onChanged;
+  const NewReceiptSheet({super.key, required this.items, required this.number, required this.onChanged, this.editIndex = -1});
+  @override
+  State<NewReceiptSheet> createState() => _NewReceiptSheetState();
+}
 
-  int _edit = -1;
+class _NewReceiptSheetState extends State<NewReceiptSheet> {
+  final _cName = TextEditingController(), _cPhone = TextEditingController();
+  final _search = TextEditingController(), _q = TextEditingController(), _p = TextEditingController(), _d = TextEditingController();
+  final _fName = FocusNode(), _fPhone = FocusNode(), _fSearch = FocusNode(), _fQ = FocusNode(), _fP = FocusNode(), _fD = FocusNode();
+  List<Variant> _variants = [];
   Variant? _sel;
-  final _n = TextEditingController(), _q = TextEditingController(), _p = TextEditingController(), _d = TextEditingController();
-  final _fn = FocusNode(), _fq = FocusNode(), _fp = FocusNode(), _fd = FocusNode();
+  bool _busy = false;
 
   @override
   void initState() {
     super.initState();
-    for (final f in [_fn, _fq, _fp, _fd]) {
-      f.addListener(() => setState(() {}));
-    }
-    Api.i.products().then((p) => setState(() => _variants = p.expand((x) => x.variants).toList()));
+    Api.i.products().then((ps) {
+      if (!mounted) return;
+      final all = ps.expand((x) => x.variants).toList();
+      setState(() => _variants = all);
+      if (widget.editIndex >= 0) {
+        final it = widget.items[widget.editIndex];
+        final found = all.where((x) => x.id == it.variantId).toList();
+        setState(() {
+          _sel = found.isEmpty ? null : found.first;
+          _q.text = '${it.qty}';
+          _p.text = money(it.price);
+          _d.text = it.discount > 0 ? money(it.discount) : '';
+        });
+      }
+    });
   }
 
   List<Variant> get _matches {
-    final q = _n.text.trim();
-    if (q.isEmpty || (_sel != null && _sel!.name == _n.text)) return [];
+    final q = _search.text.trim();
+    if (q.isEmpty || _sel != null) return [];
     return _variants.where((v) => nameMatches(v.name, q)).take(5).toList();
   }
 
   void _pick(Variant v) {
     setState(() {
       _sel = v;
-      _n.text = v.name;
+      _search.clear();
       _p.text = money(v.selling);
     });
-    _fq.requestFocus();
+    _fQ.requestFocus();
+  }
+
+  void _clearSel() {
+    setState(() {
+      _sel = null;
+      _q.clear();
+      _p.clear();
+      _d.clear();
+    });
+    _fSearch.requestFocus();
   }
 
   void _reset() {
-    _edit = -1;
-    _sel = null;
-    _n.clear();
-    _q.clear();
-    _p.clear();
-    _d.clear();
+    setState(() {
+      _sel = null;
+      _search.clear();
+      _q.clear();
+      _p.clear();
+      _d.clear();
+    });
+    _fSearch.requestFocus();
   }
 
-  void _commit([String? _]) {
+  void _commit() {
     final v = _sel;
-    if (v == null) {
-      _fn.requestFocus();
-      return;
-    }
+    if (v == null) return;
     final q = parseMoney(_q.text), p = parseMoney(_p.text), d = parseMoney(_d.text);
     if (q <= 0) {
       showError(context, 'Andika idadi');
-      _fq.requestFocus();
+      _fQ.requestFocus();
       return;
     }
-    final used = _items.asMap().entries.where((e) => e.key != _edit && e.value.variantId == v.id).fold<int>(0, (a, e) => a + e.value.qty);
+    final used = widget.items.asMap().entries.where((e) => e.key != widget.editIndex && e.value.variantId == v.id).fold<int>(0, (a, e) => a + e.value.qty);
     if (q + used > v.qty) {
       showError(context, '${v.name}: zipo ${v.qty - used} tu');
-      _fq.requestFocus();
+      _fQ.requestFocus();
       return;
     }
     if (d > p) {
       showError(context, 'Punguzo ni kubwa kuliko bei');
-      _fd.requestFocus();
+      _fD.requestFocus();
       return;
     }
     final it = ReceiptItem(variantId: v.id, name: v.name, qty: q, price: p, discount: d, buying: v.buying);
-    setState(() {
-      if (_edit >= 0) {
-        _items[_edit] = it;
-      } else {
-        _items.add(it);
-      }
+    if (widget.editIndex >= 0) {
+      widget.items[widget.editIndex] = it;
+      widget.onChanged();
       _reset();
-    });
-    _fn.requestFocus();
+      Navigator.pop(context);
+      return;
+    }
+    widget.items.add(it);
+    widget.onChanged();
+    _reset();
   }
 
-  Future<void> _create() async {
+  Future<void> _finish() async {
     FocusScope.of(context).unfocus();
     if (_cName.text.trim().isEmpty) {
       showError(context, 'Andika jina la mteja');
+      _fName.requestFocus();
       return;
     }
-    if (_items.isEmpty) {
+    if (widget.items.isEmpty) {
       showError(context, 'Ongeza bidhaa');
       return;
     }
     setState(() => _busy = true);
     try {
-      final r = await Api.i.createReceipt(name: _cName.text.trim(), phone: _cPhone.text.trim(), items: _items);
-      if (!mounted) return;
-      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReceiptViewScreen(receipt: r)));
+      final r = await Api.i.createReceipt(name: _cName.text.trim(), phone: _cPhone.text.trim(), items: widget.items);
       if (mounted) Navigator.pop(context, r);
     } catch (e) {
       if (mounted) showError(context, e);
@@ -209,147 +335,207 @@ class _NewReceiptScreenState extends State<NewReceiptScreen> {
     }
   }
 
-  static const _w = <double?>[null, 38, 66, 60, 70];
-
   @override
   Widget build(BuildContext context) {
-    final gross = _items.fold<int>(0, (a, i) => a + i.gross), disc = _items.fold<int>(0, (a, i) => a + i.discountTotal);
-    final kb = MediaQuery.of(context).viewInsets.bottom > 0;
-    return Scaffold(
-      appBar: pageBar('Risiti mpya', back: true),
-      body: Column(children: [
-        Expanded(
-          child: ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 40), children: [
-            const SectionTitle('Mteja', padding: EdgeInsets.fromLTRB(2, 22, 2, 12)),
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Expanded(child: Field(label: 'Jina', controller: _cName, hint: 'Jina la mteja', onSubmitted: (_) => _fPhone.requestFocus())),
-              const SizedBox(width: 10),
-              Expanded(child: Field(label: 'WhatsApp', controller: _cPhone, focus: _fPhone, number: true, hint: '07xx xxx xxx', onSubmitted: (_) => _fn.requestFocus())),
-            ]),
-            const SectionTitle('Bidhaa', padding: EdgeInsets.fromLTRB(2, 30, 2, 8)),
-            const TableHead(['BIDHAA', 'IDADI', 'BEI', 'PUNGUZO', 'KIASI'], _w),
-            for (var i = 0; i < _items.length; i++) if (i == _edit) _editor() else _row(i),
-            if (_edit == -1) _editor(),
-            if (_fn.hasFocus && _matches.isNotEmpty) _dropdown(),
-            if (_items.isNotEmpty) ...[
-              const SizedBox(height: 24),
-              Box(
-                padding: const EdgeInsets.fromLTRB(18, 2, 18, 8),
-                child: Column(children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 13),
-                    child: Row(children: [
-                      const Expanded(child: Text('Jumla', style: TextStyle(fontSize: 15.5, color: C.text2))),
-                      Text(money(gross), style: const TextStyle(fontSize: 15.5, color: C.text2, fontFeatures: tabular)),
-                    ]),
+    final insets = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: insets),
+      child: Container(
+        decoration: const BoxDecoration(color: Colors.white, borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Row(children: [
+                const Text('Risiti mpya', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                const SizedBox(width: 8),
+                Text('Na. ${widget.number}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.muted)),
+                const Spacer(),
+                InkWell(
+                  onTap: () => Navigator.pop(context),
+                  customBorder: const CircleBorder(),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: const BoxDecoration(color: Color(0xFFF3F4F6), shape: BoxShape.circle),
+                    child: const Icon(Icons.close, size: 17, color: C.text2),
                   ),
-                  StatRow('Punguzo', disc, size: 15.5),
-                  StatRow('Imelipwa', gross - disc, bold: true, topLine: true, blue: true, size: 18),
+                ),
+              ]),
+              const SizedBox(height: 12),
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                  flex: 3,
+                  child: DialogField(label: 'Jina la mteja', controller: _cName, focus: _fName, autofocus: true, onSubmitted: (_) => _fPhone.requestFocus()),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: DialogField(label: 'Simu', controller: _cPhone, focus: _fPhone, number: true, hint: '07…', onSubmitted: (_) => _fSearch.requestFocus()),
+                ),
+              ]),
+              const SizedBox(height: 10),
+              const Text('Bidhaa', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: C.muted)),
+              const SizedBox(height: 4),
+              if (_sel == null) _searchField() else _selectedBox(),
+              if (_matches.isNotEmpty) _results(),
+              const SizedBox(height: 10),
+              if (_sel != null)
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  SizedBox(
+                    width: 66,
+                    child: DialogField(label: 'Idadi', controller: _q, focus: _fQ, number: true, hint: '0', align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fP.requestFocus()),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: DialogField(label: 'Bei', controller: _p, focus: _fP, money: true, hint: '0', align: TextAlign.right, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fD.requestFocus()),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: DialogField(label: 'Punguzo', controller: _d, focus: _fD, money: true, hint: '0', align: TextAlign.right, onChanged: (_) => setState(() {}), onSubmitted: (_) => _commit()),
+                  ),
+                  const SizedBox(width: 8),
+                  PrimaryButton('Next', onTap: _commit),
+                ])
+              else
+                Row(children: [
+                  if (widget.items.isNotEmpty) SmallButton('Maliza risiti', busy: _busy, onTap: _finish),
+                  const Spacer(),
+                  PrimaryButton('Next', onTap: null),
                 ]),
-              ),
-              const SizedBox(height: 18),
-              Row(mainAxisAlignment: MainAxisAlignment.end, children: [SmallButton('Tengeneza risiti', busy: _busy, onTap: _create)]),
-            ],
-          ]),
-        ),
-        if (kb)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: C.line))),
-            child: Row(children: [
-              Expanded(child: Text('Bidhaa ${_items.fold<int>(0, (a, i) => a + i.qty)}', style: const TextStyle(fontSize: 12.5, color: C.muted))),
-              Text('Jumla ${money(gross - disc)}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular)),
             ]),
           ),
-      ]),
-    );
-  }
-
-  Widget _num(double? w, String t, {bool bold = false}) =>
-      tableCell(w, Text(t, textAlign: TextAlign.right, style: TextStyle(fontSize: 14, fontWeight: bold ? FontWeight.w800 : FontWeight.w400, fontFeatures: tabular)));
-
-  Widget _row(int i) {
-    final it = _items[i];
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _edit = i;
-          _sel = _variants.firstWhere((v) => v.id == it.variantId);
-          _n.text = it.name;
-          _q.text = '${it.qty}';
-          _p.text = money(it.price);
-          _d.text = it.discount > 0 ? money(it.discount) : '';
-        });
-        _fq.requestFocus();
-      },
-      onLongPress: () => setState(() => _items.removeAt(i)),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
-        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.blueLine))),
-        child: Row(children: [
-          Expanded(child: Text(it.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
-          _num(_w[1], '${it.qty}'),
-          _num(_w[2], money(it.price)),
-          _num(_w[3], it.discount > 0 ? money(it.discount) : '–'),
-          _num(_w[4], money(it.amount), bold: true),
-        ]),
+        ),
       ),
     );
   }
 
-  Widget _editor() => Container(
-        color: C.blue3,
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        child: Row(children: [
-          Expanded(
-            child: InlineInput(
-              controller: _n,
-              focus: _fn,
-              outlined: true,
-              align: TextAlign.left,
-              hint: 'Andika jina la bidhaa…',
-              onChanged: (_) => setState(() {
-                if (_sel != null && _sel!.name != _n.text) _sel = null;
-              }),
-              onSubmitted: (_) {
-                final m = _matches;
-                if (_sel == null && m.isNotEmpty) {
-                  _pick(m.first);
-                } else if (_sel != null) {
-                  _fq.requestFocus();
-                }
-              },
-            ),
+  Widget _searchField() => SizedBox(
+        height: 42,
+        child: TextField(
+          controller: _search,
+          focusNode: _fSearch,
+          textInputAction: TextInputAction.search,
+          textCapitalization: TextCapitalization.sentences,
+          onChanged: (_) => setState(() {}),
+          onSubmitted: (_) {
+            final m = _matches;
+            if (m.isNotEmpty) _pick(m.first);
+          },
+          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: 'Tafuta bidhaa...',
+            hintStyle: const TextStyle(color: C.faint, fontWeight: FontWeight.w400),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            filled: true,
+            fillColor: Colors.white,
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: C.field)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: C.blue, width: 1.6)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: C.field)),
           ),
-          tableCell(_w[1], InlineInput(controller: _q, focus: _fq, number: true, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fp.requestFocus())),
-          tableCell(_w[2], InlineInput(controller: _p, focus: _fp, number: true, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fd.requestFocus())),
-          tableCell(_w[3], InlineInput(controller: _d, focus: _fd, number: true, hint: '0', onChanged: (_) => setState(() {}), onSubmitted: _commit)),
-          _num(_w[4], ''),
-        ]),
+        ),
       );
 
-  Widget _dropdown() => Container(
-        margin: const EdgeInsets.fromLTRB(0, 2, 0, 8),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-          boxShadow: const [BoxShadow(color: Color(0x1A000000), blurRadius: 22, offset: Offset(0, 8))],
+  Widget _selectedBox() => InkWell(
+        onTap: _clearSel,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          height: 42,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: C.field)),
+          child: Row(children: [
+            Expanded(
+              child: Text(_sel!.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+            ),
+            Text('zipo ${_sel!.qty}', style: const TextStyle(fontSize: 12.5, color: C.muted, fontFeatures: tabular)),
+          ]),
         ),
-        child: Column(children: [
-          for (final (i, v) in _matches.indexed)
-            InkWell(
-              onTap: () => _pick(v),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: Color(0xFFF1F2F5)))),
-                child: Row(children: [
-                  Expanded(child: Text(v.name, style: TextStyle(fontSize: 14.5, fontWeight: i == 0 ? FontWeight.w700 : FontWeight.w500, color: C.text2))),
-                  Text('zipo ${v.qty} · ${money(v.selling)}', style: TextStyle(fontSize: 12, color: v.qty == 0 ? C.red : C.muted)),
+      );
+
+  Widget _results() {
+    final m = _matches;
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: C.line),
+      ),
+      child: Column(children: [
+        for (final (i, v) in m.indexed)
+          InkWell(
+            onTap: () => _pick(v),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+              decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: C.line))),
+              child: Row(children: [
+                Expanded(child: Text(v.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
+                Text('zipo ${v.qty} · ${money(v.selling)}',
+                    style: TextStyle(fontSize: 12, color: v.qty == 0 ? C.red : C.muted, fontFeatures: tabular)),
+              ]),
+            ),
+          ),
+      ]),
+    );
+  }
+}
+
+// ======================================================================= HISTORIA (siku zilizopita)
+class ReceiptHistoryScreen extends StatefulWidget {
+  const ReceiptHistoryScreen({super.key});
+  @override
+  State<ReceiptHistoryScreen> createState() => _ReceiptHistoryScreenState();
+}
+
+class _ReceiptHistoryScreenState extends State<ReceiptHistoryScreen> {
+  late final Future<List<(DateTime, List<Receipt>)>> _f = _load();
+
+  Future<List<(DateTime, List<Receipt>)>> _load() async {
+    final today = dayOnly(DateTime.now());
+    final days = [for (var i = 1; i <= 14; i++) today.subtract(Duration(days: i))];
+    final lists = await Future.wait(days.map((d) => Api.i.receipts(d)));
+    return [for (var i = 0; i < days.length; i++) (days[i], lists[i])];
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: pageBar('Historia', subtitle: 'Siku 14 zilizopita', back: true),
+        body: FutureBuilder<List<(DateTime, List<Receipt>)>>(
+          future: _f,
+          builder: (c, s) {
+            if (s.connectionState != ConnectionState.done) return const Loading();
+            if (s.hasError) return ErrorView(s.error!, onRetry: () => setState(() {}));
+            final days = s.data!;
+            return ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 30), children: [
+              Box(
+                child: Column(children: [
+                  for (var i = 0; i < days.length; i++)
+                    InkWell(
+                      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReceiptsScreen(initialDay: days[i].$1))),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: C.line))),
+                        child: Row(children: [
+                          Expanded(
+                            child: Text(dateLong(days[i].$1),
+                                style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, color: C.text2)),
+                          ),
+                          Text(
+                            days[i].$2.isEmpty
+                                ? '–'
+                                : '${days[i].$2.length} risiti · ${money(days[i].$2.fold<int>(0, (a, r) => a + r.paid))}',
+                            style: const TextStyle(fontSize: 12.5, color: C.muted, fontFeatures: tabular),
+                          ),
+                        ]),
+                      ),
+                    ),
                 ]),
               ),
-            ),
-        ]),
+            ]);
+          },
+        ),
       );
 }
 
