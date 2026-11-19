@@ -147,9 +147,10 @@ class DailySheet {
 class SoldRow {
   final String name;
   final int qty, buying, selling, profit;
-  SoldRow({required this.name, required this.qty, required this.buying, required this.selling, required this.profit});
+  final bool outOfStock;
+  SoldRow({required this.name, required this.qty, required this.buying, required this.selling, required this.profit, this.outOfStock = false});
   factory SoldRow.fromJson(Map<String, dynamic> j) =>
-      SoldRow(name: _s(j['name']), qty: _i(j['qty']), buying: _i(j['buying']), selling: _i(j['selling']), profit: _i(j['profit']));
+      SoldRow(name: _s(j['name']), qty: _i(j['qty']), buying: _i(j['buying']), selling: _i(j['selling']), profit: _i(j['profit']), outOfStock: j['out_of_stock'] == true);
 }
 
 class HomeData {
