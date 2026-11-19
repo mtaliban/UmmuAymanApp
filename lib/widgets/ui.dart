@@ -8,18 +8,63 @@ import '../utils/format.dart';
 
 // ======================================================================= vipande vidogo
 
-/// Kichwa cha ukurasa: jina kubwa + kitufe kidogo kulia (mf. "+ Bidhaa mpya")
-PreferredSizeWidget pageBar(String title, {String? subtitle, Widget? action, bool back = false}) => AppBar(
-      automaticallyImplyLeading: back,
-      titleSpacing: back ? 0 : 18,
-      toolbarHeight: subtitle == null ? 58 : 62,
-      title: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: const TextStyle(fontSize: 20.5, fontWeight: FontWeight.w800, color: C.text)),
-        if (subtitle != null) Text(subtitle, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.muted)),
-      ]),
-      actions: [if (action != null) Center(child: action), const SizedBox(width: 16)],
-      bottom: const PreferredSize(preferredSize: Size.fromHeight(1), child: Divider(height: 1, color: Color(0xFFF0F0F2))),
-    );
+/// Kichwa cha ukurasa (Chaguo A):
+///  - nafasi nyeupe juu (chini ya saa/betri)
+///  - jina la ukurasa + kitufe vimekaa CHINI, juu kidogo ya mstari mwembamba
+///  - mstari wa kijivu #E5E7EB unatenganisha kichwa na maudhui
+const double kHeaderHeight = 96; // urefu wa kichwa chini ya status bar
+const double kHeaderBottomGap = 10; // nafasi kati ya maneno na mstari
+
+PreferredSizeWidget pageBar(String title, {String? subtitle, Widget? action, bool back = false}) =>
+    _PageHeader(title: title, subtitle: subtitle, action: action, back: back);
+
+class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
+  final String title;
+  final String? subtitle;
+  final Widget? action;
+  final bool back;
+  const _PageHeader({required this.title, this.subtitle, this.action, this.back = false});
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kHeaderHeight + 1);
+
+  @override
+  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: Colors.transparent),
+        child: Material(
+          color: Colors.white,
+          child: SafeArea(
+            bottom: false,
+            child: Container(
+              height: kHeaderHeight + 1,
+              padding: EdgeInsets.fromLTRB(back ? 6 : 18, 0, 16, kHeaderBottomGap),
+              decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB)))),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                if (back)
+                  IconButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: const Icon(Icons.arrow_back_rounded, color: C.text, size: 22),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 40, minHeight: 30),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                Expanded(
+                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 22, height: 1.15, fontWeight: FontWeight.w800, color: C.text)),
+                    if (subtitle != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(subtitle!, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.muted)),
+                      ),
+                  ]),
+                ),
+                if (action != null) ...[const SizedBox(width: 12), action!],
+              ]),
+            ),
+          ),
+        ),
+      );
+}
 
 /// "ZINAZOUZIKA ZAIDI" / "GHARAMA" n.k.
 class SectionTitle extends StatelessWidget {

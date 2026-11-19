@@ -81,7 +81,7 @@ class _ProductScreenState extends State<ProductScreen> {
   Widget build(BuildContext context) {
     final p = _p;
     return Scaffold(
-      appBar: pageBar(p?.name ?? '', back: true, action: p == null ? null : TopButton('Aina', onTap: _addType)),
+      appBar: pageBar(p?.name ?? '', subtitle: p == null ? null : 'aina ${p.variants.length}', back: true, action: p == null ? null : TopButton('Aina', onTap: _addType)),
       body: _error != null
           ? ErrorView(_error!, onRetry: _load)
           : p == null
