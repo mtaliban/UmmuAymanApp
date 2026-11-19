@@ -40,43 +40,45 @@ jobs:
       - name: Build APKs
         run: flutter build apk --release --split-per-abi
 
-      - name: Rename APKs
+      - name: Prepare release info
         run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr '+' '-')
-          TAG="v${VERSION}-build${{ github.run_number }}"
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')
+          DATE=$(TZ=Africa/Dar_es_Salaam date '+%Y%m%d-%H%M')
+          TAG="v${VERSION}-${DATE}"
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
-          echo "TAG=${TAG}" >> $GITHUB_ENV
+          echo "DATE=${DATE}"       >> $GITHUB_ENV
+          echo "TAG=${TAG}"         >> $GITHUB_ENV
           cd build/app/outputs/flutter-apk/
-          mv app-arm64-v8a-release.apk   ummu-ayman-${TAG}-arm64.apk
-          mv app-armeabi-v7a-release.apk ummu-ayman-${TAG}-arm32.apk
+          mv app-arm64-v8a-release.apk   ummu-ayman-arm64-v${VERSION}-${DATE}.apk
+          mv app-armeabi-v7a-release.apk ummu-ayman-arm32-v${VERSION}-${DATE}.apk
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
-          name: "Ummu Ayman ${{ env.TAG }}"
+          name: "Ummu Ayman — Toleo Jipya"
           make_latest: true
           body: |
-            ## Ummu Ayman Outfits
-            **Version:** ${{ env.VERSION }} &nbsp;|&nbsp; **Build:** #${{ github.run_number }}
+            ## Pakua hapa chini
+
+            **Kwa Simu — APK ya moja kwa moja**
+
+            | Faili | Ukubwa | Simu |
+            |-------|--------|------|
+            | `ummu-ayman-arm64-*` | ~10 MB | Simu za kisasa (Samsung/Tecno/Infinix 2016+) — **chaguo la kwanza** |
+            | `ummu-ayman-arm32-*` | ~9 MB | Simu za zamani (32-bit) — kama arm64 haitanyi kazi |
 
             ---
 
-            ### Pakua APK
-
-            | Faili | Simu |
-            |-------|------|
-            | **`arm64`** ✅ | Simu zote za kisasa (Samsung, Tecno, Infinix, nk) |
-            | `arm32` | Simu za zamani sana (kabla ya 2015) |
+            > Sijui APK ipi? Chagua **arm64** kwanza. Kama haitaki, jaribu arm32.
+            > Inakataa install? Settings → Security → **Install unknown apps** — wezasha
 
             ---
 
-            ### Jinsi ya Kuinstall
-            1. Bonyeza faili la `arm64` hapa chini — ipakuliwe
-            2. Fungua simu → **Settings → Security → Install unknown apps** → washa
-            3. Fungua APK → **Install**
+            🕒 Ilitegenezwa: `${{ env.DATE }}`
+            🔗 Commit: `${{ github.sha }}`
           files: |
-            build/app/outputs/flutter-apk/ummu-ayman-${{ env.TAG }}-arm64.apk
-            build/app/outputs/flutter-apk/ummu-ayman-${{ env.TAG }}-arm32.apk
+            build/app/outputs/flutter-apk/ummu-ayman-arm64-v${{ env.VERSION }}-${{ env.DATE }}.apk
+            build/app/outputs/flutter-apk/ummu-ayman-arm32-v${{ env.VERSION }}-${{ env.DATE }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
