@@ -7,6 +7,7 @@ import '../services/pdf.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/ui.dart';
+import 'shell.dart';
 
 /// MAUZO YA LEO — kadi + dirisha linaloelea juu ya kibodi
 ///  1. BIDHAA ZILIZOUZWA: kadi (IDADI · SELLING · BUYING · FAIDA) + kitufe `+ Ongeza`.
@@ -114,6 +115,7 @@ class _SalesScreenState extends State<SalesScreen> {
   int get _capital => _all.fold(0, (a, l) => a + l.capital);
   int get _expenses => _exps.fold(0, (a, e) => a + e.amount);
   int get _qtyAll => _all.fold(0, (a, l) => a + l.qty);
+  bool get _empty => _lines.isEmpty && _receiptLines.isEmpty;
 
   int _available(String vid, {int exceptIndex = -1}) {
     final i = _variants.indexWhere((x) => x.id == vid);
@@ -363,10 +365,11 @@ class _SalesScreenState extends State<SalesScreen> {
                           for (final l in _receiptLines) _card(l, tag: 'Risiti ${l.receiptNo}', tagBlue: true, bg: C.receiptBg),
                         ],
                         _head(),
-                        if (_lines.isEmpty && _receiptLines.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.fromLTRB(2, 4, 2, 6),
-                            child: Text('Bado hujaandika mauzo ya leo — gusa “+ Ongeza”.', style: TextStyle(fontSize: 13, color: C.muted)),
+                        if (_empty)
+                          const EmptyState(
+                            icon: Icons.edit_outlined,
+                            title: 'Siku mpya',
+                            text: 'Bado hujaandika mauzo ya leo.\nGusa “+ Ongeza” kuanza.',
                           ),
                         for (final (i, l) in _lines.indexed)
                           _card(l, highlight: i == _newIndex, onTap: _saved ? null : () => _openEdit(i)),
@@ -377,20 +380,42 @@ class _SalesScreenState extends State<SalesScreen> {
                         else
                           for (final (i, e) in _exps.indexed) _expRow(e, i),
                         _expTotal(),
-                        const SectionTitle('Hesabu ya leo'),
-                        Statement(sales: _sales, capital: _capital, expenses: _expenses),
-                        const SizedBox(height: 12),
-                        Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                          SmallButton('Pakua PDF', color: C.text2, busy: _pdfBusy, icon: const Icon(Icons.download_rounded, size: 14, color: C.text2), onTap: _downloadPdf),
-                          const SizedBox(width: 8),
-                          SmallButton('Shiriki', color: C.text2, icon: const Icon(Icons.share_outlined, size: 13, color: C.text2), onTap: _sharePdf),
-                          const SizedBox(width: 8),
-                          SmallButton(_saved ? 'Hariri' : 'Hifadhi',
-                              busy: _saving,
-                              filled: !_saved,
-                              color: _saved ? C.text2 : C.blue,
-                              onTap: _saved ? () => setState(() => _saved = false) : _save),
-                        ]),
+                        if (_empty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: Center(
+                              child: Text.rich(
+                                TextSpan(children: [
+                                  const TextSpan(text: 'Mauzo ya jana yako kwenye '),
+                                  WidgetSpan(
+                                    alignment: PlaceholderAlignment.baseline,
+                                    baseline: TextBaseline.alphabetic,
+                                    child: GestureDetector(
+                                      onTap: () => Shell.of(context)?.go(3),
+                                      child: const Text('Ripoti', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: C.blue)),
+                                    ),
+                                  ),
+                                ]),
+                                style: const TextStyle(fontSize: 12.5, color: C.faint),
+                              ),
+                            ),
+                          )
+                        else ...[
+                          const SectionTitle('Hesabu ya leo'),
+                          Statement(sales: _sales, capital: _capital, expenses: _expenses),
+                          const SizedBox(height: 12),
+                          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                            SmallButton('Pakua PDF', color: C.text2, busy: _pdfBusy, icon: const Icon(Icons.download_rounded, size: 14, color: C.text2), onTap: _downloadPdf),
+                            const SizedBox(width: 8),
+                            SmallButton('Shiriki', color: C.text2, icon: const Icon(Icons.share_outlined, size: 13, color: C.text2), onTap: _sharePdf),
+                            const SizedBox(width: 8),
+                            SmallButton(_saved ? 'Hariri' : 'Hifadhi',
+                                busy: _saving,
+                                filled: !_saved,
+                                color: _saved ? C.text2 : C.blue,
+                                onTap: _saved ? () => setState(() => _saved = false) : _save),
+                          ]),
+                        ],
                       ],
                     ),
                   ),

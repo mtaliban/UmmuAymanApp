@@ -387,6 +387,7 @@ class Field extends StatelessWidget {
   final ValueChanged<String>? onSubmitted;
   final ValueChanged<String>? onChanged;
   final bool autofocus;
+  final bool showLabel; // false = hakuna lebo juu, hint tu ndani ya kisanduku
   const Field({
     super.key,
     required this.label,
@@ -400,13 +401,16 @@ class Field extends StatelessWidget {
     this.onSubmitted,
     this.onChanged,
     this.autofocus = false,
+    this.showLabel = true,
   });
   @override
   Widget build(BuildContext context) {
     final b = OutlineInputBorder(borderRadius: BorderRadius.circular(11), borderSide: const BorderSide(color: C.field, width: 1.2));
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.text2)),
-      const SizedBox(height: 6),
+      if (showLabel) ...[
+        Text(label, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.text2)),
+        const SizedBox(height: 6),
+      ],
       TextField(
         controller: controller,
         focusNode: focus,
@@ -663,4 +667,118 @@ class MiniStat extends StatelessWidget {
         Text(value,
             style: TextStyle(fontSize: 15, fontWeight: bold ? FontWeight.w800 : FontWeight.w600, color: color ?? (value == '–' ? const Color(0xFFCBD5E1) : C.text), fontFeatures: tabular)),
       ]);
+}
+
+/// Kisanduku kidogo cha dirisha: lebo juu (11.5), kisanduku cha urefu 38, radius 8
+class DialogField extends StatelessWidget {
+  final String? label;
+  final TextEditingController controller;
+  final FocusNode? focus;
+  final String hint;
+  final bool number;
+  final bool money;
+  final TextAlign align;
+  final double? width;
+  final bool autofocus;
+  final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
+  const DialogField({
+    super.key,
+    this.label,
+    required this.controller,
+    this.focus,
+    this.hint = '',
+    this.number = false,
+    this.money = false,
+    this.align = TextAlign.left,
+    this.width,
+    this.autofocus = false,
+    this.onChanged,
+    this.onSubmitted,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    OutlineInputBorder b(Color c, double w) => OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: c, width: w));
+    return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+      if (label != null) ...[
+        Text(label!, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: C.muted)),
+        const SizedBox(height: 4),
+      ],
+      SizedBox(
+        width: width,
+        height: 38,
+        child: TextField(
+          controller: controller,
+          focusNode: focus,
+          autofocus: autofocus,
+          textAlign: align,
+          textInputAction: TextInputAction.next,
+          keyboardType: number || money ? TextInputType.number : TextInputType.text,
+          textCapitalization: number || money ? TextCapitalization.none : TextCapitalization.sentences,
+          inputFormatters: [if (number) FilteringTextInputFormatter.digitsOnly, if (money) MoneyInput()],
+          onChanged: onChanged,
+          onSubmitted: onSubmitted,
+          style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500, fontFeatures: tabular),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: hint,
+            hintStyle: const TextStyle(color: C.faint, fontWeight: FontWeight.w400),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            enabledBorder: b(C.field, 1),
+            focusedBorder: b(C.blue, 1.5),
+            border: b(C.field, 1),
+          ),
+        ),
+      ),
+    ]);
+  }
+}
+
+/// Kitufe kikuu cha bluu (Hifadhi ›) — kinafifia kama sehemu hazijajaa
+class PrimaryButton extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+  final bool busy;
+  const PrimaryButton(this.label, {super.key, this.onTap, this.busy = false});
+  @override
+  Widget build(BuildContext context) {
+    final on = onTap != null && !busy;
+    return Opacity(
+      opacity: on || busy ? 1 : .4,
+      child: InkWell(
+        onTap: on ? onTap : null,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.fromLTRB(14, 0, 8, 0),
+          decoration: BoxDecoration(color: C.blue, borderRadius: BorderRadius.circular(8)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+            const SizedBox(width: 2),
+            if (busy)
+              const Padding(padding: EdgeInsets.symmetric(horizontal: 5), child: DotsLoader(color: Colors.white, size: 4))
+            else
+              const Icon(Icons.chevron_right_rounded, size: 18, color: Colors.white),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+/// Mstari wa hesabu ndogo (Mtaji 776,000 · Faida 278,000)
+class CalcStrip extends StatelessWidget {
+  final String a;
+  final String b;
+  const CalcStrip(this.a, this.b, {super.key});
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(color: C.soft, borderRadius: BorderRadius.circular(10)),
+        child: Row(children: [
+          Expanded(child: Text(a, style: const TextStyle(fontSize: 13.5, color: C.muted, fontFeatures: tabular))),
+          Text(b, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, fontFeatures: tabular)),
+        ]),
+      );
 }

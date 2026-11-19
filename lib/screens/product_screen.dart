@@ -5,7 +5,6 @@ import '../models/models.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/ui.dart';
-import 'stock_screen.dart' show calcStrip;
 
 /// UKURASA WA BIDHAA (mf. Kanzu)
 ///  - Juu kulia: "+ Aina" -> dirisha katikati (jina, idadi, buying, selling)
@@ -81,7 +80,7 @@ class _ProductScreenState extends State<ProductScreen> {
   Widget build(BuildContext context) {
     final p = _p;
     return Scaffold(
-      appBar: pageBar(p?.name ?? '', subtitle: p == null ? null : 'aina ${p.variants.length}', back: true, action: p == null ? null : TopButton('Aina', onTap: _addType)),
+      appBar: pageBar(p?.name ?? '', subtitle: p == null ? null : 'aina ${p.variants.length}', back: true),
       body: _error != null
           ? ErrorView(_error!, onRetry: _load)
           : p == null
@@ -102,7 +101,13 @@ class _ProductScreenState extends State<ProductScreen> {
                         ]),
                       ),
                     ),
-                    if (p.hasTypes) SectionTitle('Aina ${p.variants.length}', color: C.blue, padding: const EdgeInsets.fromLTRB(2, 22, 2, 8)) else const SizedBox(height: 14),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(2, 18, 0, 10),
+                      child: Row(children: [
+                        const Expanded(child: Text('AINA', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .9))),
+                        TopButton('Aina', onTap: _addType),
+                      ]),
+                    ),
                     for (final v in p.variants) ...[
                       _TypeCard(v, highlight: v.id == _hl, onTap: () => _edit(v)),
                       const SizedBox(height: 8),
@@ -148,26 +153,13 @@ class _TypeCard extends StatelessWidget {
       border: highlight ? C.blue : (out ? C.redLine : null),
       padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Expanded(child: Text(v.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800))),
-          if (out)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-              decoration: BoxDecoration(color: C.redSoft, borderRadius: BorderRadius.circular(6)),
-              child: const Text('imeisha', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: C.red)),
-            ),
-        ]),
-        const SizedBox(height: 9),
+        Text(v.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
         Row(children: [
           Expanded(child: MiniStat('Zipo', '${v.qty}', bold: true, color: out ? C.red : null)),
           Expanded(child: MiniStat('Buying', money(v.buying))),
           Expanded(child: MiniStat('Selling', money(v.selling))),
-        ]),
-        const Padding(padding: EdgeInsets.symmetric(vertical: 9), child: Divider(height: 1, color: C.line)),
-        Row(children: [
-          Expanded(child: MiniStat('Faida kimoja', money(v.profitEach))),
-          Expanded(child: MiniStat('Mtaji', money(v.capital))),
-          Expanded(child: MiniStat('Faida zote', v.qty == 0 ? '–' : money(v.profitAll), bold: true)),
+          Expanded(child: MiniStat('Faida', money(v.profitEach), bold: true, color: C.blue)),
         ]),
       ]),
     );
@@ -210,19 +202,22 @@ class _AddTypeDialogState extends State<_AddTypeDialog> {
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         DialogHeader('Aina mpya ya ${widget.p.name}'),
         const SizedBox(height: 14),
-        Field(label: 'Jina la aina', controller: _n, autofocus: true, hint: 'Mfano: ${widget.p.name} ya Morocco', onSubmitted: (_) => _fq.requestFocus()),
+        Field(label: 'Jina la aina', showLabel: false, controller: _n, autofocus: true, hint: 'Mfano: ${widget.p.name} ya Morocco', onSubmitted: (_) => _fq.requestFocus()),
         const SizedBox(height: 12),
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(width: 76, child: Field(label: 'Idadi', controller: _q, focus: _fq, number: true, hint: '0', onChanged: (_) => setState(() {}), onSubmitted: (_) => _fb.requestFocus())),
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          DialogField(label: 'Idadi', controller: _q, focus: _fq, number: true, hint: '0', width: 56, align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fb.requestFocus()),
           const SizedBox(width: 8),
-          Expanded(child: Field(label: 'Buying', controller: _b, focus: _fb, money: true, hint: '0', onChanged: (_) => setState(() {}), onSubmitted: (_) => _fs.requestFocus())),
+          Expanded(child: DialogField(label: 'Buying', controller: _b, focus: _fb, money: true, hint: '0', onChanged: (_) => setState(() {}), onSubmitted: (_) => _fs.requestFocus())),
           const SizedBox(width: 8),
-          Expanded(child: Field(label: 'Selling', controller: _s, focus: _fs, money: true, hint: '0', action: TextInputAction.done, onChanged: (_) => setState(() {}), onSubmitted: (_) => _save())),
+          Expanded(child: DialogField(label: 'Selling', controller: _s, focus: _fs, money: true, hint: '0', onChanged: (_) => setState(() {}), onSubmitted: (_) => _save())),
+          const SizedBox(width: 8),
+          PrimaryButton('Hifadhi', busy: _busy, onTap: _n.text.trim().isEmpty ? null : _save),
         ]),
-        const SizedBox(height: 10),
-        calcStrip('Mtaji ${money(q * b)}', 'Faida ${money(q * (s - b))}'),
-        const SizedBox(height: 14),
-        Align(alignment: Alignment.centerRight, child: SmallButton('Hifadhi', busy: _busy, onTap: _save)),
+        if (q > 0 || b > 0 || s > 0) ...[
+          const SizedBox(height: 10),
+          CalcStrip('Mtaji ${money(q * b)}', 'Faida ${money(q * (s - b))}'),
+        ],
+        const SizedBox(height: 4),
       ]),
     );
   }
@@ -294,7 +289,7 @@ class _EditTypeDialogState extends State<_EditTypeDialog> {
           Expanded(child: Field(label: 'Selling', controller: _s, focus: _fs, money: true, action: TextInputAction.done, onChanged: (_) => setState(() {}), onSubmitted: (_) => _save())),
         ]),
         const SizedBox(height: 10),
-        calcStrip('Zitakuwa ${widget.v.qty} → $after', 'Faida ukiuza ${money(after * (s - b))}'),
+        CalcStrip('Zitakuwa ${widget.v.qty} → $after', 'Faida ukiuza ${money(after * (s - b))}'),
         const SizedBox(height: 12),
         Row(children: [
           TextButton(
