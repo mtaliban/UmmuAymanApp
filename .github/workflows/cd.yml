@@ -38,43 +38,40 @@ jobs:
         run: flutter pub get
 
       - name: Build APKs
-        run: |
-          flutter build apk --release --split-per-abi
-          flutter build apk --release
+        run: flutter build apk --release --split-per-abi
 
       - name: Prepare release info
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')
           DATE=$(TZ=Africa/Dar_es_Salaam date '+%Y%m%d-%H%M')
-          TAG="v${VERSION}-${DATE}"
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "DATE=${DATE}"       >> $GITHUB_ENV
-          echo "TAG=${TAG}"         >> $GITHUB_ENV
           cd build/app/outputs/flutter-apk/
-          mv app-release.apk             ummu-ayman-kamili-v${VERSION}-${DATE}.apk
-          mv app-arm64-v8a-release.apk   ummu-ayman-arm64-v${VERSION}-${DATE}.apk
-          mv app-armeabi-v7a-release.apk ummu-ayman-arm32-v${VERSION}-${DATE}.apk
+          mv app-arm64-v8a-release.apk   ummu-ayman-arm64.apk
+          mv app-armeabi-v7a-release.apk ummu-ayman-arm32.apk
 
-      - name: Create Release
+      # Tag ni "latest" daima: kila push inabadilisha release ile ile,
+      # badala ya kutengeneza release mpya yenye tarehe.
+      - name: Create or update Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.TAG }}
-          name: "Ummu Ayman — Toleo Jipya"
+          tag_name: latest
+          name: "Ummu Ayman — Toleo la Sasa"
           make_latest: true
+          overwrite_files: true
           body: |
             ## Pakua hapa chini
 
-            **Kwa Simu — APK ya moja kwa moja**
+            Release hii inabadilishwa kila push — link ni ile ile daima.
 
             | Faili | Ukubwa | Simu |
             |-------|--------|------|
-            | `ummu-ayman-kamili-*` | ~25 MB | **APK kamili — simu yoyote.** Chaguo la kwanza; inafanya kazi kwenye 64-bit na 32-bit |
-            | `ummu-ayman-arm64-*` | ~24 MB | Simu za kisasa (64-bit) — nyepesi kidogo |
-            | `ummu-ayman-arm32-*` | ~22 MB | Simu za zamani (32-bit) |
+            | `ummu-ayman-arm64.apk` | ~23 MB | Simu za kisasa (Samsung/Tecno/Infinix 2016+) — **chaguo la kwanza** |
+            | `ummu-ayman-arm32.apk` | ~21 MB | Simu za zamani (32-bit) — kama arm64 haitanyi kazi |
 
             ---
 
-            > Sijui APK ipi? Chagua **kamili** — inafanya kazi kwenye simu yoyote.
+            > Sijui APK ipi? Chagua **arm64** kwanza. Kama haitaki, jaribu **arm32**.
             > Inakataa install? Settings → Security → **Install unknown apps** — wezasha
 
             ---
@@ -82,8 +79,18 @@ jobs:
             🕒 Ilitegenezwa: `${{ env.DATE }}`
             🔗 Commit: `${{ github.sha }}`
           files: |
-            build/app/outputs/flutter-apk/ummu-ayman-kamili-v${{ env.VERSION }}-${{ env.DATE }}.apk
-            build/app/outputs/flutter-apk/ummu-ayman-arm64-v${{ env.VERSION }}-${{ env.DATE }}.apk
-            build/app/outputs/flutter-apk/ummu-ayman-arm32-v${{ env.VERSION }}-${{ env.DATE }}.apk
+            build/app/outputs/flutter-apk/ummu-ayman-arm64.apk
+            build/app/outputs/flutter-apk/ummu-ayman-arm32.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Ondoa release za zamani zenye tag ya tarehe ili zisichanganye.
+      - name: Futa matoleo ya zamani
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release list --limit 100 --json tagName -q '.[].tagName' | while read -r tag; do
+            if [ -n "${tag}" ] && [ "${tag}" != "latest" ]; then
+              gh release delete "${tag}" --yes --cleanup-tag || true
+            fi
+          done
