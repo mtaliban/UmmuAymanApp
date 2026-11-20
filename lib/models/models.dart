@@ -143,29 +143,50 @@ class DailySheet {
       );
 }
 
-/// Kilichouzwa leo (Nyumbani -> kichupo "Vilivyouzwa leo")
-class SoldRow {
+/// Bidhaa iliyouzwa siku hiyo (Nyumbani -> BIDHAA ZILIZOUZIKA ZAIDI).
+/// Server imeshapanga kwa faida kubwa kwanza.
+class TopItem {
   final String name;
-  final int qty, buying, selling, profit;
+  final int qty, selling, sales, capital, profit;
   final bool outOfStock;
-  SoldRow({required this.name, required this.qty, required this.buying, required this.selling, required this.profit, this.outOfStock = false});
-  factory SoldRow.fromJson(Map<String, dynamic> j) =>
-      SoldRow(name: _s(j['name']), qty: _i(j['qty']), buying: _i(j['buying']), selling: _i(j['selling']), profit: _i(j['profit']), outOfStock: j['out_of_stock'] == true);
+  TopItem({required this.name, required this.qty, required this.selling, required this.sales, required this.capital, required this.profit, this.outOfStock = false});
+  factory TopItem.fromJson(Map<String, dynamic> j) {
+    final qty = _i(j['qty']);
+    final selling = _i(j['selling']);
+    // Majibu ya zamani hayana `sales`/`capital` — tunazihesabu kutoka qty.
+    final sales = j['sales'] == null ? qty * selling : _i(j['sales']);
+    final capital = j['capital'] == null ? qty * _i(j['buying']) : _i(j['capital']);
+    return TopItem(
+      name: _s(j['name']),
+      qty: qty,
+      selling: selling,
+      sales: sales,
+      capital: capital,
+      profit: j['profit'] == null ? sales - capital : _i(j['profit']),
+      outOfStock: j['out_of_stock'] == true,
+    );
+  }
 }
 
+/// Jibu la GET /home — Nyumbani unaita API hii pekee.
+/// `day == null` = hakuna mauzo yoyote bado (H1).
 class HomeData {
-  final DateTime date;
+  final DateTime? day;
   final Summary summary;
-  final List<Product> products;
-  final List<SoldRow> soldToday;
-  HomeData({required this.date, required this.summary, required this.products, required this.soldToday});
-  int get totalQty => products.fold(0, (a, p) => a + p.qty);
-  factory HomeData.fromJson(Map<String, dynamic> j) => HomeData(
-        date: DateTime.tryParse(_s(j['date'])) ?? DateTime.now(),
-        summary: Summary.fromJson(j['summary'] as Map<String, dynamic>?),
-        products: _l(j['products'], Product.fromJson),
-        soldToday: _l(j['sold_today'], SoldRow.fromJson),
-      );
+  final List<TopItem> top;
+  final List<Expense> expenses;
+  HomeData({required this.day, required this.summary, required this.top, required this.expenses});
+  static HomeData empty() => HomeData(day: null, summary: Summary.zero(), top: <TopItem>[], expenses: <Expense>[]);
+  factory HomeData.fromJson(Map<String, dynamic> j) {
+    final d = DateTime.tryParse(_s(j['day'] ?? j['date']));
+    if (d == null) return HomeData.empty();
+    return HomeData(
+      day: d,
+      summary: Summary.fromJson(j['summary'] is Map ? Map<String, dynamic>.from(j['summary'] as Map) : null),
+      top: _l(j['top'] ?? j['sold_today'], TopItem.fromJson),
+      expenses: _l(j['expenses'], Expense.fromJson),
+    );
+  }
 }
 
 class ReceiptItem {

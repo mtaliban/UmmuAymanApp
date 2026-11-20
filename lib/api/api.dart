@@ -30,8 +30,9 @@ abstract class Api {
   Future<Shop> shop();
   Future<void> registerDevice(String fcmToken, String platform);
 
-  // Nyumbani
-  Future<HomeData> home(DateTime date);
+  // Nyumbani — API moja tu: GET /home
+  Future<HomeData> home();
+  Future<HomeData?> lastHome(); // kumbukumbu ya mwisho (bila mtandao)
 
   // Stock
   Future<List<Product>> products();
@@ -140,8 +141,30 @@ class HttpApi extends Api {
   @override
   Future<void> registerDevice(String fcmToken, String platform) async => _send('POST', '/devices', body: {'fcm_token': fcmToken, 'platform': platform});
 
+  static const _homeCacheKey = 'home_cache';
+
   @override
-  Future<HomeData> home(DateTime date) async => HomeData.fromJson(_m(await _send('GET', '/home', query: {'date': iso(date)})));
+  Future<HomeData> home() async {
+    final d = _m(await _send('GET', '/home'));
+    final h = HomeData.fromJson(d);
+    try {
+      final sp = await SharedPreferences.getInstance();
+      await sp.setString(_homeCacheKey, jsonEncode(d));
+    } catch (_) {}
+    return h;
+  }
+
+  @override
+  Future<HomeData?> lastHome() async {
+    try {
+      final sp = await SharedPreferences.getInstance();
+      final s = sp.getString(_homeCacheKey);
+      if (s == null || s.isEmpty) return null;
+      return HomeData.fromJson(_m(jsonDecode(s)));
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   Future<List<Product>> products() async => _list(await _send('GET', '/products')).map(Product.fromJson).toList();

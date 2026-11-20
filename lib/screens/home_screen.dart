@@ -7,101 +7,80 @@ import '../utils/format.dart';
 import '../widgets/app_icons.dart';
 import '../widgets/ui.dart';
 import 'pin_screen.dart';
-import 'receipts_screen.dart';
 
-/// NYUMBANI — muhtasari wa siku ya mwisho iliyohifadhiwa:
-///  - Faida halisi (kubwa, bluu) + Mauzo / Mtaji / Gharama
-///  - BIDHAA ZILIZOUZIKA ZAIDI (kwa faida, kubwa kwanza)
-///  - GHARAMA + Jumla
-///  - RISITI za siku hiyo (gusa -> risiti katikati)
+/// NYUMBANI — muhtasari wa siku ya mwisho yenye mauzo.
+///
+/// API MOJA TU: GET /home (bila vigezo). Jibu:
+///   {"day": "2026-11-20" | null,
+///    "summary": {sales, capital, expenses, product_profit, net},
+///    "top": [{name, qty, selling, sales, capital, profit, out_of_stock}],
+///    "expenses": [{name, amount}]}
+///
+/// `day == null` -> H1 (hakuna mauzo bado).
+/// Ukurasa huu hauna sehemu ya risiti; bidhaa za risiti zimo ndani ya `top`.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeState();
 }
 
-class _Home {
-  final HomeData d;
-  final DailySheet sheet;
-  final List<Receipt> receipts;
-  const _Home(this.d, this.sheet, this.receipts);
-
-  DateTime get day => dayOnly(d.date);
-  bool get empty => d.summary.sales == 0 && d.summary.expenses == 0 && d.soldToday.isEmpty && receipts.isEmpty;
-
-  List<SoldRow> get top {
-    final list = d.soldToday.isNotEmpty ? [...d.soldToday] : _fromDay();
-    list.sort((a, b) => b.profit.compareTo(a.profit));
-    return list.take(5).toList();
-  }
-
-  /// Server ikiwa haijarudisha `sold_today`, tunakusanya kutoka mistari ya siku
-  /// (ya risiti + zilizoandikwa) na, ikiwa hakuna, kutoka bidhaa za risiti.
-  /// Jina moja = mstari mmoja; buying/selling ni wastani wa kimoja.
-  List<SoldRow> _fromDay() {
-    final acc = <String, List<int>>{}; // jina -> [idadi, mauzo, mtaji]
-    void add(String name, int qty, int sales, int capital) {
-      if (name.isEmpty || qty <= 0) return;
-      final a = acc.putIfAbsent(name, () => [0, 0, 0]);
-      a[0] += qty;
-      a[1] += sales;
-      a[2] += capital;
-    }
-
-    for (final l in sheet.receiptLines) {
-      add(l.name, l.qty, l.sales, l.capital);
-    }
-    for (final l in sheet.lines) {
-      add(l.name, l.qty, l.sales, l.capital);
-    }
-    if (acc.isEmpty) {
-      for (final r in receipts) {
-        for (final it in r.items) {
-          add(it.name, it.qty, it.amount, it.qty * it.buying);
-        }
-      }
-    }
-
-    return [
-      for (final e in acc.entries)
-        SoldRow(
-          name: e.key,
-          qty: e.value[0],
-          buying: e.value[2] ~/ e.value[0],
-          selling: e.value[1] ~/ e.value[0],
-          profit: e.value[1] - e.value[2],
-        ),
-    ];
-  }
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  late Future<_Home> _f;
-  final _today = dayOnly(DateTime.now());
+class _HomeState extends State<HomeScreen> with WidgetsBindingObserver {
+  HomeData? _h;
+  bool _loaded = false;
+  bool _offline = false;
 
   @override
   void initState() {
     super.initState();
-    _f = _load();
+    WidgetsBinding.instance.addObserver(this);
+    _load();
   }
 
-  Future<_Home> _load() async {
-    final d = await Api.i.home(_today);
-    final day = dayOnly(d.date);
-    final r = await Future.wait([Api.i.daily(day), Api.i.receipts(day)]);
-    return _Home(d, r[0] as DailySheet, r[1] as List<Receipt>);
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
-  Future<void> _reload() async {
-    setState(() => _f = _load());
-    await _f;
+  /// App ikirudi kutoka background -> GET /home upya.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final h = await Api.i.home();
+      if (!mounted) return;
+      setState(() {
+        _h = h;
+        _offline = false;
+        _loaded = true;
+      });
+    } catch (e) {
+      if (e is ApiException && e.status == 401) {
+        _toPin();
+        return;
+      }
+      final c = await Api.i.lastHome();
+      if (!mounted) return;
+      setState(() {
+        _h = c;
+        _offline = c == null; // data ya kumbukumbu ikiwepo, ionyeshwe
+        _loaded = true;
+      });
+    }
+  }
+
+  void _toPin() {
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const PinScreen()), (_) => false);
   }
 
   Future<void> _menu(String v) async {
     if (v == 'toka') {
       await Api.i.logout();
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const PinScreen()), (_) => false);
+      _toPin();
     } else if (v == 'pin') {
       await showCenterDialog(context, builder: (_) => const _ChangePin());
     }
@@ -109,112 +88,128 @@ class _HomeScreenState extends State<HomeScreen> {
 
   PopupMenuItem<String> _menuItem(String v, String icon, String text) => PopupMenuItem<String>(
         value: v,
-        height: 46,
+        height: 44,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         child: Row(children: [
           AppIcon(icon, size: 18),
-          const SizedBox(width: 10),
-          Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text)),
+          const SizedBox(width: 12),
+          Text(text, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600, color: C.text)),
         ]),
       );
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final h = _h;
     return Scaffold(
-      appBar: pageBar(dateLong(_today),
-          subtitle: 'Nyumbani',
-          action: PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert, color: C.muted),
-            color: Colors.white,
-            surfaceTintColor: Colors.white,
-            elevation: 6,
-            shadowColor: const Color(0x33111827),
-            offset: const Offset(0, 44),
-            constraints: const BoxConstraints(minWidth: 200, maxWidth: 200),
-            padding: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: C.line)),
-            onSelected: _menu,
-            itemBuilder: (_) => [
-              _menuItem('pin', AppIcons.key, 'Badilisha PIN'),
-              const PopupMenuDivider(height: 1),
-              _menuItem('toka', AppIcons.logOut, 'Toka'),
-            ],
-          )),
-      body: FutureBuilder<_Home>(
-        future: _f,
-        builder: (c, s) {
-          if (s.connectionState != ConnectionState.done) return const Loading();
-          if (s.hasError) return ErrorView(s.error!, onRetry: _reload);
-          final x = s.data!;
-          if (x.empty) {
-            return const Center(
-              child: EmptyState(
-                icon: Icons.receipt_long_outlined,
-                title: 'Bado hakuna mauzo',
-                text: 'Ukihifadhi siku yenye mauzo,\nmuhtasari wake utaonekana hapa.',
-              ),
-            );
-          }
-          return RefreshIndicator(
-            onRefresh: _reload,
-            color: C.blue,
-            child: ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 30), children: [
-              _DayLine(day: x.day, saved: x.sheet.savedAt != null),
-              const SizedBox(height: 10),
-              _Summary(x.d.summary),
-              SectionTitle('Bidhaa zilizouzika zaidi', trailing: '${x.top.length} bidhaa'),
-              if (x.top.isEmpty)
-                const Padding(padding: EdgeInsets.fromLTRB(2, 0, 2, 4), child: Text('Hakuna bidhaa iliyouzwa', style: TextStyle(fontSize: 13, color: C.muted)))
-              else
-                for (final (i, t) in x.top.indexed) _TopCard(rank: i + 1, row: t),
-              SectionTitle('Gharama', trailing: '${x.sheet.expenses.length}'),
-              if (x.sheet.expenses.isEmpty)
-                const Padding(padding: EdgeInsets.fromLTRB(2, 0, 2, 4), child: Text('Bado hakuna gharama', style: TextStyle(fontSize: 13, color: C.muted)))
-              else ...[
-                for (final e in x.sheet.expenses) _ExpenseRow(e.name, e.amount),
-                _ExpenseTotal(x.d.summary.expenses),
-              ],
-              SectionTitle('Risiti', trailing: '${x.receipts.length}'),
-              if (x.receipts.isEmpty)
-                const Padding(padding: EdgeInsets.fromLTRB(2, 0, 2, 4), child: Text('Bado hakuna risiti', style: TextStyle(fontSize: 13, color: C.muted)))
-              else
-                for (final r in x.receipts)
-                  _ReceiptRow(r: r, onTap: () => showReceiptDialog(context, r)),
-            ]),
-          );
-        },
+      backgroundColor: Colors.white,
+      appBar: pageBar(
+        dateLong(now),
+        subtitle: 'Nyumbani',
+        action: PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert_rounded, color: C.text2),
+          color: Colors.white,
+          surfaceTintColor: Colors.white,
+          elevation: 8,
+          offset: const Offset(0, 44),
+          constraints: const BoxConstraints.tightFor(width: 200),
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: C.line)),
+          onSelected: _menu,
+          itemBuilder: (_) => [
+            _menuItem('pin', AppIcons.key, 'Badilisha PIN'),
+            const PopupMenuDivider(height: 8),
+            _menuItem('toka', AppIcons.logOut, 'Toka'),
+          ],
+        ),
       ),
+      // Nyeupe wakati inapakia (hakuna mzunguko).
+      body: !_loaded
+          ? const SizedBox.expand()
+          : _offline
+              ? _Offline(onRetry: _load)
+              : h == null || h.day == null
+                  ? const Center(child: _NoSales())
+                  : RefreshIndicator(color: C.blue, onRefresh: _load, child: _body(h)),
     );
+  }
+
+  Widget _body(HomeData h) {
+    final s = h.summary;
+    final day = h.day!;
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 120), children: [
+      Row(children: [
+        Expanded(
+          child: Text(dayLabel(day),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, letterSpacing: .9, color: C.text2)),
+        ),
+        const SizedBox(width: 10),
+        Text(dayShort(day), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.muted)),
+      ]),
+      const SizedBox(height: 8),
+      _Summary(s),
+      SectionTitle('Bidhaa zilizouzika zaidi', trailing: '${h.top.length} bidhaa', padding: const EdgeInsets.fromLTRB(2, 20, 2, 8)),
+      for (final (i, t) in h.top.indexed) _TopCard(rank: i + 1, row: t),
+      if (h.expenses.isNotEmpty) ...[
+        const SectionTitle('Gharama', padding: EdgeInsets.fromLTRB(2, 20, 2, 8)),
+        for (final e in h.expenses) _ExpenseRow(e.name, e.amount),
+        _ExpenseTotal(s.expenses),
+      ],
+    ]);
   }
 }
 
-/// "MAUZO YA JANA" ...... "Alhamisi, 19 Nov"
-class _DayLine extends StatelessWidget {
-  final DateTime day;
-  final bool saved;
-  const _DayLine({required this.day, required this.saved});
+/// MAUZO YA LEO / JANA / <SIKU> / <TAREHE>
+String dayLabel(DateTime d) {
+  final t = dayOnly(DateTime.now());
+  final diff = t.difference(dayOnly(d)).inDays;
+  const days = ['JUMATATU', 'JUMANNE', 'JUMATANO', 'ALHAMISI', 'IJUMAA', 'JUMAMOSI', 'JUMAPILI'];
+  const months = ['JAN', 'FEB', 'MAC', 'APR', 'MEI', 'JUN', 'JUL', 'AGO', 'SEP', 'OKT', 'NOV', 'DES'];
+  if (diff <= 0) return 'MAUZO YA LEO';
+  if (diff == 1) return 'MAUZO YA JANA';
+  if (diff <= 6) return 'MAUZO YA ${days[d.weekday - 1]}';
+  return 'MAUZO YA ${d.day} ${months[d.month - 1]}';
+}
 
+/// "Ijumaa, 20 Nov"
+String dayShort(DateTime d) => '${daysSw[d.weekday - 1]}, ${d.day} ${monthsShort[d.month - 1]}';
+
+/// H1 — bado hakuna mauzo yoyote
+class _NoSales extends StatelessWidget {
+  const _NoSales();
   @override
-  Widget build(BuildContext context) {
-    final t = dayOnly(DateTime.now());
-    final diff = t.difference(day).inDays;
-    final label = diff <= 0
-        ? 'MAUZO YA LEO'
-        : diff == 1
-            ? 'MAUZO YA JANA'
-            : 'MAUZO YA ${day.day} ${monthsShort[day.month - 1]}'.toUpperCase();
-    final showSaved = diff <= 0 && saved;
-    return Row(children: [
-      Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .9))),
-      const SizedBox(width: 10),
-      if (showSaved) ...[
-        const Icon(Icons.check_circle_outline, size: 14, color: C.muted),
-        const SizedBox(width: 4),
-        const Text('imehifadhiwa', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.muted)),
-      ] else
-        Text('${daysSw[day.weekday - 1]}, ${day.day} ${monthsShort[day.month - 1]}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.muted)),
-    ]);
-  }
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 64,
+            height: 64,
+            decoration: const BoxDecoration(color: C.blue2, shape: BoxShape.circle),
+            child: const Center(child: AppIcon(AppIcons.house, size: 28, color: C.text)),
+          ),
+          const SizedBox(height: 16),
+          const Text('Bado hakuna mauzo', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          const Text('Ukiandika mauzo kwenye ukurasa wa Mauzo,\nyataonekana hapa.',
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: C.muted, height: 1.5)),
+        ]),
+      );
+}
+
+/// Hakuna mtandao na hakuna data ya kumbukumbu
+class _Offline extends StatelessWidget {
+  final Future<void> Function() onRetry;
+  const _Offline({required this.onRetry});
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('Hakuna mtandao', style: TextStyle(fontSize: 13, color: C.muted)),
+          const SizedBox(height: 12),
+          SmallButton('Jaribu tena', onTap: onRetry),
+        ]),
+      );
 }
 
 /// Faida halisi kubwa + Mauzo · Mtaji · Gharama
@@ -251,7 +246,7 @@ class _Summary extends StatelessWidget {
 /// Kadi ya bidhaa iliyouzwa zaidi: namba · jina · IDADI · SELLING · MAUZO · FAIDA
 class _TopCard extends StatelessWidget {
   final int rank;
-  final SoldRow row;
+  final TopItem row;
   const _TopCard({required this.rank, required this.row});
 
   @override
@@ -263,7 +258,9 @@ class _TopCard extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               SizedBox(width: 22, child: Text('$rank', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.faint))),
-              Expanded(child: Text(row.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700))),
+              Expanded(
+                  child: Text(row.name,
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700))),
               if (row.outOfStock)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
@@ -277,7 +274,7 @@ class _TopCard extends StatelessWidget {
               child: Row(children: [
                 Expanded(child: MiniStat('Idadi', '${row.qty}')),
                 Expanded(child: MiniStat('Selling', money(row.selling))),
-                Expanded(child: MiniStat('Mauzo', money(row.qty * row.selling))),
+                Expanded(child: MiniStat('Mauzo', money(row.sales))),
                 Expanded(child: MiniStat('Faida', money(row.profit), bold: true, color: C.blue)),
               ]),
             ),
@@ -312,34 +309,6 @@ class _ExpenseTotal extends StatelessWidget {
           const Expanded(child: Text('Jumla', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800))),
           Text(money(amount), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, fontFeatures: tabular)),
         ]),
-      );
-}
-
-class _ReceiptRow extends StatelessWidget {
-  final Receipt r;
-  final VoidCallback onTap;
-  const _ReceiptRow({required this.r, required this.onTap});
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Box(
-          radius: 12,
-          onTap: onTap,
-          padding: const EdgeInsets.fromLTRB(14, 11, 12, 11),
-          child: Row(children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(r.customerName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 2),
-                Text('Na. ${r.number} · ${hhmm(r.createdAt)}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-              ]),
-            ),
-            const SizedBox(width: 10),
-            Text(money(r.paid), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, fontFeatures: tabular)),
-            const SizedBox(width: 2),
-            const Icon(Icons.chevron_right_rounded, size: 20, color: C.faint),
-          ]),
-        ),
       );
 }
 

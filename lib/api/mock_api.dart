@@ -187,46 +187,40 @@ class MockApi extends Api {
 
   // ------------------------------------------------------------------ nyumbani
   @override
-  Future<HomeData> home(DateTime date) {
-    final lines = _allLines(date);
-    final sold = <String, List<int>>{}; // variantId -> [qty, profit]
-    for (final l in lines) {
-      final s = sold.putIfAbsent(l.variantId, () => [0, 0]);
-      s[0] += l.qty;
-      s[1] += l.profit;
+  Future<HomeData?> lastHome() async => null;
+
+  @override
+  Future<HomeData> home() {
+    // siku ya mwisho iliyoandikwa kitu (bidhaa, risiti au gharama)
+    var day = _today;
+    var found = _allLines(day).isNotEmpty || _expenses(day) > 0;
+    for (var i = 1; i <= 60 && !found; i++) {
+      day = _today.subtract(Duration(days: i));
+      found = _allLines(day).isNotEmpty || _expenses(day) > 0;
     }
-    final products = _products
-        .map((p) => Product(
-              id: p.id,
-              name: p.name,
-              hasTypes: p.hasTypes,
-              variants: p.variants
-                  .map((v) => Variant(
-                        id: v.id,
-                        productId: p.id,
-                        productName: p.name,
-                        name: v.name,
-                        qty: v.qty,
-                        buying: v.buying,
-                        selling: v.selling,
-                        soldToday: sold[v.id]?[0] ?? 0,
-                        profitToday: sold[v.id]?[1] ?? 0,
-                      ))
-                  .toList(),
-            ))
-        .toList();
-    final rows = <String, SoldRow>{};
-    for (final l in lines) {
-      final o = rows[l.name];
-      rows[l.name] = SoldRow(
-        name: l.name,
-        qty: (o?.qty ?? 0) + l.qty,
-        buying: l.buying,
-        selling: l.selling,
-        profit: (o?.profit ?? 0) + l.profit,
-      );
+    if (!found) return _d(HomeData.empty());
+
+    final acc = <String, List<int>>{}; // jina -> [idadi, mauzo, mtaji, faida]
+    for (final l in _allLines(day)) {
+      final a = acc.putIfAbsent(l.name, () => [0, 0, 0, 0]);
+      a[0] += l.qty;
+      a[1] += l.sales;
+      a[2] += l.capital;
+      a[3] += l.profit;
     }
-    return _d(HomeData(date: date, summary: _summary(date), products: products, soldToday: rows.values.toList()));
+    final top = [
+      for (final e in acc.entries)
+        TopItem(
+          name: e.key,
+          qty: e.value[0],
+          selling: e.value[0] == 0 ? 0 : e.value[1] ~/ e.value[0],
+          sales: e.value[1],
+          capital: e.value[2],
+          profit: e.value[3],
+        ),
+    ]..sort((a, b) => b.profit.compareTo(a.profit));
+
+    return _d(HomeData(day: day, summary: _summary(day), top: top, expenses: _daily[iso(day)]?.expenses ?? <Expense>[]));
   }
 
   // ------------------------------------------------------------------ stock
