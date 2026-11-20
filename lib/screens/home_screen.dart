@@ -30,8 +30,48 @@ class _Home {
   bool get empty => d.summary.sales == 0 && d.summary.expenses == 0 && d.soldToday.isEmpty && receipts.isEmpty;
 
   List<SoldRow> get top {
-    final list = [...d.soldToday]..sort((a, b) => b.profit.compareTo(a.profit));
+    final list = d.soldToday.isNotEmpty ? [...d.soldToday] : _fromDay();
+    list.sort((a, b) => b.profit.compareTo(a.profit));
     return list.take(5).toList();
+  }
+
+  /// Server ikiwa haijarudisha `sold_today`, tunakusanya kutoka mistari ya siku
+  /// (ya risiti + zilizoandikwa) na, ikiwa hakuna, kutoka bidhaa za risiti.
+  /// Jina moja = mstari mmoja; buying/selling ni wastani wa kimoja.
+  List<SoldRow> _fromDay() {
+    final acc = <String, List<int>>{}; // jina -> [idadi, mauzo, mtaji]
+    void add(String name, int qty, int sales, int capital) {
+      if (name.isEmpty || qty <= 0) return;
+      final a = acc.putIfAbsent(name, () => [0, 0, 0]);
+      a[0] += qty;
+      a[1] += sales;
+      a[2] += capital;
+    }
+
+    for (final l in sheet.receiptLines) {
+      add(l.name, l.qty, l.sales, l.capital);
+    }
+    for (final l in sheet.lines) {
+      add(l.name, l.qty, l.sales, l.capital);
+    }
+    if (acc.isEmpty) {
+      for (final r in receipts) {
+        for (final it in r.items) {
+          add(it.name, it.qty, it.amount, it.qty * it.buying);
+        }
+      }
+    }
+
+    return [
+      for (final e in acc.entries)
+        SoldRow(
+          name: e.key,
+          qty: e.value[0],
+          buying: e.value[2] ~/ e.value[0],
+          selling: e.value[1] ~/ e.value[0],
+          profit: e.value[1] - e.value[2],
+        ),
+    ];
   }
 }
 
