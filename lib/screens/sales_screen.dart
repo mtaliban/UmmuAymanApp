@@ -325,14 +325,10 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
     if (mounted) _load();
   }
 
+  /// Gusa kadi ya risiti -> ukurasa mzima wa risiti (T09).
   Future<void> _openReceipt(String? id) async {
     if (id == null || id.isEmpty) return;
-    try {
-      final r = await Api.i.receipt(id);
-      if (mounted) await showReceiptDialog(context, r);
-    } catch (e) {
-      if (mounted) showError(context, e);
-    }
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReceiptScreen(id: id)));
   }
 
   // ------------------------------------------------------------ PDF / shiriki

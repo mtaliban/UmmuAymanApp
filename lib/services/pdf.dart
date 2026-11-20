@@ -63,13 +63,13 @@ Future<Uint8List> receiptPdf(Receipt r, Shop shop) async {
             pw.Row(children: [pw.Expanded(child: _t('Jumla', c: _grey)), _t(money(r.gross), c: _grey)]),
             if (r.discountTotal > 0) pw.Row(children: [pw.Expanded(child: _t('Punguzo', c: _grey)), _t('- ${money(r.discountTotal)}', c: _grey)]),
             pw.Divider(thickness: 1.2),
-            pw.Row(children: [pw.Expanded(child: _t('Imelipwa', b: true, size: 12)), _t('TSh ${money(r.paid)}', b: true, size: 12)]),
+            pw.Row(children: [pw.Expanded(child: _t('IMELIPWA', b: true, size: 12)), _t(money(r.paid), b: true, size: 12, c: _blue)]),
           ]),
         ),
       ]),
       pw.Spacer(),
       pw.Divider(color: PdfColors.grey300),
-      pw.Center(child: _t('Asante kwa kununua', c: _grey)),
+      pw.Center(child: _t('Asante kwa kununua nasi', c: _grey)),
     ]),
   ));
   return doc.save();

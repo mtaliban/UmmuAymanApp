@@ -278,7 +278,10 @@ class Receipt {
     return Receipt(
       id: _s(j['id']),
       number: _s(j['number']),
-      createdAt: DateTime.tryParse(_s(j['created_at'])) ?? DateTime.now(),
+      // Server mpya hutuma date + time; za zamani created_at.
+      createdAt: DateTime.tryParse(_s(j['created_at'])) ??
+          DateTime.tryParse('${_s(j['date'])}T${_s(j['time']).isEmpty ? '00:00' : _s(j['time'])}') ??
+          DateTime.now(),
       customerName: _s(c['name']),
       customerPhone: _s(c['phone']),
       items: _l(j['items'], ReceiptItem.fromJson),
