@@ -158,15 +158,21 @@ class _DayLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = dayOnly(DateTime.now());
     final diff = t.difference(day).inDays;
-    final label = diff == 0
-        ? (saved ? 'MAUZO YA LEO (YAMEHIFADHIWA)' : 'MAUZO YA LEO')
+    final label = diff <= 0
+        ? 'MAUZO YA LEO'
         : diff == 1
             ? 'MAUZO YA JANA'
             : 'MAUZO YA ${day.day} ${monthsShort[day.month - 1]}'.toUpperCase();
+    final showSaved = diff <= 0 && saved;
     return Row(children: [
       Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .9))),
       const SizedBox(width: 10),
-      Text('${daysSw[day.weekday - 1]}, ${day.day} ${monthsShort[day.month - 1]}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.muted)),
+      if (showSaved) ...[
+        const Icon(Icons.check_circle_outline, size: 14, color: C.muted),
+        const SizedBox(width: 4),
+        const Text('imehifadhiwa', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.muted)),
+      ] else
+        Text('${daysSw[day.weekday - 1]}, ${day.day} ${monthsShort[day.month - 1]}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.muted)),
     ]);
   }
 }
