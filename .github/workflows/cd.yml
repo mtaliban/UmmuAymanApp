@@ -50,12 +50,12 @@ jobs:
           mv app-arm64-v8a-release.apk   ummu-ayman-arm64.apk
           mv app-armeabi-v7a-release.apk ummu-ayman-arm32.apk
 
-      # Tag ni "latest" daima: kila push inabadilisha release ile ile,
+      # Tag ni "apk" daima: kila push inabadilisha release ile ile,
       # badala ya kutengeneza release mpya yenye tarehe.
       - name: Create or update Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
+          tag_name: apk
           name: "Ummu Ayman — Toleo la Sasa"
           make_latest: true
           overwrite_files: true
@@ -84,13 +84,25 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Ondoa faili yoyote ya ziada ili release ibaki na APK mbili tu.
+      - name: Ondoa faili za ziada kwenye release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view apk --json assets -q '.assets[].name' | while read -r name; do
+            case "${name}" in
+              ummu-ayman-arm64.apk|ummu-ayman-arm32.apk) ;;
+              *) gh release delete-asset apk "${name}" --yes || true ;;
+            esac
+          done
+
       # Ondoa release za zamani zenye tag ya tarehe ili zisichanganye.
       - name: Futa matoleo ya zamani
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release list --limit 100 --json tagName -q '.[].tagName' | while read -r tag; do
-            if [ -n "${tag}" ] && [ "${tag}" != "latest" ]; then
+            if [ -n "${tag}" ] && [ "${tag}" != "apk" ]; then
               gh release delete "${tag}" --yes --cleanup-tag || true
             fi
           done
