@@ -15,15 +15,16 @@ import '../utils/format.dart';
 const double kHeaderHeight = 96; // urefu wa kichwa chini ya status bar
 const double kHeaderBottomGap = 10; // nafasi kati ya maneno na mstari
 
-PreferredSizeWidget pageBar(String title, {String? subtitle, Widget? action, bool back = false}) =>
-    _PageHeader(title: title, subtitle: subtitle, action: action, back: back);
+PreferredSizeWidget pageBar(String title, {String? subtitle, Widget? action, bool back = false, bool boxBack = false}) =>
+    _PageHeader(title: title, subtitle: subtitle, action: action, back: back, boxBack: boxBack);
 
 class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final String? subtitle;
   final Widget? action;
   final bool back;
-  const _PageHeader({required this.title, this.subtitle, this.action, this.back = false});
+  final bool boxBack;
+  const _PageHeader({required this.title, this.subtitle, this.action, this.back = false, this.boxBack = false});
 
   @override
   Size get preferredSize => const Size.fromHeight(kHeaderHeight + 1);
@@ -40,7 +41,24 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
               padding: EdgeInsets.fromLTRB(back ? 6 : 18, 0, 16, kHeaderBottomGap),
               decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB)))),
               child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                if (back)
+                if (back && boxBack)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 2),
+                    child: InkWell(
+                      onTap: () => Navigator.of(context).maybePop(),
+                      borderRadius: BorderRadius.circular(9),
+                      child: Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: C.field),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: const Icon(Icons.arrow_back_rounded, color: C.text, size: 20),
+                      ),
+                    ),
+                  )
+                else if (back)
                   IconButton(
                     onPressed: () => Navigator.of(context).maybePop(),
                     icon: const Icon(Icons.arrow_back_rounded, color: C.text, size: 22),
@@ -153,18 +171,21 @@ class SmallButton extends StatelessWidget {
   final Color color;
   final Widget? icon;
   final bool filled; // true = bluu iliyojaa, maandishi meupe
-  const SmallButton(this.label, {super.key, this.onTap, this.busy = false, this.color = C.blue, this.icon, this.filled = false});
+  final double height;
+  final Color? borderColor;
+  const SmallButton(this.label,
+      {super.key, this.onTap, this.busy = false, this.color = C.blue, this.icon, this.filled = false, this.height = 30, this.borderColor});
   @override
   Widget build(BuildContext context) => InkWell(
         onTap: busy ? null : onTap,
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          height: 30,
+          height: height,
           constraints: const BoxConstraints(minWidth: 70),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color),
+            border: Border.all(color: borderColor ?? color),
             color: filled ? color : null,
           ),
           alignment: Alignment.center,

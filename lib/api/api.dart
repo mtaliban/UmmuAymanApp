@@ -43,9 +43,17 @@ abstract class Api {
   Future<Variant> updateVariant(String id, {int addQty = 0, int? buying, int? selling, String? name});
   Future<void> deleteVariant(String id);
 
-  // Mauzo ya leo
-  Future<DailySheet> daily(DateTime date);
-  Future<DailySheet> saveDaily(DateTime date, List<SaleLine> lines, List<Expense> expenses);
+  // Mauzo ya leo / siku ya Historia
+  Future<DailySheet> daily(DateTime date); // S1 GET /daily/{date}
+  Future<DailySheet> daySheet(String date); // S1 (tarehe kama YYYY-MM-DD)
+  Future<List<Variant>> searchList(); // S0 GET /products/search-list
+  Future<DailySheet> addLine(String date, {String? variantId, required String name, required int qty, required int selling, int? buying}); // S2
+  Future<DailySheet> updateLine(String date, String id, {int? qty, int? selling, int? buying}); // S3
+  Future<DailySheet> addExpense(String date, String name, int amount); // S4
+  Future<DailySheet> updateExpense(String date, String id, {String? name, int? amount}); // S5
+  Future<DailySheet> closeDay(String date); // S6 Hifadhi
+  Future<DailySheet> reopenDay(String date); // S7 Hariri
+  Future<History> history({String? before}); // S8
   Future<List<String>> expenseNames();
 
   // Risiti
@@ -203,10 +211,45 @@ class HttpApi extends Api {
   Future<DailySheet> daily(DateTime date) async => DailySheet.fromJson(_m(await _send('GET', '/daily/${iso(date)}')));
 
   @override
-  Future<DailySheet> saveDaily(DateTime date, List<SaleLine> lines, List<Expense> expenses) async => DailySheet.fromJson(_m(await _send('PUT', '/daily/${iso(date)}', body: {
-        'lines': lines.map((e) => e.toJson()).toList(),
-        'expenses': expenses.map((e) => e.toJson()).toList(),
+  Future<DailySheet> daySheet(String date) async => DailySheet.fromJson(_m(await _send('GET', '/daily/$date')));
+
+  @override
+  Future<List<Variant>> searchList() async => _list(await _send('GET', '/products/search-list')).map(Variant.fromJson).toList();
+
+  @override
+  Future<DailySheet> addLine(String date, {String? variantId, required String name, required int qty, required int selling, int? buying}) async =>
+      DailySheet.fromJson(_m(await _send('POST', '/daily/$date/lines', body: variantId != null
+          ? {'variant_id': variantId, 'qty': qty, 'selling': selling}
+          : {'variant_id': null, 'name': name, 'qty': qty, 'selling': selling, 'buying': buying})));
+
+  @override
+  Future<DailySheet> updateLine(String date, String id, {int? qty, int? selling, int? buying}) async =>
+      DailySheet.fromJson(_m(await _send('PATCH', '/daily/$date/lines/$id', body: {
+        if (qty != null) 'qty': qty,
+        if (selling != null) 'selling': selling,
+        if (buying != null) 'buying': buying,
       })));
+
+  @override
+  Future<DailySheet> addExpense(String date, String name, int amount) async =>
+      DailySheet.fromJson(_m(await _send('POST', '/daily/$date/expenses', body: {'name': name, 'amount': amount})));
+
+  @override
+  Future<DailySheet> updateExpense(String date, String id, {String? name, int? amount}) async =>
+      DailySheet.fromJson(_m(await _send('PATCH', '/daily/$date/expenses/$id', body: {
+        if (name != null) 'name': name,
+        if (amount != null) 'amount': amount,
+      })));
+
+  @override
+  Future<DailySheet> closeDay(String date) async => DailySheet.fromJson(_m(await _send('POST', '/daily/$date/close')));
+
+  @override
+  Future<DailySheet> reopenDay(String date) async => DailySheet.fromJson(_m(await _send('POST', '/daily/$date/reopen')));
+
+  @override
+  Future<History> history({String? before}) async =>
+      History.fromJson(_m(await _send('GET', '/daily/history', query: {'limit': '40', if (before != null) 'before': before})));
 
   @override
   Future<List<String>> expenseNames() async => ((await _send('GET', '/expenses/names')) as List).map((e) => '$e').toList();

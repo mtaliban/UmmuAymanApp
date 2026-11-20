@@ -28,6 +28,24 @@ const monthsShort = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ago', 'Se
 /// "Jumanne, 17 Nov 2026"
 String dateLong(DateTime d) => '${daysSw[d.weekday - 1]}, ${d.day} ${monthsShort[d.month - 1]} ${d.year}';
 
+/// "Ijumaa, 20 Nov"
+String dateShortDay(DateTime d) => '${daysSw[d.weekday - 1]}, ${d.day} ${monthsShort[d.month - 1]}';
+
+/// "20 Nov"
+String dayMonth(DateTime d) => '${d.day} ${monthsShort[d.month - 1]}';
+
+/// "20 Nov 2026, 21:40"
+String dateTimeShort(DateTime d) => '${d.day} ${monthsShort[d.month - 1]} ${d.year}, ${hhmm(d)}';
+
+/// "2026-11-20" -> "20-Nov-2026" (jina la faili la PDF)
+String fileDate(String isoDate) {
+  final d = DateTime.tryParse(isoDate);
+  return d == null ? isoDate : '${d.day}-${monthsShort[d.month - 1]}-${d.year}';
+}
+
+/// Tarehe ya leo kama "2026-11-20"
+String todayIso() => iso(dayOnly(DateTime.now()));
+
 /// "17 Nov 2026"
 String dateShort(DateTime d) => '${d.day} ${monthsShort[d.month - 1]} ${d.year}';
 

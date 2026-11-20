@@ -74,7 +74,9 @@ class Product {
 }
 
 /// Mstari mmoja wa mauzo (kwenye Mauzo ya leo)
+/// `variantId` = '' kama bidhaa haikuwa kwenye orodha ya stock.
 class SaleLine {
+  final String id; // l_8f2a / rc_0001_0
   final String variantId;
   final String name;
   int qty;
@@ -82,37 +84,51 @@ class SaleLine {
   final int buying; // kutoka stock
   final int stockSelling;
   final String? receiptNo; // kama imetoka kwenye risiti
+  final String? receiptId;
 
-  SaleLine({required this.variantId, required this.name, required this.qty, required this.selling, required this.buying, int? stockSelling, this.receiptNo})
-      : stockSelling = stockSelling ?? selling;
+  SaleLine({
+    this.id = '',
+    required this.variantId,
+    required this.name,
+    required this.qty,
+    required this.selling,
+    required this.buying,
+    int? stockSelling,
+    this.receiptNo,
+    this.receiptId,
+  }) : stockSelling = stockSelling ?? selling;
 
   int get sales => qty * selling;
   int get capital => qty * buying;
   int get profit => qty * (selling - buying);
   bool get fromReceipt => receiptNo != null && receiptNo!.isNotEmpty;
+  bool get fromStock => variantId.isNotEmpty;
 
   factory SaleLine.fromJson(Map<String, dynamic> j) => SaleLine(
-        variantId: _s(j['variant_id']),
+        id: _s(j['id']),
+        variantId: j['variant_id'] == null ? '' : _s(j['variant_id']),
         name: _s(j['name']),
         qty: _i(j['qty']),
         selling: _i(j['selling']),
         buying: _i(j['buying']),
         stockSelling: j['stock_selling'] == null ? null : _i(j['stock_selling']),
         receiptNo: j['receipt_no'] == null ? null : _s(j['receipt_no']),
+        receiptId: j['receipt_id'] == null ? null : _s(j['receipt_id']),
       );
 
-  Map<String, dynamic> toJson() => {'variant_id': variantId, 'qty': qty, 'selling': selling};
+  Map<String, dynamic> toJson() => {'variant_id': variantId.isEmpty ? null : variantId, 'qty': qty, 'selling': selling};
 }
 
 /// Gharama — jina lolote (unstructured). Fields za ziada zinahifadhiwa kama zilivyo.
 class Expense {
+  final String id; // e_77c0
   String name;
   int amount;
   final Map<String, dynamic> extra;
-  Expense({required this.name, required this.amount, Map<String, dynamic>? extra}) : extra = extra ?? {};
+  Expense({this.id = '', required this.name, required this.amount, Map<String, dynamic>? extra}) : extra = extra ?? {};
   factory Expense.fromJson(Map<String, dynamic> j) {
-    final x = Map<String, dynamic>.from(j)..remove('name')..remove('amount');
-    return Expense(name: _s(j['name']), amount: _i(j['amount']), extra: x);
+    final x = Map<String, dynamic>.from(j)..remove('id')..remove('name')..remove('amount');
+    return Expense(id: _s(j['id']), name: _s(j['name']), amount: _i(j['amount']), extra: x);
   }
   Map<String, dynamic> toJson() => {...extra, 'name': name, 'amount': amount};
 }
@@ -133,14 +149,53 @@ class DailySheet {
   final List<SaleLine> lines; // alizoandika mwenyewe
   final List<Expense> expenses;
   final DateTime? savedAt;
-  DailySheet({required this.date, required this.receiptLines, required this.lines, required this.expenses, this.savedAt});
+  final Summary? summary; // hutumwa na server; ikiwa null tunahesabu wenyewe
+  DailySheet({required this.date, required this.receiptLines, required this.lines, required this.expenses, this.savedAt, this.summary});
   factory DailySheet.fromJson(Map<String, dynamic> j) => DailySheet(
         date: DateTime.tryParse(_s(j['date'])) ?? DateTime.now(),
         receiptLines: _l(j['receipt_lines'], SaleLine.fromJson),
         lines: _l(j['lines'], SaleLine.fromJson),
         expenses: _l(j['expenses'], Expense.fromJson),
-        savedAt: j['saved_at'] == null ? null : DateTime.tryParse(_s(j['saved_at'])),
+        savedAt: j['saved_at'] == null ? null : DateTime.tryParse(_s(j['saved_at']))?.toLocal(),
+        summary: j['summary'] is Map ? Summary.fromJson(Map<String, dynamic>.from(j['summary'] as Map)) : null,
       );
+
+  List<SaleLine> get all => [...receiptLines, ...lines];
+  int get qty => all.fold(0, (a, l) => a + l.qty);
+
+  /// Muhtasari wa server; ikiwa haukutumwa, tunahesabu kutoka mistari.
+  Summary get totals =>
+      summary ??
+      Summary(
+        sales: all.fold(0, (a, l) => a + l.sales),
+        capital: all.fold(0, (a, l) => a + l.capital),
+        expenses: expenses.fold(0, (a, e) => a + e.amount),
+      );
+}
+
+/// Historia ya mauzo (GET /daily/history) — siku zilizopita kwa miezi.
+class HistoryDay {
+  final String date; // 2026-11-19
+  final String label; // Alhamisi, 19 Nov
+  final int sales, items, net;
+  HistoryDay({required this.date, required this.label, required this.sales, required this.items, required this.net});
+  factory HistoryDay.fromJson(Map<String, dynamic> j) =>
+      HistoryDay(date: _s(j['date']), label: _s(j['label']), sales: _i(j['sales']), items: _i(j['items']), net: _i(j['net']));
+}
+
+class HistoryMonth {
+  final String label; // NOVEMBA 2026
+  final List<HistoryDay> days;
+  HistoryMonth({required this.label, required this.days});
+  factory HistoryMonth.fromJson(Map<String, dynamic> j) => HistoryMonth(label: _s(j['label']), days: _l(j['days'], HistoryDay.fromJson));
+}
+
+class History {
+  final List<HistoryMonth> months;
+  final String? nextBefore;
+  History({required this.months, this.nextBefore});
+  factory History.fromJson(Map<String, dynamic> j) =>
+      History(months: _l(j['months'], HistoryMonth.fromJson), nextBefore: j['next_before'] == null ? null : _s(j['next_before']));
 }
 
 /// Bidhaa iliyouzwa siku hiyo (Nyumbani -> BIDHAA ZILIZOUZIKA ZAIDI).

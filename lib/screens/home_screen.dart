@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../api/api.dart';
 import '../models/models.dart';
 import '../theme.dart';
 import '../utils/format.dart';
+import '../utils/home_bus.dart';
 import '../widgets/app_icons.dart';
 import '../widgets/ui.dart';
 import 'pin_screen.dart';
@@ -28,16 +31,20 @@ class _HomeState extends State<HomeScreen> with WidgetsBindingObserver {
   HomeData? _h;
   bool _loaded = false;
   bool _offline = false;
+  StreamSubscription<void>? _bus;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Mauzo/Risiti zikibadilisha kitu -> HomeBus.refresh() -> pakia upya.
+    _bus = HomeBus.stream.listen((_) => _load());
     _load();
   }
 
   @override
   void dispose() {
+    _bus?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

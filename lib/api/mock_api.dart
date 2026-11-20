@@ -79,6 +79,14 @@ class MockApi extends Api {
   }
 
   Variant _vByName(String n) => _allVariants.firstWhere((v) => v.name == n);
+
+  /// Namba ya risiti -> id yake
+  String? _rid(String? no) {
+    for (final r in _receipts) {
+      if (r.number == no) return r.id;
+    }
+    return null;
+  }
   Variant _v(String id) => _allVariants.firstWhere((v) => v.id == id, orElse: () => throw ApiException('Bidhaa haipo', 404));
   List<Variant> get _allVariants => _products.expand((p) => p.variants).toList();
   Product _prod(String id) => _products.firstWhere((p) => p.id == id, orElse: () => throw ApiException('Bidhaa haipo', 404));
@@ -283,45 +291,166 @@ class MockApi extends Api {
     _products.removeWhere((p) => p.variants.isEmpty && !p.hasTypes);
   }
 
-  // ------------------------------------------------------------------ mauzo ya leo
-  @override
-  Future<DailySheet> daily(DateTime date) {
-    final d = _daily[iso(date)];
-    return _d(DailySheet(
-      date: date,
-      receiptLines: _receiptLines(date),
-      lines: (d?.lines ?? []).map((l) => SaleLine(variantId: l.variantId, name: l.name, qty: l.qty, selling: l.selling, buying: l.buying, stockSelling: l.stockSelling)).toList(),
-      expenses: (d?.expenses ?? []).map((e) => Expense(name: e.name, amount: e.amount, extra: e.extra)).toList(),
-      savedAt: d?.savedAt,
-    ));
+  // ------------------------------------------------------------------ mauzo (S0–S8)
+  DailySheet _sheet(String date) {
+    final dt = DateTime.tryParse(date) ?? _today;
+    final key = iso(dt);
+    final d = _daily[key];
+    final rl = _receiptLines(dt)
+        .toList()
+        .indexed
+        .map((x) => SaleLine(
+              id: 'rc_${x.$1}',
+              variantId: x.$2.variantId,
+              name: x.$2.name,
+              qty: x.$2.qty,
+              selling: x.$2.selling,
+              buying: x.$2.buying,
+              receiptNo: x.$2.receiptNo,
+              receiptId: _rid(x.$2.receiptNo),
+            ))
+        .toList();
+    final lines = (d?.lines ?? <SaleLine>[])
+        .toList()
+        .indexed
+        .map((x) => SaleLine(
+              id: 'l_${key}_${x.$1}',
+              variantId: x.$2.variantId,
+              name: x.$2.name,
+              qty: x.$2.qty,
+              selling: x.$2.selling,
+              buying: x.$2.buying,
+              stockSelling: x.$2.stockSelling,
+            ))
+        .toList();
+    final exps = (d?.expenses ?? <Expense>[])
+        .toList()
+        .indexed
+        .map((x) => Expense(id: 'e_${key}_${x.$1}', name: x.$2.name, amount: x.$2.amount, extra: x.$2.extra))
+        .toList();
+    return DailySheet(date: dt, receiptLines: rl, lines: lines, expenses: exps, savedAt: d?.savedAt);
   }
 
   @override
-  Future<DailySheet> saveDaily(DateTime date, List<SaleLine> lines, List<Expense> expenses) async {
-    final key = iso(date);
-    final old = _daily[key]?.lines ?? [];
-    // DELTA: kipya - cha zamani kwa kila aina
-    final delta = <String, int>{};
-    for (final o in old) {
-      delta[o.variantId] = (delta[o.variantId] ?? 0) - o.qty;
+  Future<DailySheet> daily(DateTime date) => _d(_sheet(iso(date)));
+
+  @override
+  Future<DailySheet> daySheet(String date) => _d(_sheet(date));
+
+  @override
+  Future<List<Variant>> searchList() =>
+      _d(_allVariants.map((v) => v.copy()).toList()..sort((a, b) => a.name.compareTo(b.name)));
+
+  _Day _editable(String date) {
+    final dt = DateTime.tryParse(date) ?? _today;
+    if (dt.isAfter(_today)) throw ApiException('Huwezi kuandika siku ijayo', 400);
+    final d = _daily.putIfAbsent(iso(dt), () => _Day([], [], null));
+    if (d.savedAt != null) throw ApiException('Siku imehifadhiwa — bonyeza Hariri kwanza', 409);
+    return d;
+  }
+
+  int _idx(String id) => int.tryParse(id.split('_').last) ?? -1;
+
+  @override
+  Future<DailySheet> addLine(String date, {String? variantId, required String name, required int qty, required int selling, int? buying}) async {
+    final d = _editable(date);
+    var nm = name.trim();
+    var by = buying ?? 0;
+    if (variantId != null) {
+      final v = _v(variantId);
+      nm = v.name;
+      by = v.buying;
+      // Stock inapungua lakini haishuki chini ya 0 — haizuii mauzo.
+      v.qty -= min(qty, max(0, v.qty));
+    } else if (nm.isEmpty) {
+      throw ApiException('Jaza jina la bidhaa', 422);
     }
-    for (final n in lines) {
-      delta[n.variantId] = (delta[n.variantId] ?? 0) + n.qty;
-    }
-    delta.forEach((vid, d) {
-      final v = _v(vid);
-      if (d > 0 && v.qty < d) throw ApiException('${v.name}: zipo ${v.qty} tu');
-    });
-    delta.forEach((vid, d) => _v(vid).qty -= d);
-    _daily[key] = _Day(
-      lines.map((l) {
-        final v = _v(l.variantId);
-        return SaleLine(variantId: v.id, name: v.name, qty: l.qty, selling: l.selling, buying: v.buying, stockSelling: v.selling);
-      }).toList(),
-      expenses.where((e) => e.name.trim().isNotEmpty && e.amount > 0).toList(),
-      DateTime.now(),
+    d.lines.add(SaleLine(variantId: variantId ?? '', name: nm, qty: qty, selling: selling, buying: by, stockSelling: selling));
+    return daySheet(date);
+  }
+
+  @override
+  Future<DailySheet> updateLine(String date, String id, {int? qty, int? selling, int? buying}) async {
+    final d = _editable(date);
+    final i = _idx(id);
+    if (i < 0 || i >= d.lines.length) throw ApiException('Haipo', 404);
+    final l = d.lines[i];
+    d.lines[i] = SaleLine(
+      variantId: l.variantId,
+      name: l.name,
+      qty: qty ?? l.qty,
+      selling: selling ?? l.selling,
+      buying: (!l.fromStock && buying != null) ? buying : l.buying,
+      stockSelling: l.stockSelling,
     );
-    return daily(date);
+    return daySheet(date);
+  }
+
+  @override
+  Future<DailySheet> addExpense(String date, String name, int amount) async {
+    final d = _editable(date);
+    if (name.trim().isEmpty) throw ApiException('Jaza jina la gharama', 422);
+    d.expenses.add(Expense(name: name.trim(), amount: amount));
+    return daySheet(date);
+  }
+
+  @override
+  Future<DailySheet> updateExpense(String date, String id, {String? name, int? amount}) async {
+    final d = _editable(date);
+    final i = _idx(id);
+    if (i < 0 || i >= d.expenses.length) throw ApiException('Haipo', 404);
+    final e = d.expenses[i];
+    d.expenses[i] = Expense(name: (name ?? e.name).trim(), amount: amount ?? e.amount, extra: e.extra);
+    return daySheet(date);
+  }
+
+  @override
+  Future<DailySheet> closeDay(String date) async {
+    final dt = DateTime.tryParse(date) ?? _today;
+    final d = _daily.putIfAbsent(iso(dt), () => _Day([], [], null));
+    d.savedAt = DateTime.now();
+    return daySheet(date);
+  }
+
+  @override
+  Future<DailySheet> reopenDay(String date) async {
+    final dt = DateTime.tryParse(date) ?? _today;
+    final d = _daily.putIfAbsent(iso(dt), () => _Day([], [], null));
+    d.savedAt = null;
+    return daySheet(date);
+  }
+
+  @override
+  Future<History> history({String? before}) async {
+    final end = before == null ? _today : (DateTime.tryParse(before) ?? _today);
+    final days = <DateTime>[];
+    for (var i = 1; i <= 40; i++) {
+      final d = end.subtract(Duration(days: i));
+      final key = iso(d);
+      final has = (_daily[key]?.lines.isNotEmpty ?? false) ||
+          (_daily[key]?.expenses.isNotEmpty ?? false) ||
+          _receiptLines(d).isNotEmpty ||
+          _history(d).lines.isNotEmpty;
+      if (has) days.add(d);
+    }
+    final months = <HistoryMonth>[];
+    for (final d in days) {
+      final label = '${monthsSw[d.month - 1].toUpperCase()} ${d.year}';
+      final s = _summary(d);
+      final day = HistoryDay(
+        date: iso(d),
+        label: '${daysSw[d.weekday - 1]}, ${d.day} ${monthsShort[d.month - 1]}',
+        sales: s.sales,
+        items: _allLines(d).fold(0, (a, l) => a + l.qty),
+        net: s.net,
+      );
+      if (months.isNotEmpty && months.last.label == label) {
+        months.last.days.add(day);
+      } else {
+        months.add(HistoryMonth(label: label, days: [day]));
+      }
+    }
+    return _d(History(months: months, nextBefore: days.length >= 40 ? iso(days.last.subtract(const Duration(days: 1))) : null));
   }
 
   @override
@@ -464,7 +593,7 @@ class MockApi extends Api {
 class _Day {
   final List<SaleLine> lines;
   final List<Expense> expenses;
-  final DateTime savedAt;
+  DateTime? savedAt;
   _Day(this.lines, this.expenses, this.savedAt);
 }
 
