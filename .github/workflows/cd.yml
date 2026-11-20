@@ -38,7 +38,9 @@ jobs:
         run: flutter pub get
 
       - name: Build APKs
-        run: flutter build apk --release --split-per-abi
+        run: |
+          flutter build apk --release --split-per-abi
+          flutter build apk --release
 
       - name: Prepare release info
         run: |
@@ -49,6 +51,7 @@ jobs:
           echo "DATE=${DATE}"       >> $GITHUB_ENV
           echo "TAG=${TAG}"         >> $GITHUB_ENV
           cd build/app/outputs/flutter-apk/
+          mv app-release.apk             ummu-ayman-kamili-v${VERSION}-${DATE}.apk
           mv app-arm64-v8a-release.apk   ummu-ayman-arm64-v${VERSION}-${DATE}.apk
           mv app-armeabi-v7a-release.apk ummu-ayman-arm32-v${VERSION}-${DATE}.apk
 
@@ -65,12 +68,13 @@ jobs:
 
             | Faili | Ukubwa | Simu |
             |-------|--------|------|
-            | `ummu-ayman-arm64-*` | ~10 MB | Simu za kisasa (Samsung/Tecno/Infinix 2016+) — **chaguo la kwanza** |
-            | `ummu-ayman-arm32-*` | ~9 MB | Simu za zamani (32-bit) — kama arm64 haitanyi kazi |
+            | `ummu-ayman-kamili-*` | ~25 MB | **APK kamili — simu yoyote.** Chaguo la kwanza; inafanya kazi kwenye 64-bit na 32-bit |
+            | `ummu-ayman-arm64-*` | ~24 MB | Simu za kisasa (64-bit) — nyepesi kidogo |
+            | `ummu-ayman-arm32-*` | ~22 MB | Simu za zamani (32-bit) |
 
             ---
 
-            > Sijui APK ipi? Chagua **arm64** kwanza. Kama haitaki, jaribu arm32.
+            > Sijui APK ipi? Chagua **kamili** — inafanya kazi kwenye simu yoyote.
             > Inakataa install? Settings → Security → **Install unknown apps** — wezasha
 
             ---
@@ -78,6 +82,7 @@ jobs:
             🕒 Ilitegenezwa: `${{ env.DATE }}`
             🔗 Commit: `${{ github.sha }}`
           files: |
+            build/app/outputs/flutter-apk/ummu-ayman-kamili-v${{ env.VERSION }}-${{ env.DATE }}.apk
             build/app/outputs/flutter-apk/ummu-ayman-arm64-v${{ env.VERSION }}-${{ env.DATE }}.apk
             build/app/outputs/flutter-apk/ummu-ayman-arm32-v${{ env.VERSION }}-${{ env.DATE }}.apk
         env:
