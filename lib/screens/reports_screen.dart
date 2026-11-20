@@ -101,7 +101,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
       FocusScope.of(context).unfocus();
       await Navigator.of(context).push(MaterialPageRoute(builder: (_) => DayReportScreen(date: DateTime.parse(r.key))));
     } else if (_period == Period.month) {
-      _setPeriod(Period.week, DateTime.parse(r.key));
+      FocusScope.of(context).unfocus();
+      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => WeekReportScreen(date: DateTime.parse(r.key))));
     } else {
       final p = r.key.split('-');
       _setPeriod(Period.month, DateTime(int.parse(p[0]), int.parse(p[1]), 1));
@@ -111,10 +112,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   String _range(Report r) {
     switch (r.period) {
       case Period.week:
-        final s = r.anchor.subtract(Duration(days: r.anchor.weekday - 1));
-        final e = s.add(const Duration(days: 6));
-        final m1 = monthsSw[s.month - 1], m2 = monthsSw[e.month - 1];
-        return s.month == e.month ? '${s.day} – ${e.day} $m2 ${e.year}' : '${s.day} $m1 – ${e.day} $m2 ${e.year}';
+        return _weekRangeText(r.anchor);
       case Period.month:
         return '${monthsSw[r.anchor.month - 1]} ${r.anchor.year}';
       case Period.year:
@@ -159,10 +157,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _body(Report r) {
-    final active = r.rows.where((x) => x.s.sales > 0).toList();
+    final chartRows = r.period == Period.year ? _yearRows(r) : r.rows.where((x) => x.s.sales > 0).toList();
     var best = -1;
-    for (var i = 0; i < active.length; i++) {
-      if (best < 0 || active[i].s.net > active[best].s.net) best = i;
+    for (var i = 0; i < chartRows.length; i++) {
+      if (best < 0 || chartRows[i].s.net > chartRows[best].s.net) best = i;
     }
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Padding(
@@ -189,15 +187,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
       Box(
         radius: 14,
         padding: const EdgeInsets.fromLTRB(10, 14, 10, 10),
-        child: _Bars(rows: active, best: best, onTap: (i) => _tapRow(active[i])),
+        child: _Bars(
+          rows: chartRows,
+          best: best,
+          onTap: (i) {
+            if (chartRows[i].key.isEmpty) return;
+            _tapRow(chartRows[i]);
+          },
+        ),
       ),
       if (r.period == Period.month) ...[
         const SectionTitle('Wiki za mwezi', padding: EdgeInsets.fromLTRB(2, 22, 2, 10)),
-        _PeriodRows(rows: r.rows, label: _weekLabel, currentNote: 'Wiki hii · inaendelea', onTap: _tapRow),
-      ],
-      if (r.period == Period.year) ...[
-        const SectionTitle('Miezi ya mwaka', padding: EdgeInsets.fromLTRB(2, 22, 2, 10)),
-        _PeriodRows(rows: r.rows, label: (x) => x.label, currentNote: 'Mwezi huu · inaendelea', onTap: _tapRow),
+        _PeriodRows(rows: r.rows, label: _weekLabel, note: _weekNote, onTap: _tapRow),
       ],
       if (r.top.isNotEmpty) ...[
         const SectionTitle('Zilizouzika zaidi', padding: EdgeInsets.fromLTRB(2, 24, 2, 10)),
@@ -276,10 +277,51 @@ class _ReportsScreenState extends State<ReportsScreen> {
     ]);
   }
 
+  /// "16 – 22 Nov" ; wiki inayoanza mwezi uliopita inaanza siku ya kwanza ya mwezi
   String _weekLabel(ReportRow x) {
-    final s = DateTime.parse(x.key);
-    final e = s.add(const Duration(days: 6));
-    return '${s.day} – ${e.day} ${monthsShort[e.month - 1]}';
+    final (from, to) = _weekSpanInMonth(x.key);
+    return from.day == to.day
+        ? '${from.day} ${monthsShort[from.month - 1]}'
+        : '${from.day} – ${to.day} ${monthsShort[to.month - 1]}';
+  }
+
+  /// "Wiki hii · inaendelea" / "Wiki 2" / "Jumamosi tu"
+  String _weekNote(ReportRow x) {
+    if (x.current) return 'Wiki hii · inaendelea';
+    final (from, to) = _weekSpanInMonth(x.key);
+    if (from == to) return '${daysSw[from.weekday - 1]} tu';
+    return x.label.isNotEmpty ? x.label : 'Wiki';
+  }
+
+  /// Siku za wiki iliyokatwa ndani ya mwezi unaoangaliwa
+  (DateTime, DateTime) _weekSpanInMonth(String key) {
+    final monthStart = DateTime(_anchor.year, _anchor.month, 1);
+    final monthEnd = DateTime(_anchor.year, _anchor.month + 1, 0);
+    final start = DateTime.parse(key);
+    final from = start.isBefore(monthStart) ? monthStart : start;
+    var to = start.add(const Duration(days: 6));
+    if (to.isAfter(monthEnd)) to = monthEnd;
+    return (from, to);
+  }
+
+  /// Miezi 12 yote ya mwaka, miezi isiyofika bado inaonekana hafifu
+  List<ReportRow> _yearRows(Report r) {
+    final out = [...r.rows];
+    final parts = out.isEmpty ? <String>[] : out.last.key.split('-');
+    var last = parts.length >= 2 ? (int.tryParse(parts[1]) ?? 0) : 0;
+    if (last == 0) last = out.length;
+    for (var m = last + 1; m <= 12; m++) {
+      out.add(ReportRow(
+        key: '',
+        label: monthsSw[m - 1],
+        sub: '',
+        short: monthsShort[m - 1],
+        best: '',
+        s: Summary.zero(),
+        current: false,
+      ));
+    }
+    return out;
   }
 
   Widget _top(String l, String v) => Padding(
@@ -390,9 +432,9 @@ class _RankedList extends StatelessWidget {
 class _PeriodRows extends StatelessWidget {
   final List<ReportRow> rows;
   final String Function(ReportRow) label;
-  final String currentNote;
+  final String Function(ReportRow) note;
   final ValueChanged<ReportRow> onTap;
-  const _PeriodRows({required this.rows, required this.label, required this.currentNote, required this.onTap});
+  const _PeriodRows({required this.rows, required this.label, required this.note, required this.onTap});
   @override
   Widget build(BuildContext context) => Box(
         child: Column(children: [
@@ -406,11 +448,10 @@ class _PeriodRows extends StatelessWidget {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(label(rows[i]), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
-                      if (rows[i].current)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(currentNote, style: const TextStyle(fontSize: 11.5, color: C.muted)),
-                        ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(note(rows[i]), style: const TextStyle(fontSize: 11.5, color: C.muted)),
+                      ),
                     ]),
                   ),
                   Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -509,55 +550,64 @@ class _BarsState extends State<_Bars> with SingleTickerProviderStateMixin {
           SizedBox(
             height: 150,
             child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              for (var i = 0; i < rows.length; i++)
-                Expanded(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => widget.onTap(i),
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: dense ? 2 : 4),
-                      child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-                        Opacity(
-                          opacity: g,
-                          child: FittedBox(
-                            child: Text(moneyBar(rows[i].s.net),
-                                style: TextStyle(
-                                  fontSize: dense ? 9.5 : 10.5,
-                                  fontWeight: i == widget.best ? FontWeight.w800 : FontWeight.w600,
-                                  color: i == widget.best ? C.blue : C.muted,
-                                )),
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Container(
-                          height: (118 * (rows[i].s.net <= 0 ? 0.02 : rows[i].s.net / mx) * g).clamp(3.0, 118.0).toDouble(),
-                          constraints: const BoxConstraints(maxWidth: 34),
-                          decoration: BoxDecoration(
-                            color: i == widget.best ? C.blue : const Color(0xFFBAE6FD),
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(6), bottom: Radius.circular(2)),
-                          ),
-                        ),
-                      ]),
-                    ),
-                  ),
-                ),
+              for (var i = 0; i < rows.length; i++) Expanded(child: _column(i, g, dense, mx)),
             ]),
           ),
           const SizedBox(height: 8),
           Row(children: [
-            for (final r in rows)
+            for (var i = 0; i < rows.length; i++)
               Expanded(
-                child: Text(r.short,
+                child: Text(rows[i].short,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: dense ? 9.5 : 11,
-                      color: r.current ? C.blue : C.muted,
-                      fontWeight: r.current ? FontWeight.w800 : FontWeight.w600,
+                      color: rows[i].current ? C.blue : (rows[i].s.sales <= 0 ? C.faint : C.muted),
+                      fontWeight: rows[i].current ? FontWeight.w800 : FontWeight.w600,
                     )),
               ),
           ]),
         ]);
       },
+    );
+  }
+
+  /// Nguzo moja: hakuna nguzo kwa kipindi kisichokuwa na mauzo (mwaka: Desemba n.k.)
+  Widget _column(int i, double g, bool dense, int mx) {
+    final row = widget.rows[i];
+    final empty = row.s.sales <= 0;
+    final best = !empty && i == widget.best;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => widget.onTap(i),
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: dense ? 2 : 4),
+        child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+          if (empty)
+            const SizedBox(height: 13)
+          else
+            Opacity(
+              opacity: g,
+              child: FittedBox(
+                child: Text(moneyBar(row.s.net),
+                    style: TextStyle(
+                      fontSize: dense ? 9.5 : 10.5,
+                      fontWeight: best ? FontWeight.w800 : FontWeight.w600,
+                      color: best ? C.blue : C.muted,
+                    )),
+              ),
+            ),
+          const SizedBox(height: 3),
+          if (!empty)
+            Container(
+              height: (118 * (row.s.net <= 0 ? 0.02 : row.s.net / mx) * g).clamp(3.0, 118.0).toDouble(),
+              constraints: const BoxConstraints(maxWidth: 34),
+              decoration: BoxDecoration(
+                color: best ? C.blue : const Color(0xFFBAE6FD),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(6), bottom: Radius.circular(2)),
+              ),
+            ),
+        ]),
+      ),
     );
   }
 }
@@ -620,4 +670,109 @@ class _DayReportScreenState extends State<DayReportScreen> {
       ),
     );
   }
+}
+
+// ======================================================================= RIPOTI YA WIKI
+/// "9 – 15 Nov 2026" (wiki inaanza Jumatatu)
+String _weekRangeText(DateTime anchor) {
+  final s = anchor.subtract(Duration(days: anchor.weekday - 1));
+  final e = s.add(const Duration(days: 6));
+  return s.month == e.month
+      ? '${s.day} – ${e.day} ${monthsShort[e.month - 1]} ${e.year}'
+      : '${s.day} ${monthsShort[s.month - 1]} – ${e.day} ${monthsShort[e.month - 1]} ${e.year}';
+}
+
+class WeekReportScreen extends StatefulWidget {
+  final DateTime date;
+  const WeekReportScreen({super.key, required this.date});
+  @override
+  State<WeekReportScreen> createState() => _WeekReportScreenState();
+}
+
+class _WeekReportScreenState extends State<WeekReportScreen> {
+  late Future<_WeekData> _f = _load();
+
+  Future<_WeekData> _load() async {
+    final start = widget.date.subtract(Duration(days: widget.date.weekday - 1));
+    final r = await Api.i.report(Period.week, start);
+    final ps = await Api.i.products();
+    final by = {for (final v in ps.expand((p) => p.variants)) v.name: v};
+    final map = <String, int>{};
+    try {
+      final sheets = await Future.wait(r.rows.map((x) => Api.i.daily(DateTime.parse(x.key))));
+      for (final s in sheets) {
+        for (final e in s.expenses) {
+          map[e.name] = (map[e.name] ?? 0) + e.amount;
+        }
+      }
+    } catch (_) {}
+    final expenses = map.entries.any((e) => e.value > 0)
+        ? (map.entries.map((e) => Expense(name: e.key, amount: e.value)).where((e) => e.amount > 0).toList()
+          ..sort((a, b) => b.amount.compareTo(a.amount)))
+        : <Expense>[];
+    return _WeekData(r, by, expenses);
+  }
+
+  void _day(ReportRow r) {
+    FocusScope.of(context).unfocus();
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => DayReportScreen(date: DateTime.parse(r.key))));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final start = widget.date.subtract(Duration(days: widget.date.weekday - 1));
+    return Scaffold(
+      appBar: pageBar(_weekRangeText(start), subtitle: 'Ripoti ya wiki', back: true),
+      body: FutureBuilder<_WeekData>(
+        future: _f,
+        builder: (c, s) {
+          if (s.connectionState != ConnectionState.done) return const Loading();
+          if (s.hasError) return ErrorView(s.error!, onRetry: () => setState(() => _f = _load()));
+          final data = s.data!;
+          final r = data.r;
+          final by = data.byName;
+          final expenses = data.expenses;
+          final days = r.rows.where((x) => x.s.sales > 0).toList();
+          var best = -1;
+          for (var i = 0; i < days.length; i++) {
+            if (best < 0 || days[i].s.net > days[best].s.net) best = i;
+          }
+          return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 30), children: [
+            _SummaryCard('Faida halisi ya wiki', r.summary),
+            const SectionTitle('Faida kila siku', trailing: 'gusa siku', padding: EdgeInsets.fromLTRB(2, 24, 2, 10)),
+            Box(
+              radius: 14,
+              padding: const EdgeInsets.fromLTRB(10, 14, 10, 10),
+              child: _Bars(rows: days, best: best, onTap: (i) => _day(days[i])),
+            ),
+            if (r.top.isNotEmpty) ...[
+              const SectionTitle('Zilizouzika zaidi', padding: EdgeInsets.fromLTRB(2, 24, 2, 10)),
+              _RankedList(r.top, by),
+            ],
+            SectionTitle('Gharama za wiki', trailing: 'Jumla ${money(r.summary.expenses)}', padding: const EdgeInsets.fromLTRB(2, 24, 2, 6)),
+            if (expenses.isNotEmpty)
+              for (final e in expenses) _ExpenseLine(e.name, money(e.amount))
+            else
+              _ExpenseLine('Gharama', money(r.summary.expenses)),
+            const Divider(height: 1, thickness: 1.2, color: C.text),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+              child: Row(children: [
+                const Expanded(child: Text('Jumla', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800))),
+                Text(money(r.summary.expenses),
+                    style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, fontFeatures: tabular)),
+              ]),
+            ),
+          ]);
+        },
+      ),
+    );
+  }
+}
+
+class _WeekData {
+  final Report r;
+  final Map<String, Variant> byName;
+  final List<Expense> expenses;
+  _WeekData(this.r, this.byName, this.expenses);
 }

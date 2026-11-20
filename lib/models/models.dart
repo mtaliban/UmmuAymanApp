@@ -215,7 +215,7 @@ enum Period { week, month, year }
 extension PeriodX on Period {
   String get api => const ['week', 'month', 'year'][index];
   String get label => const ['Wiki', 'Mwezi', 'Mwaka'][index];
-  String get chartTitle => const ['Faida halisi kila siku', 'Faida halisi kila wiki', 'Faida halisi kila mwezi'][index];
+  String get chartTitle => const ['Faida kila siku', 'Faida kila wiki', 'Faida kila mwezi'][index];
   String get bestLabel => const ['Siku bora', 'Wiki bora', 'Mwezi bora'][index];
   String get colLabel => const ['SIKU', 'WIKI', 'MWEZI'][index];
   String get byLabel => const ['KWA SIKU', 'KWA WIKI', 'KWA MWEZI'][index];
