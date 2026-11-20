@@ -150,13 +150,8 @@ class _HomeState extends State<HomeScreen> with WidgetsBindingObserver {
       ]),
       const SizedBox(height: 8),
       _Summary(s),
-      SectionTitle('Bidhaa zilizouzika zaidi', trailing: '${h.top.length} bidhaa', padding: const EdgeInsets.fromLTRB(2, 20, 2, 8)),
+      SectionTitle('Bidhaa zilizouzwa', trailing: '${h.top.length} bidhaa', padding: const EdgeInsets.fromLTRB(2, 20, 2, 8)),
       for (final (i, t) in h.top.indexed) _TopCard(rank: i + 1, row: t),
-      if (h.expenses.isNotEmpty) ...[
-        const SectionTitle('Gharama', padding: EdgeInsets.fromLTRB(2, 20, 2, 8)),
-        for (final e in h.expenses) _ExpenseRow(e.name, e.amount),
-        _ExpenseTotal(s.expenses),
-      ],
     ]);
   }
 }
@@ -243,73 +238,65 @@ class _Summary extends StatelessWidget {
       );
 }
 
-/// Kadi ya bidhaa iliyouzwa zaidi: namba · jina · IDADI · SELLING · MAUZO · FAIDA
+/// Kadi ya bidhaa ya siku: namba · jina · IDADI · SELLING · MAUZO · FAIDA
+/// Safu zina upana 62 : 100 : 112 : 100 na nafasi 12 kati yake; namba ndefu
+/// zinapungua kwa FittedBox (hazigusani).
 class _TopCard extends StatelessWidget {
   final int rank;
   final TopItem row;
   const _TopCard({required this.rank, required this.row});
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Box(
-          radius: 12,
-          padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              SizedBox(width: 22, child: Text('$rank', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.faint))),
+  Widget build(BuildContext context) {
+    const flex = [62, 100, 112, 100];
+    final cols = [
+      ('IDADI', '${row.qty}'),
+      ('SELLING', money(row.selling)),
+      ('MAUZO', money(row.sales)),
+      ('FAIDA', money(row.profit)),
+    ];
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.line)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          SizedBox(width: 22, child: Text('$rank', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.faint))),
+          Expanded(
+              child: Text(row.name,
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700))),
+        ]),
+        const SizedBox(height: 7),
+        Padding(
+          padding: const EdgeInsets.only(left: 22),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            for (var i = 0; i < 4; i++) ...[
+              if (i > 0) const SizedBox(width: 12),
               Expanded(
-                  child: Text(row.name,
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700))),
-              if (row.outOfStock)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                  decoration: BoxDecoration(color: C.soft, borderRadius: BorderRadius.circular(4)),
-                  child: const Text('nje ya stock', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: C.text2)),
-                ),
-            ]),
-            const SizedBox(height: 7),
-            Padding(
-              padding: const EdgeInsets.only(left: 22),
-              child: Row(children: [
-                Expanded(child: MiniStat('Idadi', '${row.qty}')),
-                Expanded(child: MiniStat('Selling', money(row.selling))),
-                Expanded(child: MiniStat('Mauzo', money(row.sales))),
-                Expanded(child: MiniStat('Faida', money(row.profit), bold: true, color: C.blue)),
-              ]),
-            ),
+                flex: flex[i],
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(cols[i].$1, style: const TextStyle(fontSize: 11, color: C.muted)),
+                  const SizedBox(height: 2),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(cols[i].$2,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: i == 3 ? FontWeight.w800 : FontWeight.w600,
+                          color: i == 3 ? C.blue : C.text,
+                          fontFeatures: tabular,
+                        )),
+                  ),
+                ]),
+              ),
+            ],
           ]),
         ),
-      );
-}
-
-class _ExpenseRow extends StatelessWidget {
-  final String name;
-  final int amount;
-  const _ExpenseRow(this.name, this.amount);
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 2),
-        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.line))),
-        child: Row(children: [
-          Expanded(child: Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
-          Text(money(amount), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, fontFeatures: tabular)),
-        ]),
-      );
-}
-
-class _ExpenseTotal extends StatelessWidget {
-  final int amount;
-  const _ExpenseTotal(this.amount);
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 2),
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.text, width: 1.5))),
-        child: Row(children: [
-          const Expanded(child: Text('Jumla', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800))),
-          Text(money(amount), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, fontFeatures: tabular)),
-        ]),
-      );
+      ]),
+    );
+  }
 }
 
 class _ChangePin extends StatefulWidget {
