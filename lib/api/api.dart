@@ -62,9 +62,9 @@ abstract class Api {
   Future<Receipt> receipt(String id);
   Future<void> cancelReceipt(String id);
 
-  // Ripoti
-  Future<Report> report(Period period, DateTime anchor);
-  Future<DayDetail> day(DateTime date);
+  // Ripoti — P1 GET /reports/day/{date} · P2–P4 GET /reports/{period}?date=
+  // `period` = 'day' | 'week' | 'month' | 'year' (date = tarehe yoyote ndani ya kipindi)
+  Future<Report> report(String period, DateTime date);
 }
 
 class HttpApi extends Api {
@@ -270,8 +270,9 @@ class HttpApi extends Api {
   Future<void> cancelReceipt(String id) async => _send('POST', '/receipts/$id/cancel');
 
   @override
-  Future<Report> report(Period period, DateTime anchor) async => Report.fromJson(_m(await _send('GET', '/reports/${period.api}', query: {'date': iso(anchor)})));
-
-  @override
-  Future<DayDetail> day(DateTime date) async => DayDetail.fromJson(_m(await _send('GET', '/reports/day/${iso(date)}')));
+  Future<Report> report(String period, DateTime date) async {
+    final ds = iso(date);
+    final path = period == 'day' ? '/reports/day/$ds' : '/reports/$period';
+    return Report.fromJson(_m(await _send('GET', path, query: period == 'day' ? null : {'date': ds})));
+  }
 }

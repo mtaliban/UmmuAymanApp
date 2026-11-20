@@ -286,101 +286,88 @@ class Receipt {
   }
 }
 
-enum Period { week, month, year }
-
-extension PeriodX on Period {
-  String get api => const ['week', 'month', 'year'][index];
-  String get label => const ['Wiki', 'Mwezi', 'Mwaka'][index];
-  String get chartTitle => const ['Faida kila siku', 'Faida kila wiki', 'Faida kila mwezi'][index];
-  String get bestLabel => const ['Siku bora', 'Wiki bora', 'Mwezi bora'][index];
-  String get colLabel => const ['SIKU', 'WIKI', 'MWEZI'][index];
-  String get byLabel => const ['KWA SIKU', 'KWA WIKI', 'KWA MWEZI'][index];
-  String get noun => const ['wiki', 'mwezi', 'mwaka'][index];
-}
-
-class ReportRow {
-  final String key; // wiki: "2026-11-15" ; mwezi: "2026-11-08" (siku ya kwanza ya wiki) ; mwaka: "2026-11"
-  final String label; // "Jumapili" / "Wiki 2" / "Novemba"
-  final String sub; // "15 Nov" / "8 – 14" / ""
-  final String short; // chini ya nguzo: "Jpi" / "W2" / "Nov"
-  final String best; // "Jumapili 15" / "Wiki 2" / "Novemba"
-  final Summary s;
-  final bool current; // leo / inaendelea
-  ReportRow({required this.key, required this.label, required this.sub, required this.short, required this.best, required this.s, required this.current});
-  factory ReportRow.fromJson(Map<String, dynamic> j) => ReportRow(
-        key: _s(j['key']),
-        label: _s(j['label']),
-        sub: _s(j['sub']),
-        short: _s(j['short']),
-        best: _s(j['best_label'] ?? j['label']),
-        s: Summary.fromJson(j),
-        current: j['current'] == true,
-      );
-}
-
-class NameQty {
+/// RIPOTI (P1 – P4) — jibu moja kwa vipindi vyote: siku · wiki · mwezi · mwaka.
+/// Majina ya fields yanalingana na JSON ya API (snake_case).
+class RProduct {
   final String name;
-  final int qty, profit;
-  NameQty({required this.name, required this.qty, this.profit = 0});
-  factory NameQty.fromJson(Map<String, dynamic> j) => NameQty(name: _s(j['name']), qty: _i(j['qty']), profit: _i(j['profit']));
+  final int qty, sales, profit;
+  RProduct({required this.name, required this.qty, required this.sales, required this.profit});
+  factory RProduct.fromJson(Map<String, dynamic> j) =>
+      RProduct(name: _s(j['name']), qty: _i(j['qty']), sales: _i(j['sales']), profit: _i(j['profit']));
 }
 
+/// Bidhaa iliyo kwenye stock lakini haikuzwa hata moja kwenye kipindi.
+class RUnsold {
+  final String name;
+  final int qty, capital;
+  RUnsold({required this.name, required this.qty, required this.capital});
+  factory RUnsold.fromJson(Map<String, dynamic> j) =>
+      RUnsold(name: _s(j['name']), qty: _i(j['qty']), capital: _i(j['capital']));
+}
+
+/// Nguzo ya grafu. `net == null` = kipindi bado hakijafika (haigusiki).
+class RBar {
+  final String key, label;
+  final int? net;
+  RBar({required this.key, required this.label, this.net});
+  bool get future => net == null;
+  factory RBar.fromJson(Map<String, dynamic> j) =>
+      RBar(key: _s(j['key']), label: _s(j['label']), net: j['net'] == null ? null : _i(j['net']));
+}
+
+/// Jibu la P1 (siku) na P2–P4 (wiki/mwezi/mwaka).
 class Report {
-  final Period period;
-  final String label; // "11 – 17 Nov 2026" / "Novemba 2026" / "2026"
-  final DateTime anchor;
+  final String period; // day | week | month | year
+  final String label, shortLabel;
+  final String? date, start, end;
+  final bool hasPrev, hasNext;
   final Summary summary;
-  final List<ReportRow> rows;
-  final List<NameQty> top, low, unsold;
-  final int capitalInShop, purchases;
-  final bool hasNext;
+  final List<RProduct> products, top, low;
+  final List<RUnsold> unsold;
+  final List<RBar> bars;
+  final int totalQty;
+
   Report({
     required this.period,
     required this.label,
-    required this.anchor,
+    required this.shortLabel,
+    this.date,
+    this.start,
+    this.end,
+    required this.hasPrev,
+    required this.hasNext,
     required this.summary,
-    required this.rows,
+    required this.products,
     required this.top,
     required this.low,
     required this.unsold,
-    required this.capitalInShop,
-    required this.purchases,
-    required this.hasNext,
+    required this.bars,
+    required this.totalQty,
   });
-  int get bestIndex {
-    if (rows.isEmpty) return -1;
-    var b = 0;
-    for (var i = 1; i < rows.length; i++) {
-      if (rows[i].s.net > rows[b].s.net) b = i;
-    }
-    return b;
-  }
+
+  bool get isDay => period == 'day';
+
+  /// "siku" / "wiki" / "mwezi" / "mwaka"
+  String get title => const {'day': 'siku', 'week': 'wiki', 'month': 'mwezi', 'year': 'mwaka'}[period] ?? period;
+
+  /// Aina ya ripoti inayofunguliwa kwa kugusa nguzo: wiki → siku, mwezi → wiki, mwaka → mwezi.
+  String? get childPeriod => const {'week': 'day', 'month': 'week', 'year': 'month'}[period];
 
   factory Report.fromJson(Map<String, dynamic> j) => Report(
-        period: Period.values.firstWhere((p) => p.api == j['period'], orElse: () => Period.week),
+        period: _s(j['period']),
         label: _s(j['label']),
-        anchor: DateTime.tryParse(_s(j['anchor'])) ?? DateTime.now(),
-        summary: Summary.fromJson(j['summary'] as Map<String, dynamic>?),
-        rows: _l(j['rows'], ReportRow.fromJson),
-        top: _l(j['top'], NameQty.fromJson),
-        low: _l(j['low'], NameQty.fromJson),
-        unsold: _l(j['unsold'], NameQty.fromJson),
-        capitalInShop: _i(j['capital_in_shop']),
-        purchases: _i(j['purchases']),
+        shortLabel: _s(j['short_label']).isEmpty ? _s(j['label']) : _s(j['short_label']),
+        date: j['date'] == null ? null : _s(j['date']),
+        start: j['start'] == null ? null : _s(j['start']),
+        end: j['end'] == null ? null : _s(j['end']),
+        hasPrev: j['has_prev'] == true,
         hasNext: j['has_next'] == true,
-      );
-}
-
-class DayDetail {
-  final DateTime date;
-  final String label;
-  final List<NameQty> items;
-  final Summary summary;
-  DayDetail({required this.date, required this.label, required this.items, required this.summary});
-  factory DayDetail.fromJson(Map<String, dynamic> j) => DayDetail(
-        date: DateTime.tryParse(_s(j['date'])) ?? DateTime.now(),
-        label: _s(j['label']),
-        items: _l(j['items'], NameQty.fromJson),
-        summary: Summary.fromJson(j['summary'] as Map<String, dynamic>?),
+        summary: Summary.fromJson(j['summary'] is Map ? Map<String, dynamic>.from(j['summary'] as Map) : null),
+        products: _l(j['products'], RProduct.fromJson),
+        top: _l(j['top'], RProduct.fromJson),
+        low: _l(j['low'], RProduct.fromJson),
+        unsold: _l(j['unsold'], RUnsold.fromJson),
+        bars: _l(j['bars'], RBar.fromJson),
+        totalQty: _i(j['totals'] is Map ? (j['totals'] as Map)['qty'] : null),
       );
 }

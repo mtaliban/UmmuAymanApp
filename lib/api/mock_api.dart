@@ -483,110 +483,161 @@ class MockApi extends Api {
     _receipts.remove(r);
   }
 
-  // ------------------------------------------------------------------ ripoti
+  // ------------------------------------------------------------------ ripoti (P1 – P4)
   @override
-  Future<Report> report(Period period, DateTime anchor) async {
-    final a = dayOnly(anchor);
-    late DateTime start, end;
-    late String label;
-    final rows = <ReportRow>[];
-
-    Summary sumRange(DateTime s, DateTime e) {
-      var sales = 0, cap = 0, exp = 0;
-      for (var d = s; !d.isAfter(e) && !d.isAfter(_today); d = d.add(const Duration(days: 1))) {
-        final x = _summary(d);
-        sales += x.sales;
-        cap += x.capital;
-        exp += x.expenses;
-      }
-      return Summary(sales: sales, capital: cap, expenses: exp);
-    }
-
-    if (period == Period.week) {
-      start = a.subtract(Duration(days: a.weekday - 1)); // Jumatatu
-      end = start.add(const Duration(days: 6));
-      label = '${start.day} ${monthsShort[start.month - 1]} – ${end.day} ${monthsShort[end.month - 1]} ${end.year}';
-      for (var d = start; !d.isAfter(end) && !d.isAfter(_today); d = d.add(const Duration(days: 1))) {
-        rows.add(ReportRow(
-          key: iso(d),
-          label: daysSw[d.weekday - 1],
-          sub: '${d.day} ${monthsShort[d.month - 1]}',
-          short: daysShort[d.weekday - 1],
-          best: '${daysSw[d.weekday - 1]} ${d.day}',
-          s: _summary(d),
-          current: _same(d, _today),
-        ));
-      }
-    } else if (period == Period.month) {
-      start = DateTime(a.year, a.month, 1);
-      end = DateTime(a.year, a.month + 1, 0);
-      label = '${monthsSw[a.month - 1]} ${a.year}';
-      var w = 1;
-      for (var s = start; !s.isAfter(end) && !s.isAfter(_today); s = s.add(const Duration(days: 7)), w++) {
-        var e = s.add(const Duration(days: 6));
-        if (e.isAfter(end)) e = end;
-        final cur = !_today.isBefore(s) && !_today.isAfter(e);
-        final last = cur ? _today : e;
-        rows.add(ReportRow(key: iso(s), label: 'Wiki $w', sub: '${s.day} – ${last.day}', short: 'W$w', best: 'Wiki $w', s: sumRange(s, e), current: cur));
-      }
-    } else {
-      start = DateTime(a.year, 1, 1);
-      end = DateTime(a.year, 12, 31);
-      label = '${a.year}';
-      for (var m = 1; m <= 12; m++) {
-        final s = DateTime(a.year, m, 1);
-        if (s.isAfter(_today)) break;
-        final e = DateTime(a.year, m + 1, 0);
-        rows.add(ReportRow(key: '${a.year}-${m.toString().padLeft(2, '0')}', label: monthsSw[m - 1], sub: '', short: monthsShort[m - 1], best: monthsSw[m - 1], s: sumRange(s, e), current: s.year == _today.year && m == _today.month));
-      }
-    }
-
-    // bidhaa za kipindi
-    final agg = <String, List<int>>{}; // jina -> [qty, profit]
-    final soldIds = <String>{};
-    for (var d = start; !d.isAfter(end) && !d.isAfter(_today); d = d.add(const Duration(days: 1))) {
-      for (final l in _allLines(d)) {
-        final x = agg.putIfAbsent(l.name, () => [0, 0]);
-        x[0] += l.qty;
-        x[1] += l.profit;
-        soldIds.add(l.variantId);
-      }
-    }
-    final sorted = agg.entries.map((e) => NameQty(name: e.key, qty: e.value[0], profit: e.value[1])).toList()..sort((x, y) => y.qty.compareTo(x.qty));
-    final top = sorted.take(3).toList();
-    final low = sorted.length > 3 ? sorted.reversed.take(min(3, sorted.length - 3)).toList() : <NameQty>[];
-    final unsold = _allVariants.where((v) => v.qty > 0 && !soldIds.contains(v.id)).map((v) => NameQty(name: v.name, qty: v.qty)).toList();
-
-    final total = Summary(
-      sales: rows.fold(0, (x, r) => x + r.s.sales),
-      capital: rows.fold(0, (x, r) => x + r.s.capital),
-      expenses: rows.fold(0, (x, r) => x + r.s.expenses),
-    );
-    return _d(Report(
-      period: period,
-      label: label,
-      anchor: a,
-      summary: total,
-      rows: rows,
-      top: top,
-      low: low,
-      unsold: unsold.take(5).toList(),
-      capitalInShop: _products.fold(0, (x, p) => x + p.capital),
-      purchases: (total.capital * 0.8).round(),
-      hasNext: end.isBefore(_today),
-    ));
+  Future<Report> report(String period, DateTime date) {
+    final d = dayOnly(date);
+    return _d(switch (period) {
+      'day' => _dayReport(d),
+      'week' => _periodReport('week', d),
+      'month' => _periodReport('month', d),
+      'year' => _periodReport('year', d),
+      _ => throw ApiException('Kipindi si sahihi'),
+    });
   }
 
-  @override
-  Future<DayDetail> day(DateTime date) {
-    final agg = <String, List<int>>{};
-    for (final l in _allLines(date)) {
-      final x = agg.putIfAbsent(l.name, () => [0, 0]);
-      x[0] += l.qty;
-      x[1] += l.profit;
+  /// Jumapili = mwanzo wa wiki
+  DateTime _weekStart(DateTime d) => d.subtract(Duration(days: d.weekday % 7));
+
+  List<SaleLine> _linesRange(DateTime a, DateTime b) {
+    final out = <SaleLine>[];
+    final end = b.isAfter(_today) ? _today : b;
+    for (var d = a; !d.isAfter(end); d = d.add(const Duration(days: 1))) {
+      out.addAll(_allLines(d));
     }
-    final items = agg.entries.map((e) => NameQty(name: e.key, qty: e.value[0], profit: e.value[1])).toList()..sort((a, b) => b.profit.compareTo(a.profit));
-    return _d(DayDetail(date: date, label: '${daysSw[date.weekday - 1]}, ${date.day} ${monthsShort[date.month - 1]}', items: items, summary: _summary(date)));
+    return out;
+  }
+
+  Summary _sumRange(DateTime a, DateTime b) {
+    final end = b.isAfter(_today) ? _today : b;
+    var sales = 0, cap = 0, exp = 0;
+    for (var d = a; !d.isAfter(end); d = d.add(const Duration(days: 1))) {
+      final s = _summary(d);
+      sales += s.sales;
+      cap += s.capital;
+      exp += s.expenses;
+    }
+    return Summary(sales: sales, capital: cap, expenses: exp);
+  }
+
+  bool _hasDataBefore(DateTime d) {
+    for (var i = 1; i <= 60; i++) {
+      final x = d.subtract(Duration(days: i));
+      if (_allLines(x).isNotEmpty || _expenses(x) > 0) return true;
+    }
+    return false;
+  }
+
+  List<RProduct> _byName(List<SaleLine> lines) {
+    final agg = <String, (int, int, int)>{};
+    for (final l in lines) {
+      final p = agg[l.name] ?? (0, 0, 0);
+      agg[l.name] = (p.$1 + l.qty, p.$2 + l.sales, p.$3 + l.profit);
+    }
+    return agg.entries.map((e) => RProduct(name: e.key, qty: e.value.$1, sales: e.value.$2, profit: e.value.$3)).toList()
+      ..sort((a, b) => b.qty != a.qty ? b.qty.compareTo(a.qty) : b.sales.compareTo(a.sales));
+  }
+
+  List<RUnsold> _unsoldList(List<SaleLine> lines) {
+    final ids = lines.map((l) => l.variantId).where((x) => x.isNotEmpty).toSet();
+    final names = lines.map((l) => l.name.toLowerCase()).toSet();
+    final out = <RUnsold>[];
+    for (final v in _allVariants) {
+      if (ids.contains(v.id) || names.contains(v.name.toLowerCase()) || v.qty <= 0) continue;
+      out.add(RUnsold(name: v.name, qty: v.qty, capital: v.qty * v.buying));
+    }
+    return out..sort((a, b) => b.capital.compareTo(a.capital));
+  }
+
+  Report _dayReport(DateTime d) {
+    final lines = _allLines(d);
+    final products = _byName(lines);
+    return Report(
+      period: 'day',
+      date: iso(d),
+      label: '${daysSw[d.weekday - 1]}, ${d.day} ${monthsShort[d.month - 1]} ${d.year}',
+      shortLabel: '${daysSw[d.weekday - 1]}, ${d.day} ${monthsShort[d.month - 1]}',
+      hasPrev: _hasDataBefore(d),
+      hasNext: d.isBefore(_today),
+      summary: _summary(d),
+      products: products,
+      top: const [],
+      low: const [],
+      unsold: const [],
+      bars: const [],
+      totalQty: products.fold(0, (a, p) => a + p.qty),
+    );
+  }
+
+  Report _periodReport(String period, DateTime d) {
+    late DateTime a, b;
+    late String label, short;
+    final chunks = <(DateTime, String, DateTime, DateTime)>[];
+
+    if (period == 'week') {
+      a = _weekStart(d);
+      b = a.add(const Duration(days: 6));
+      for (var i = 0; i < 7; i++) {
+        final x = a.add(Duration(days: i));
+        chunks.add((x, daysShort[x.weekday - 1], x, x));
+      }
+      label = a.month == b.month
+          ? '${a.day} – ${b.day} ${monthsSw[b.month - 1]} ${b.year}'
+          : '${a.day} ${monthsShort[a.month - 1]} – ${b.day} ${monthsShort[b.month - 1]} ${b.year}';
+      short = '${a.day} – ${b.day} ${monthsShort[b.month - 1]} ${b.year}';
+    } else if (period == 'month') {
+      a = DateTime(d.year, d.month, 1);
+      b = DateTime(d.year, d.month + 1, 0);
+      var x = a;
+      while (!x.isAfter(b)) {
+        var y = _weekStart(x).add(const Duration(days: 6));
+        if (y.isAfter(b)) y = b;
+        chunks.add((x, x.day == y.day ? '${x.day}' : '${x.day}–${y.day}', x, y));
+        x = y.add(const Duration(days: 1));
+      }
+      label = '${monthsSw[a.month - 1]} ${a.year}';
+      short = label;
+    } else {
+      a = DateTime(d.year, 1, 1);
+      b = DateTime(d.year, 12, 31);
+      for (var m = 1; m <= 12; m++) {
+        chunks.add((DateTime(d.year, m, 1), monthsShort[m - 1], DateTime(d.year, m, 1), DateTime(d.year, m + 1, 0)));
+      }
+      label = '${d.year}';
+      short = '${d.year}';
+    }
+
+    final bars = <RBar>[];
+    for (final (key, lab, s0, e0) in chunks) {
+      if (s0.isAfter(_today)) {
+        bars.add(RBar(key: iso(key), label: lab));
+      } else {
+        bars.add(RBar(key: iso(key), label: lab, net: _sumRange(s0, e0).net));
+      }
+    }
+
+    final lines = _linesRange(a, b);
+    final products = _byName(lines);
+    final top = products.take(5).toList();
+    final rest = products.where((p) => !top.contains(p)).toList()
+      ..sort((x, y) => x.qty != y.qty ? x.qty.compareTo(y.qty) : x.sales.compareTo(y.sales));
+
+    return Report(
+      period: period,
+      start: iso(a),
+      end: iso(b),
+      label: label,
+      shortLabel: short,
+      hasPrev: _hasDataBefore(a),
+      hasNext: b.isBefore(_today),
+      summary: _sumRange(a, b),
+      products: const [],
+      top: top,
+      low: rest.take(3).toList(),
+      unsold: _unsoldList(lines).take(20).toList(),
+      bars: bars,
+      totalQty: 0,
+    );
   }
 }
 

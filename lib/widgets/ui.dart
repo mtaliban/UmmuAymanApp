@@ -229,8 +229,8 @@ class Segmented extends StatelessWidget {
   const Segmented({super.key, required this.items, required this.index, required this.onChanged});
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(10)),
         child: LayoutBuilder(builder: (c, b) {
           final w = b.maxWidth / items.length;
           return Stack(children: [
@@ -242,7 +242,7 @@ class Segmented extends StatelessWidget {
               bottom: 0,
               width: w,
               child: Container(
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(9), boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 3, offset: Offset(0, 1))]),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 3, offset: Offset(0, 1))]),
               ),
             ),
             Row(children: [
@@ -255,7 +255,7 @@ class Segmented extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 9),
                       child: Text(items[i],
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: i == index ? C.blue : C.muted)),
+                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: i == index ? C.blue : C.muted)),
                     ),
                   ),
                 ),
