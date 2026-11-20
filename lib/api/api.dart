@@ -43,6 +43,13 @@ abstract class Api {
   Future<Variant> updateVariant(String id, {int addQty = 0, int? buying, int? selling, String? name});
   Future<void> deleteVariant(String id);
 
+  // Stock — K0–K4 (hakuna kufuta)
+  Future<StockList> stock(); // K0 GET /stock
+  Future<StockProduct> stockProduct(String id); // K1 GET /stock/products/{id}
+  Future<StockProduct> addStockProduct({required String name, required bool hasVariants, int? qty, int? buying, int? selling}); // K2
+  Future<StockProduct> addStockVariant(String productId, {required String name, required int qty, required int buying, required int selling}); // K3
+  Future<StockProduct> editStockVariant(String variantId, {int? addQty, int? buying, int? selling}); // K4
+
   // Mauzo ya leo / siku ya Historia
   Future<DailySheet> daily(DateTime date); // S1 GET /daily/{date}
   Future<DailySheet> daySheet(String date); // S1 (tarehe kama YYYY-MM-DD)
@@ -268,6 +275,37 @@ class HttpApi extends Api {
 
   @override
   Future<void> cancelReceipt(String id) async => _send('POST', '/receipts/$id/cancel');
+
+  @override
+  Future<StockList> stock() async => StockList.fromJson(_m(await _send('GET', '/stock')));
+
+  @override
+  Future<StockProduct> stockProduct(String id) async => StockProduct.fromJson(_m(await _send('GET', '/stock/products/$id')));
+
+  @override
+  Future<StockProduct> addStockProduct({required String name, required bool hasVariants, int? qty, int? buying, int? selling}) async =>
+      StockProduct.fromJson(_m(await _send('POST', '/stock/products', body: {
+        'name': name,
+        'has_variants': hasVariants,
+        if (!hasVariants) ...{'qty': qty ?? 0, 'buying': buying ?? 0, 'selling': selling ?? 0},
+      })));
+
+  @override
+  Future<StockProduct> addStockVariant(String productId, {required String name, required int qty, required int buying, required int selling}) async =>
+      StockProduct.fromJson(_m(await _send('POST', '/stock/products/$productId/variants', body: {
+        'name': name,
+        'qty': qty,
+        'buying': buying,
+        'selling': selling,
+      })));
+
+  @override
+  Future<StockProduct> editStockVariant(String variantId, {int? addQty, int? buying, int? selling}) async =>
+      StockProduct.fromJson(_m(await _send('PATCH', '/stock/variants/$variantId', body: {
+        if (addQty != null && addQty > 0) 'add_qty': addQty,
+        if (buying != null) 'buying': buying,
+        if (selling != null) 'selling': selling,
+      })));
 
   @override
   Future<Report> report(String period, DateTime date) async {

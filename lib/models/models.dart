@@ -371,3 +371,69 @@ class Report {
         totalQty: _i(j['totals'] is Map ? (j['totals'] as Map)['qty'] : null),
       );
 }
+
+// ======================================================================= STOCK (K0 – K4)
+
+/// Mstari wa kadi kwenye orodha ya Stock (K0).
+class StockItem {
+  final String id, name;
+  final bool hasVariants;
+  final int variants, qty, capital;
+  StockItem({required this.id, required this.name, required this.hasVariants, required this.variants, required this.qty, required this.capital});
+  factory StockItem.fromJson(Map<String, dynamic> j) => StockItem(
+        id: _s(j['id']),
+        name: _s(j['name']),
+        hasVariants: j['has_variants'] == true,
+        variants: _i(j['variants']),
+        qty: _i(j['qty']),
+        capital: _i(j['capital']),
+      );
+}
+
+/// Jibu la K0: muhtasari + bidhaa zilizopangwa kwa jina (A → Z).
+class StockList {
+  final int products, variants, qty, capital;
+  final List<StockItem> items;
+  StockList({required this.products, required this.variants, required this.qty, required this.capital, required this.items});
+  factory StockList.fromJson(Map<String, dynamic> j) {
+    final s = j['summary'] is Map ? Map<String, dynamic>.from(j['summary'] as Map) : <String, dynamic>{};
+    return StockList(
+      products: _i(s['products']),
+      variants: _i(s['variants']),
+      qty: _i(s['qty']),
+      capital: _i(s['capital']),
+      items: _l(j['products'], StockItem.fromJson),
+    );
+  }
+}
+
+/// Aina ya bidhaa kwenye ukurasa wa bidhaa (K1, K3, K4).
+class StockVariant {
+  final String id, name;
+  final int qty, buying, selling;
+  StockVariant({required this.id, required this.name, required this.qty, required this.buying, required this.selling});
+  int get profitEach => selling - buying;
+  factory StockVariant.fromJson(Map<String, dynamic> j) =>
+      StockVariant(id: _s(j['id']), name: _s(j['name']), qty: _i(j['qty']), buying: _i(j['buying']), selling: _i(j['selling']));
+}
+
+/// Jibu la K1–K4: bidhaa + muhtasari wake + aina zake (zipo kubwa kwanza).
+class StockProduct {
+  final String id, name;
+  final bool hasVariants;
+  final int qty, capital, profitIfSold;
+  final List<StockVariant> variants;
+  StockProduct({required this.id, required this.name, required this.hasVariants, required this.qty, required this.capital, required this.profitIfSold, required this.variants});
+  factory StockProduct.fromJson(Map<String, dynamic> j) {
+    final s = j['summary'] is Map ? Map<String, dynamic>.from(j['summary'] as Map) : <String, dynamic>{};
+    return StockProduct(
+      id: _s(j['id']),
+      name: _s(j['name']),
+      hasVariants: j['has_variants'] == true,
+      qty: _i(s['qty']),
+      capital: _i(s['capital']),
+      profitIfSold: _i(s['profit_if_sold']),
+      variants: _l(j['variants'], StockVariant.fromJson),
+    );
+  }
+}

@@ -522,14 +522,15 @@ class InlineInput extends StatelessWidget {
 // ======================================================================= dirisha katikati
 
 /// Dirisha la katikati lenye ✕ (linakaa katikati juu ya keyboard)
-Future<T?> showCenterDialog<T>(BuildContext context, {required WidgetBuilder builder, bool dismissible = true}) {
+Future<T?> showCenterDialog<T>(BuildContext context,
+    {required WidgetBuilder builder, bool dismissible = true, double radius = 22, Color? border}) {
   return showGeneralDialog<T>(
     context: context,
     barrierDismissible: dismissible,
     barrierLabel: 'funga',
     barrierColor: const Color(0x730B1220),
     transitionDuration: const Duration(milliseconds: 260),
-    pageBuilder: (ctx, a1, a2) => _CenterShell(child: builder(ctx)),
+    pageBuilder: (ctx, a1, a2) => _CenterShell(radius: radius, border: border, child: builder(ctx)),
     transitionBuilder: (ctx, a, b, child) {
       final c = CurvedAnimation(parent: a, curve: Curves.easeOutCubic);
       return FadeTransition(opacity: c, child: ScaleTransition(scale: Tween(begin: .92, end: 1.0).animate(c), child: child));
@@ -539,7 +540,9 @@ Future<T?> showCenterDialog<T>(BuildContext context, {required WidgetBuilder bui
 
 class _CenterShell extends StatelessWidget {
   final Widget child;
-  const _CenterShell({required this.child});
+  final double radius;
+  final Color? border;
+  const _CenterShell({required this.child, this.radius = 22, this.border});
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
@@ -550,7 +553,10 @@ class _CenterShell extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Material(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(radius),
+              side: BorderSide(color: border ?? Colors.transparent, width: border == null ? 0 : 1.2),
+            ),
             elevation: 18,
             shadowColor: const Color(0x33000000),
             child: ConstrainedBox(
@@ -671,6 +677,17 @@ class ErrorView extends StatelessWidget {
             SmallButton('Jaribu tena', onTap: onRetry),
           ]),
         ),
+      );
+}
+
+/// Maandishi ya kosa ndani ya dirisha (nyekundu 12.5/w600) — hakuna toast
+class ErrorText extends StatelessWidget {
+  final String text;
+  const ErrorText(this.text, {super.key});
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: 8),
+        child: Text(text, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.red)),
       );
 }
 

@@ -639,6 +639,82 @@ class MockApi extends Api {
       totalQty: 0,
     );
   }
+  // ------------------------------------------------------------------ stock (K0 – K4)
+  StockProduct _detailOf(Product p) {
+    final vs = [...p.variants]
+      ..sort((a, b) {
+        final c = b.qty.compareTo(a.qty);
+        return c != 0 ? c : a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+    final q = vs.fold(0, (a, v) => a + max(v.qty, 0));
+    final cap = vs.fold(0, (a, v) => a + max(v.qty, 0) * v.buying);
+    final prof = vs.fold(0, (a, v) => a + max(v.qty, 0) * (v.selling - v.buying));
+    return StockProduct(
+      id: p.id,
+      name: p.name,
+      hasVariants: p.hasTypes,
+      qty: q,
+      capital: cap,
+      profitIfSold: prof,
+      variants: [for (final v in vs) StockVariant(id: v.id, name: v.name, qty: v.qty, buying: v.buying, selling: v.selling)],
+    );
+  }
+
+  @override
+  Future<StockList> stock() {
+    final sorted = [..._products]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    var q = 0, cap = 0, vs = 0;
+    final items = <StockItem>[];
+    for (final p in sorted) {
+      final pq = p.variants.fold(0, (a, v) => a + max(v.qty, 0));
+      final pc = p.variants.fold(0, (a, v) => a + max(v.qty, 0) * v.buying);
+      q += pq;
+      cap += pc;
+      vs += p.variants.length;
+      items.add(StockItem(id: p.id, name: p.name, hasVariants: p.hasTypes, variants: p.variants.length, qty: pq, capital: pc));
+    }
+    return _d(StockList(products: items.length, variants: vs, qty: q, capital: cap, items: items));
+  }
+
+  @override
+  Future<StockProduct> stockProduct(String id) => _d(_detailOf(_prod(id)));
+
+  @override
+  Future<StockProduct> addStockProduct({required String name, required bool hasVariants, int? qty, int? buying, int? selling}) {
+    final n = name.trim();
+    if (n.isEmpty) throw ApiException('Jaza jina', 422);
+    if (_products.any((p) => p.name.toLowerCase() == n.toLowerCase())) throw ApiException('Bidhaa hii ipo tayari', 409);
+    if (!hasVariants && (qty == null || buying == null || selling == null || selling < 1)) throw ApiException('Jaza selling', 422);
+    final pid = 'p${_seq++}';
+    final p = Product(id: pid, name: n, hasTypes: hasVariants, variants: []);
+    if (!hasVariants) {
+      p.variants.add(Variant(id: 'v${_seq++}', productId: pid, productName: n, name: n, qty: qty!, buying: buying!, selling: selling!));
+    }
+    _products.add(p);
+    return _d(_detailOf(p));
+  }
+
+  @override
+  Future<StockProduct> addStockVariant(String productId, {required String name, required int qty, required int buying, required int selling}) {
+    final p = _prod(productId);
+    if (!p.hasTypes) throw ApiException('Bidhaa hii haina aina', 400);
+    final n = name.trim();
+    if (n.isEmpty) throw ApiException('Jaza jina', 422);
+    if (p.variants.any((v) => v.name.toLowerCase() == n.toLowerCase())) throw ApiException('Aina hii ipo tayari', 409);
+    p.variants.add(Variant(id: 'v${_seq++}', productId: p.id, productName: p.name, name: n, qty: qty, buying: buying, selling: selling));
+    return _d(_detailOf(p));
+  }
+
+  @override
+  Future<StockProduct> editStockVariant(String variantId, {int? addQty, int? buying, int? selling}) {
+    final v = _v(variantId);
+    if (addQty != null && addQty > 0) v.qty += addQty;
+    if (buying != null) v.buying = buying;
+    if (selling != null) v.selling = selling;
+    final p = _products.firstWhere((x) => x.variants.any((y) => y.id == v.id));
+    return _d(_detailOf(p));
+  }
+
 }
 
 class _Day {
