@@ -482,14 +482,13 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                           ),
                         if (_hasExp) ...[
                           const SectionTitle('Gharama', padding: EdgeInsets.fromLTRB(2, 20, 2, 8)),
-                          for (final e in d.expenses)
-                            _ExpenseRow(
-                              e,
-                              highlight: e.id == _newExpId || e.id == _editExp?.id,
-                              onTap: _filled ? () => _openEditExp(e) : null,
-                            ),
-                          const SizedBox(height: 4),
-                          _ExpTotal(key: _expKey, amount: d.totals.expenses),
+                          _ExpensesCard(
+                            items: d.expenses,
+                            total: d.totals.expenses,
+                            totalKey: _expKey,
+                            highlight: {_newExpId, _editExp?.id},
+                            onTap: _filled ? _openEditExp : null,
+                          ),
                         ],
                         if (!_open && (_hasLines || _hasExp)) ...[
                           SectionTitle(_isToday ? 'Hesabu ya leo' : 'Hesabu ya siku', padding: const EdgeInsets.fromLTRB(2, 20, 2, 8)),
@@ -848,19 +847,67 @@ class _SumCard extends StatelessWidget {
       );
 }
 
-/// Jumla ya gharama (kadi moja: Jumla ... 10,000)
-class _ExpTotal extends StatelessWidget {
-  final int amount;
-  const _ExpTotal({super.key, required this.amount});
+/// Kadi ya GHARAMA: namba · jina · kiasi, mstari mnene, kisha "Jumla ya gharama".
+class _ExpensesCard extends StatelessWidget {
+  final List<Expense> items;
+  final int total;
+  final Key? totalKey;
+  final Set<String?> highlight;
+  final ValueChanged<Expense>? onTap;
+  const _ExpensesCard({required this.items, required this.total, this.totalKey, this.highlight = const {}, this.onTap});
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.cardLine)),
-        child: Row(children: [
-          const Expanded(child: Text('Jumla', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700))),
-          Text(money(amount), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, fontFeatures: tabular)),
-        ]),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: C.cardLine),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            for (final (i, e) in items.indexed) ...[
+              if (i > 0) const Divider(height: 1, thickness: 1, color: C.softLine),
+              InkWell(
+                onTap: onTap == null ? null : () => onTap!(e),
+                child: Container(
+                  color: highlight.contains(e.id) ? C.blue3 : null,
+                  padding: const EdgeInsets.fromLTRB(15, 15, 16, 15),
+                  child: Row(children: [
+                    SizedBox(
+                      width: 36,
+                      child: Text('${i + 1}.',
+                          style: const TextStyle(fontSize: 15, height: 1.1, fontWeight: FontWeight.w700, color: C.faint, fontFeatures: tabular)),
+                    ),
+                    Expanded(
+                      child: Text(e.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 15, height: 1.1, fontWeight: FontWeight.w700, color: C.text)),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(money(e.amount),
+                        style: const TextStyle(fontSize: 15, height: 1.1, fontWeight: FontWeight.w800, color: C.text, fontFeatures: tabular)),
+                  ]),
+                ),
+              ),
+            ],
+            Container(height: 3, color: C.field),
+            Container(
+              key: totalKey,
+              color: C.soft,
+              padding: const EdgeInsets.fromLTRB(15, 16, 16, 16),
+              child: Row(children: [
+                const Expanded(
+                  child: Text('Jumla ya gharama',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: C.text)),
+                ),
+                Text(money(total),
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: C.text, fontFeatures: tabular)),
+              ]),
+            ),
+          ]),
+        ),
       );
 }
 
@@ -896,29 +943,6 @@ class _IconBtn extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ExpenseRow extends StatelessWidget {
-  final Expense e;
-  final bool highlight;
-  final VoidCallback? onTap;
-  const _ExpenseRow(this.e, {this.highlight = false, this.onTap});
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 11),
-          decoration: BoxDecoration(
-            color: highlight ? C.blue3 : null,
-            border: const Border(bottom: BorderSide(color: C.softLine)),
-          ),
-          child: Row(children: [
-            Expanded(child: Text(e.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),
-            Text(money(e.amount), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, fontFeatures: tabular)),
-          ]),
-        ),
-      );
 }
 
 class _NextBtn extends StatelessWidget {
