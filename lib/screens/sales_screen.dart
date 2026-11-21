@@ -56,7 +56,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
   final _buy = TextEditingController();
   final _eName = TextEditingController();
   final _eAmt = TextEditingController();
-  final _qF = FocusNode(), _qtyF = FocusNode(), _eF = FocusNode();
+  final _qF = FocusNode(), _qtyF = FocusNode(), _eF = FocusNode(), _eAmtF = FocusNode();
 
   @override
   void initState() {
@@ -77,7 +77,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
     for (final c in [_q, _qty, _price, _buy, _eName, _eAmt]) {
       c.dispose();
     }
-    for (final f in [_qF, _qtyF, _eF]) {
+    for (final f in [_qF, _qtyF, _eF, _eAmtF]) {
       f.dispose();
     }
     super.dispose();
@@ -541,7 +541,18 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                 ),
               ),
               const SizedBox(width: 8),
-              _WinField(controller: _eAmt, focus: _eF, number: true, width: 86, align: TextAlign.right, onChanged: (_) => setState(() {})),
+              _labelled(
+                'Kiasi',
+                _WinField(
+                  controller: _eAmt,
+                  focus: _eAmtF,
+                  number: true,
+                  width: 86,
+                  align: TextAlign.right,
+                  onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) => _next(),
+                ),
+              ),
               const SizedBox(width: 8),
               _NextBtn(label: editing ? 'Hifadhi' : 'Next', onTap: _canNext ? _next : null),
             ])
@@ -549,7 +560,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
             _bidhaaForm(editing),
           if (_error != null)
             Padding(
-              padding: const EdgeInsets.only(top: 8),
+              padding: const EdgeInsets.only(top: 6),
               child: Text(_error!, style: const TextStyle(fontSize: 12.5, color: C.red, fontWeight: FontWeight.w600)),
             ),
         ]),
@@ -662,10 +673,13 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
         for (final (i, label) in const ['Bidhaa', 'Gharama'].indexed)
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () => setState(() {
-              _tab = _Tab.values[i];
-              _error = null;
-            }),
+            onTap: () {
+              setState(() {
+                _tab = _Tab.values[i];
+                _error = null;
+              });
+              _focusSoon(i == 0 ? _qF : _eF);
+            },
             child: Container(
               margin: const EdgeInsets.only(right: 18),
               padding: const EdgeInsets.only(bottom: 3),
