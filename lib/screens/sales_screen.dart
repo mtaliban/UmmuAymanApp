@@ -278,7 +278,6 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
       _sel = v;
       _q.text = v.name;
       _price.text = money(v.selling);
-      _qty.clear();
     });
     _qtyF.requestFocus();
   }
@@ -584,7 +583,14 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
 
   Widget _bidhaaForm(bool editing) {
     final stock = _sel ?? _stockOf(_editLine);
-    final showFields = _sel != null || _newName || _editLine != null;
+    // Namba zilizoandikwa zisionekane tu kama zimefutwa: fields zikae wazi
+    // mara tu mmoja wao akiwa na maandishi (hata jina likigonga bidhaa ya stock).
+    final showFields = _sel != null ||
+        _newName ||
+        _editLine != null ||
+        _qty.text.isNotEmpty ||
+        _price.text.isNotEmpty ||
+        _buy.text.isNotEmpty;
     final showBuying = _newName || (_editLine != null && !_editLine!.fromStock);
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
       _WinField(
@@ -601,26 +607,31 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
       if (_matches.isNotEmpty)
         Padding(
           padding: const EdgeInsets.only(top: 4),
-          child: Column(children: [
-            for (final v in _matches)
-              InkWell(
-                onTap: () => _pick(v),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-                  decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFF1F2F5)))),
-                  child: Row(children: [
-                    Expanded(child: _bold(v.name, _q.text)),
-                    Text('zipo ${v.qty} · ${money(v.selling)}', style: const TextStyle(fontSize: 12, color: C.muted)),
-                  ]),
+          // Orodha isizidi safu 3 — isisukume fields na Next chini ya dirisha.
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 123),
+            child: ListView(shrinkWrap: true, padding: EdgeInsets.zero, children: [
+              for (final v in _matches)
+                InkWell(
+                  onTap: () => _pick(v),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+                    decoration: const BoxDecoration(border: Border(top: BorderSide(color: Color(0xFFF1F2F5)))),
+                    child: Row(children: [
+                      Expanded(child: _bold(v.name, _q.text)),
+                      Text('zipo ${v.qty} · ${money(v.selling)}', style: const TextStyle(fontSize: 12, color: C.muted)),
+                    ]),
+                  ),
                 ),
-              ),
-          ]),
+            ]),
+          ),
         ),
       if (showFields) ...[
         const SizedBox(height: 10),
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Expanded(
-            flex: 3,
+            // Idadi ni namba ndogo; Selling/Buying zipate nafasi zaidi.
+            flex: showBuying ? 2 : 3,
             child: _labelled('Idadi',
                 _WinField(controller: _qty, focus: _qtyF, number: true, align: TextAlign.center, onChanged: (_) => setState(() {}))),
           ),
@@ -1015,35 +1026,57 @@ class _WinField extends StatelessWidget {
     this.onSubmitted,
   });
 
+  static const double _size = 14.5;
+
+  /// Namba isiyotoshea kisanduku hupunguza fonti yake — hivyo namba yote
+  /// inaonekana, badala ya mwanzo wake kufichwa na caret iliyo mwisho.
+  double _fitNumber(BuildContext context, double maxWidth, String text) {
+    if (text.isEmpty) return _size;
+    // 8+8 padding, caret na nafasi ya mpaka — namba isigonge ukingo wa kulia.
+    final avail = maxWidth - 30;
+    if (avail <= 0) return _size;
+    final tp = TextPainter(
+      text: TextSpan(text: text, style: const TextStyle(fontSize: _size, fontWeight: FontWeight.w500, fontFeatures: tabular)),
+      textDirection: TextDirection.ltr,
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    if (tp.width <= avail) return _size;
+    return (_size * avail / tp.width).clamp(10.0, _size);
+  }
+
   @override
   Widget build(BuildContext context) {
     OutlineInputBorder b(Color c, double w) => OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: BorderSide(color: c, width: w));
+    Widget box(double fontSize) => TextField(
+          controller: controller,
+          focusNode: focus,
+          readOnly: readOnly,
+          textAlign: align,
+          textInputAction: TextInputAction.next,
+          keyboardType: number ? TextInputType.number : TextInputType.text,
+          textCapitalization: number ? TextCapitalization.none : TextCapitalization.sentences,
+          inputFormatters: [if (number) MoneyInput()],
+          onChanged: onChanged,
+          onSubmitted: onSubmitted,
+          style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w500, fontFeatures: tabular),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: hint,
+            hintStyle: const TextStyle(color: C.faint, fontWeight: FontWeight.w400),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+            suffixIcon: suffix == null ? null : Padding(padding: const EdgeInsets.only(right: 8), child: suffix),
+            suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+            enabledBorder: b(C.field, 1),
+            focusedBorder: b(C.blue, 1.5),
+            border: b(C.field, 1),
+          ),
+        );
     return SizedBox(
       height: 38,
-      child: TextField(
-        controller: controller,
-        focusNode: focus,
-        readOnly: readOnly,
-        textAlign: align,
-        textInputAction: TextInputAction.next,
-        keyboardType: number ? TextInputType.number : TextInputType.text,
-        textCapitalization: number ? TextCapitalization.none : TextCapitalization.sentences,
-        inputFormatters: [if (number) MoneyInput()],
-        onChanged: onChanged,
-        onSubmitted: onSubmitted,
-        style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w500, fontFeatures: tabular),
-        decoration: InputDecoration(
-          isDense: true,
-          hintText: hint,
-          hintStyle: const TextStyle(color: C.faint, fontWeight: FontWeight.w400),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          suffixIcon: suffix == null ? null : Padding(padding: const EdgeInsets.only(right: 10), child: suffix),
-          suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-          enabledBorder: b(C.field, 1),
-          focusedBorder: b(C.blue, 1.5),
-          border: b(C.field, 1),
-        ),
-      ),
+      child: number
+          ? LayoutBuilder(builder: (ctx, cons) => box(_fitNumber(ctx, cons.maxWidth, controller.text)))
+          : box(_size),
     );
   }
 }
