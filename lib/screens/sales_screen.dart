@@ -544,31 +544,33 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [Expanded(child: header), _closeX()]),
           const SizedBox(height: 12),
-          if (expMode)
+          if (expMode) ...[
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
               Expanded(
+                flex: 4,
                 child: _labelled(
                   'Jina la gharama',
                   _WinField(controller: _eName, focus: _eF, onChanged: (_) => setState(() {}), onSubmitted: (_) => _next()),
                 ),
               ),
               const SizedBox(width: 8),
-              _labelled(
-                'Kiasi',
-                _WinField(
-                  controller: _eAmt,
-                  focus: _eAmtF,
-                  number: true,
-                  width: 86,
-                  align: TextAlign.right,
-                  onChanged: (_) => setState(() {}),
-                  onSubmitted: (_) => _next(),
+              Expanded(
+                flex: 3,
+                child: _labelled(
+                  'Kiasi',
+                  _WinField(
+                    controller: _eAmt,
+                    focus: _eAmtF,
+                    number: true,
+                    align: TextAlign.right,
+                    onChanged: (_) => setState(() {}),
+                    onSubmitted: (_) => _next(),
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
-              _NextBtn(label: editing ? 'Hifadhi' : 'Next', onTap: _canNext ? _next : null),
-            ])
-          else
+            ]),
+            _nextRow(editing),
+          ] else
             _bidhaaForm(editing),
           if (_error != null)
             Padding(
@@ -583,6 +585,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
   Widget _bidhaaForm(bool editing) {
     final stock = _sel ?? _stockOf(_editLine);
     final showFields = _sel != null || _newName || _editLine != null;
+    final showBuying = _newName || (_editLine != null && !_editLine!.fromStock);
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
       _WinField(
         controller: _q,
@@ -616,29 +619,36 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
       if (showFields) ...[
         const SizedBox(height: 10),
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          _labelled('Idadi',
-              _WinField(controller: _qty, focus: _qtyF, number: true, width: 54, align: TextAlign.center, onChanged: (_) => setState(() {}))),
+          Expanded(
+            flex: 3,
+            child: _labelled('Idadi',
+                _WinField(controller: _qty, focus: _qtyF, number: true, align: TextAlign.center, onChanged: (_) => setState(() {}))),
+          ),
           const SizedBox(width: 8),
-          _labelled(
-            (_newName || (_editLine != null && !_editLine!.fromStock)) ? 'Selling' : 'Bei',
-            _WinField(
-              controller: _price,
-              number: true,
-              width: _newName ? 80 : 96,
-              align: TextAlign.right,
-              onChanged: (_) => setState(() {}),
+          Expanded(
+            flex: showBuying ? 4 : 5,
+            child: _labelled(
+              showBuying ? 'Selling' : 'Bei',
+              _WinField(
+                controller: _price,
+                number: true,
+                align: TextAlign.right,
+                onChanged: (_) => setState(() {}),
+              ),
             ),
           ),
-          if (_newName || (_editLine != null && !_editLine!.fromStock)) ...[
+          if (showBuying) ...[
             const SizedBox(width: 8),
-            _labelled(
-              'Buying',
-              _WinField(controller: _buy, number: true, width: 80, align: TextAlign.right, onChanged: (_) => setState(() {})),
+            Expanded(
+              flex: 4,
+              child: _labelled(
+                'Buying',
+                _WinField(controller: _buy, number: true, align: TextAlign.right, onChanged: (_) => setState(() {})),
+              ),
             ),
           ],
-          const Spacer(),
-          _NextBtn(label: editing ? 'Hifadhi' : 'Next', onTap: _canNext ? _next : null),
         ]),
+        _nextRow(editing),
       ] else
         Align(
           alignment: Alignment.centerRight,
@@ -649,6 +659,15 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
         ),
     ]);
   }
+
+  /// Next/Hifadhi chini ya kisanduku: namba zipate upana wote wa dirisha.
+  Widget _nextRow(bool editing) => Align(
+        alignment: Alignment.centerRight,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: _NextBtn(label: editing ? 'Hifadhi' : 'Next', onTap: _canNext ? _next : null),
+        ),
+      );
 
   Variant? _stockOf(SaleLine? l) {
     if (l == null || !l.fromStock) return null;
@@ -981,7 +1000,6 @@ class _WinField extends StatelessWidget {
   final bool number;
   final bool readOnly;
   final TextAlign align;
-  final double? width;
   final Widget? suffix;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
@@ -992,7 +1010,6 @@ class _WinField extends StatelessWidget {
     this.number = false,
     this.readOnly = false,
     this.align = TextAlign.left,
-    this.width,
     this.suffix,
     this.onChanged,
     this.onSubmitted,
@@ -1002,7 +1019,6 @@ class _WinField extends StatelessWidget {
   Widget build(BuildContext context) {
     OutlineInputBorder b(Color c, double w) => OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: BorderSide(color: c, width: w));
     return SizedBox(
-      width: width,
       height: 38,
       child: TextField(
         controller: controller,
