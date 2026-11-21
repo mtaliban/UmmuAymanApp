@@ -544,17 +544,14 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
           Row(children: [Expanded(child: header), _closeX()]),
           const SizedBox(height: 12),
           if (expMode) ...[
+            // Jina la gharama peke yake mstari wa kwanza; Kiasi na Next mstari wa pili.
+            _labelled(
+              'Jina la gharama',
+              _WinField(controller: _eName, focus: _eF, onChanged: (_) => setState(() {}), onSubmitted: (_) => _next()),
+            ),
+            const SizedBox(height: 10),
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
               Expanded(
-                flex: 4,
-                child: _labelled(
-                  'Jina la gharama',
-                  _WinField(controller: _eName, focus: _eF, onChanged: (_) => setState(() {}), onSubmitted: (_) => _next()),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 3,
                 child: _labelled(
                   'Kiasi',
                   _WinField(
@@ -567,8 +564,9 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                   ),
                 ),
               ),
+              const SizedBox(width: 8),
+              _NextBtn(label: editing ? 'Hifadhi' : 'Next', onTap: _canNext ? _next : null),
             ]),
-            _nextRow(editing),
           ] else
             _bidhaaForm(editing),
           if (_error != null)
