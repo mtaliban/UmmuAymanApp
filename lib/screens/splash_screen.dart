@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'pin_screen.dart';
 import 'shell.dart';
 
-/// Splash ya app: nembo inajijenga kutoka katikati kwenda nje (mawimbi, mwili,
-/// uso, mstari wa macho, mistari myeupe, pumzi ya mwisho). Ikikamilika unaenda
-/// moja kwa moja kwenye PIN (au Nyumbani kama tayari una session).
+/// Splash ya app: nembo inajijenga kutoka katikati kwenda nje, kisha jina
+/// "Ummu Ayman" linaandikwa kushoto kwenda kulia na "OUTFIT" linapanda chini
+/// yake. Ikikamilika unaenda kwenye PIN (au Nyumbani kama tayari una session).
 class SplashScreen extends StatefulWidget {
   final bool logged;
   const SplashScreen({super.key, required this.logged});
@@ -16,7 +16,7 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 3800),
+    duration: const Duration(milliseconds: 5000),
   );
 
   @override
@@ -26,7 +26,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   }
 
   Future<void> _go() async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
@@ -43,21 +43,75 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     super.dispose();
   }
 
+  // Inabadilisha v (0..1 ya muda wote) kuwa maendeleo ya hatua moja
+  double _step(double v, double a, double b, [Curve c = Curves.easeOut]) =>
+      c.transform(((v - a) / (b - a)).clamp(0.0, 1.0));
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
-        // Uwiano wa nembo ni 484 : 500
-        child: SizedBox(
-          width: 220,
-          height: 227,
-          child: AnimatedBuilder(
-            animation: _c,
-            builder: (_, __) => CustomPaint(
-              painter: _IconPainter(_c.value),
-            ),
-          ),
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (_, __) {
+            final v = _c.value;
+            final iconT = (v / 0.76).clamp(0.0, 1.0); // nembo: 0 – 3.8s
+            final write = _step(v, 0.70, 0.92, Curves.easeInOut); // jina linaandikwa
+            final sub = _step(v, 0.86, 0.98); // OUTFIT
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 200,
+                  height: 206,
+                  child: CustomPaint(painter: _IconPainter(iconT)),
+                ),
+                const SizedBox(height: 20),
+
+                // "Ummu Ayman" inaandikwa kutoka kushoto kwenda kulia
+                ShaderMask(
+                  blendMode: BlendMode.dstIn,
+                  shaderCallback: (rect) => LinearGradient(
+                    colors: const [Colors.white, Colors.white, Colors.transparent],
+                    stops: [0.0, write, (write + 0.12).clamp(0.0, 1.0)],
+                  ).createShader(rect),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Text(
+                      'Ummu Ayman',
+                      style: const TextStyle(
+                        fontFamily: 'GreatVibes',
+                        fontSize: 46,
+                        height: 1.25,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // "OUTFIT" inapanda taratibu
+                Opacity(
+                  opacity: sub,
+                  child: Transform.translate(
+                    offset: Offset(0, 8 * (1 - sub)),
+                    child: const Text(
+                      'OUTFIT',
+                      style: TextStyle(
+                        fontFamily: 'Montserrat',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        fontVariations: [FontVariation('wght', 500)],
+                        letterSpacing: 10,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
