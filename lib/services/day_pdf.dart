@@ -44,6 +44,14 @@ Future<Uint8List> dayPdfBytes(DailySheet d, Shop shop) async {
   doc.addPage(pw.MultiPage(
     pageFormat: PdfPageFormat.a4,
     margin: const pw.EdgeInsets.all(40),
+    // Mguu upo kwenye kila ukurasa: tarehe ya kutolewa + "Ukurasa N / M".
+    footer: (ctx) => pw.Column(mainAxisSize: pw.MainAxisSize.min, children: [
+      pw.Divider(color: _line, height: 12),
+      pw.Row(children: [
+        pw.Expanded(child: _t('Imetolewa ${dateTimeShort(DateTime.now())}', size: 8.5, c: _grey)),
+        _t('Ukurasa ${ctx.pageNumber} / ${ctx.pagesCount}', size: 8.5, c: _grey),
+      ]),
+    ]),
     build: (_) => [
       pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
         pw.Expanded(
@@ -147,11 +155,6 @@ Future<Uint8List> dayPdfBytes(DailySheet d, Shop shop) async {
         ],
       ),
       pw.SizedBox(height: 26),
-      pw.Divider(color: _line),
-      pw.Row(children: [
-        pw.Expanded(child: _t('Imetolewa ${dateTimeShort(DateTime.now())}', size: 8.5, c: _grey)),
-        _t('Ukurasa 1 / 1', size: 8.5, c: _grey),
-      ]),
     ],
   ));
   return doc.save();

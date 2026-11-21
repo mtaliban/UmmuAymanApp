@@ -111,6 +111,7 @@ class _DayCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Box(
         radius: 12,
+        border: C.cardLine,
         padding: const EdgeInsets.fromLTRB(14, 13, 10, 13),
         onTap: onTap,
         child: Row(children: [

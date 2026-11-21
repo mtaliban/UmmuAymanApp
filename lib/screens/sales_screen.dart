@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../api/api.dart';
@@ -41,6 +43,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
   bool _loading = true;
 
   bool _open = false, _busy = false, _pdfBusy = false;
+  Timer? _midnight;
   _Tab _tab = _Tab.bidhaa;
   SaleLine? _editLine;
   Expense? _editExp;
@@ -60,6 +63,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _load();
+    _scheduleMidnight();
     Api.i.shop().then((s) {
       if (mounted) setState(() => _shop = s);
     }).catchError((_) {});
@@ -68,6 +72,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _midnight?.cancel();
     _scroll.dispose();
     for (final c in [_q, _qty, _price, _buy, _eName, _eAmt]) {
       c.dispose();
@@ -90,6 +95,26 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
       });
     }
     _load();
+    _scheduleMidnight();
+  }
+
+  /// Saa 6 usiku (usiku wa manane) -> siku mpya tupu bila kubonyeza kitu.
+  void _scheduleMidnight() {
+    _midnight?.cancel();
+    if (!_isToday) return;
+    final now = DateTime.now();
+    final next = DateTime(now.year, now.month, now.day + 1);
+    _midnight = Timer(next.difference(now) + const Duration(seconds: 1), () {
+      if (!mounted) return;
+      _close();
+      setState(() {
+        _day = todayIso();
+        _d = null;
+        _loading = true;
+      });
+      _load();
+      _scheduleMidnight();
+    });
   }
 
   Future<void> _load() async {
@@ -144,7 +169,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
     }).take(6).toList();
   }
 
-  bool get _newName => _sel == null && _editLine == null && _q.text.trim().length >= 2 && _matches.isEmpty;
+  bool get _newName => _sel == null && _editLine == null && _q.text.trim().isNotEmpty && _matches.isEmpty;
 
   bool get _canNext {
     if (_busy) return false;
@@ -329,6 +354,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
   Future<void> _openReceipt(String? id) async {
     if (id == null || id.isEmpty) return;
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReceiptScreen(id: id)));
+    if (mounted) _load(); // risiti ikighairiwa, siku inabadilika
   }
 
   // ------------------------------------------------------------ PDF / shiriki
@@ -696,7 +722,7 @@ class _InfoCard extends StatelessWidget {
         radius: 12,
         onTap: onTap,
         color: highlight ? C.blue3 : bg,
-        border: highlight ? C.blue : null,
+        border: highlight ? C.blue : C.cardLine,
         padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -758,10 +784,20 @@ class _TotalLine extends StatelessWidget {
           Expanded(
             child: Text(left, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800)),
           ),
-          if (middle != null)
-            Text(middle!, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.muted, fontFeatures: tabular)),
-          const SizedBox(width: 12),
-          Text(right, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular)),
+          // Namba kubwa zinapungua (FittedBox) — hazifuriki wala hazigusani.
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                if (middle != null) ...[
+                  Text(middle!, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.muted, fontFeatures: tabular)),
+                  const SizedBox(width: 12),
+                ],
+                Text(right, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular)),
+              ]),
+            ),
+          ),
         ]),
       );
 }
@@ -779,7 +815,7 @@ class _ExpenseRow extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 11),
           decoration: BoxDecoration(
             color: highlight ? C.blue3 : null,
-            border: const Border(bottom: BorderSide(color: C.line)),
+            border: const Border(bottom: BorderSide(color: C.softLine)),
           ),
           child: Row(children: [
             Expanded(child: Text(e.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600))),

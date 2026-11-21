@@ -12,6 +12,8 @@ class C {
   static const muted = Color(0xFF6B7280);
   static const faint = Color(0xFF9CA3AF);
   static const line = Color(0xFFECEEF2);
+  static const cardLine = Color(0xFFE5E7EB); // mpaka wa kadi (Mauzo, Risiti, Historia)
+  static const softLine = Color(0xFFF1F2F5); // mistari myepesi ndani ya kadi
   static const field = Color(0xFFD1D5DB);
   static const winBorder = Color(0xFFCBD5E1); // mpaka wa dirisha la kujaza
   static const receiptBg = Color(0xFFFAFBFC); // kadi za "kutoka risiti"

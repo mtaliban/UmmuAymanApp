@@ -193,7 +193,7 @@ class SmallButton extends StatelessWidget {
               ? DotsLoader(color: filled ? Colors.white : color)
               : Row(mainAxisSize: MainAxisSize.min, children: [
                   if (icon != null) ...[icon!, const SizedBox(width: 6)],
-                  Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: filled ? Colors.white : color)),
+                  Text(label, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: filled ? Colors.white : color)),
                 ]),
         ),
       );
