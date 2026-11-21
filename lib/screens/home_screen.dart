@@ -144,38 +144,28 @@ class _HomeState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _body(HomeData h) {
     final s = h.summary;
     final day = h.day!;
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 120), children: [
-      Row(children: [
-        Expanded(
-          child: Text(dayLabel(day),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: C.text2)),
-        ),
-        Text(dayShort(day), style: const TextStyle(fontSize: 12.5, color: C.muted)),
-      ]),
-      const SizedBox(height: 8),
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 120), children: [
+      SectionTitle(dayLabel(day), padding: const EdgeInsets.fromLTRB(2, 0, 2, 10)),
       _Summary(s),
       SectionTitle('Bidhaa zilizouzwa', trailing: '${h.top.length} bidhaa', padding: const EdgeInsets.fromLTRB(2, 20, 2, 8)),
       for (final (i, t) in h.top.indexed) _TopCard(rank: i + 1, row: t),
+      SectionTitle(dayLabel(day, lead: 'HESABU YA'), padding: const EdgeInsets.fromLTRB(2, 14, 2, 8)),
+      _DayTable(s),
     ]);
   }
 }
 
-/// MAUZO YA LEO / JANA / <SIKU> / <TAREHE>
-String dayLabel(DateTime d) {
+/// MAUZO YA JUMAMOSI, 21 NOV · LEO   (jana -> · JANA; siku za nyuma -> bila kiambishi)
+String dayLabel(DateTime d, {String lead = 'MAUZO YA'}) {
   final t = dayOnly(DateTime.now());
   final diff = t.difference(dayOnly(d)).inDays;
   const days = ['JUMATATU', 'JUMANNE', 'JUMATANO', 'ALHAMISI', 'IJUMAA', 'JUMAMOSI', 'JUMAPILI'];
   const months = ['JAN', 'FEB', 'MAC', 'APR', 'MEI', 'JUN', 'JUL', 'AGO', 'SEP', 'OKT', 'NOV', 'DES'];
-  if (diff <= 0) return 'MAUZO YA LEO';
-  if (diff == 1) return 'MAUZO YA JANA';
-  if (diff <= 6) return 'MAUZO YA ${days[d.weekday - 1]}';
-  return 'MAUZO YA ${d.day} ${months[d.month - 1]}';
+  final base = '$lead ${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]}';
+  if (diff <= 0) return '$base · LEO';
+  if (diff == 1) return '$base · JANA';
+  return base;
 }
-
-/// "Ijumaa, 20 Nov"
-String dayShort(DateTime d) => '${daysSw[d.weekday - 1]}, ${d.day} ${monthsShort[d.month - 1]}';
 
 /// H1 — bado hakuna mauzo yoyote
 class _NoSales extends StatelessWidget {
@@ -223,7 +213,15 @@ class _Summary extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Faida halisi', style: TextStyle(fontSize: 12.5, color: C.muted, fontWeight: FontWeight.w600)),
-          Text(money(s.net), style: const TextStyle(fontSize: 34, height: 1.2, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+              Text(money(s.net), style: const TextStyle(fontSize: 34, height: 1.2, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular)),
+              const SizedBox(width: 7),
+              const Text('Shilingi', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.muted)),
+            ]),
+          ),
           const SizedBox(height: 12),
           const Divider(height: 1, color: C.line),
           const SizedBox(height: 10),
@@ -235,13 +233,73 @@ class _Summary extends StatelessWidget {
                   decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: C.line))),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(x.$1, style: const TextStyle(fontSize: 11.5, color: C.muted)),
-                    Text(money(x.$2), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFeatures: tabular)),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Text(money(x.$2), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFeatures: tabular)),
+                        const Text(' Sh', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.muted)),
+                      ]),
+                    ),
                   ]),
                 ),
               ),
           ]),
         ]),
       );
+}
+
+/// Jedwali la hesabu ya siku: MAELEZO | SHILINGI
+/// Mauzo -> Mtaji -> Faida -> Gharama -> FAIDA HALISI
+class _DayTable extends StatelessWidget {
+  final Summary s;
+  const _DayTable(this.s);
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <(String, int, bool)>[
+      ('Mauzo', s.sales, false),
+      ('Mtaji', s.capital, false),
+      ('Faida', s.productProfit, true),
+      ('Gharama', s.expenses, false),
+      ('FAIDA HALISI', s.net, true),
+    ];
+    Widget cell(Widget child, {bool right = false}) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          child: Align(alignment: right ? Alignment.centerRight : Alignment.centerLeft, child: child),
+        );
+    const head = TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: .5, color: C.text2);
+    return Table(
+      border: TableBorder.all(color: const Color(0xFF9CA3AF), width: 1),
+      columnWidths: const {0: FlexColumnWidth(1.3), 1: FlexColumnWidth(1)},
+      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+      children: [
+        TableRow(decoration: const BoxDecoration(color: C.head), children: [
+          cell(const Text('MAELEZO', style: head)),
+          cell(const Text('SHILINGI', style: head), right: true),
+        ]),
+        for (final (i, r) in rows.indexed)
+          TableRow(children: [
+            cell(Text(r.$1,
+                style: TextStyle(
+                  fontSize: i == rows.length - 1 ? 13.5 : 14,
+                  fontWeight: i == rows.length - 1 ? FontWeight.w800 : FontWeight.w600,
+                  color: C.text,
+                ))),
+            cell(
+              Text(money(r.$2),
+                  style: TextStyle(
+                    fontSize: i == rows.length - 1 ? 15 : 14,
+                    fontWeight: FontWeight.w800,
+                    color: r.$3 ? C.blue : C.text,
+                    fontFeatures: tabular,
+                  )),
+              right: true,
+            ),
+          ]),
+      ],
+    );
+  }
 }
 
 /// Kadi ya bidhaa ya siku: namba · jina · IDADI · SELLING · MAUZO · FAIDA
