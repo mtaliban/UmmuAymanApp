@@ -135,11 +135,19 @@ class Expense {
 
 class Summary {
   final int sales, capital, expenses;
-  Summary({required this.sales, required this.capital, required this.expenses});
-  int get productProfit => sales - capital;
-  int get net => sales - capital - expenses;
-  factory Summary.fromJson(Map<String, dynamic>? j) =>
-      Summary(sales: _i(j?['sales']), capital: _i(j?['capital']), expenses: _i(j?['expenses']));
+  final int? _productProfit, _net; // values za server, ikiwepo
+  Summary({required this.sales, required this.capital, required this.expenses, int? productProfit, int? net})
+      : _productProfit = productProfit,
+        _net = net;
+  int get productProfit => _productProfit ?? sales - capital;
+  int get net => _net ?? sales - capital - expenses;
+  factory Summary.fromJson(Map<String, dynamic>? j) => Summary(
+        sales: _i(j?['sales']),
+        capital: _i(j?['capital']),
+        expenses: _i(j?['expenses']),
+        productProfit: j?['product_profit'] == null ? null : _i(j!['product_profit']),
+        net: j?['net'] == null ? null : _i(j!['net']),
+      );
   static Summary zero() => Summary(sales: 0, capital: 0, expenses: 0);
 }
 

@@ -76,7 +76,7 @@ class _StockScreenState extends State<StockScreen> {
           }).toList()
         : list.items;
 
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 30), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 140), children: [
       _SearchField(controller: _q, onChanged: () => setState(() {})),
       if (!searching) ...[
         const SizedBox(height: 12),

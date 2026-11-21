@@ -594,10 +594,10 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
         const SizedBox(height: 10),
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           _labelled('Idadi',
-              _WinField(controller: _qty, focus: _qtyF, number: true, width: _newName ? 50 : 54, align: TextAlign.center, onChanged: (_) => setState(() {}))),
+              _WinField(controller: _qty, focus: _qtyF, number: true, width: 54, align: TextAlign.center, onChanged: (_) => setState(() {}))),
           const SizedBox(width: 8),
           _labelled(
-            _newName ? 'Selling' : 'Bei',
+            (_newName || (_editLine != null && !_editLine!.fromStock)) ? 'Selling' : 'Bei',
             _WinField(
               controller: _price,
               number: true,

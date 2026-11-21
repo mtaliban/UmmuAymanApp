@@ -25,6 +25,7 @@ class _ProductScreenState extends State<ProductScreen> {
   late StockProduct? _p = widget.initial;
   Object? _error;
   String? _hl;
+  String? _selected;
 
   @override
   void initState() {
@@ -56,6 +57,7 @@ class _ProductScreenState extends State<ProductScreen> {
   Future<void> _addType() async {
     final p = _p;
     if (p == null) return;
+    setState(() => _selected = null);
     final np = await showEntryDialog<StockProduct>(context, builder: (_) => _AddVariantDialog(p));
     if (np == null || !mounted) return;
     final added = np.variants.where((v) => !p.variants.any((x) => x.id == v.id)).toList();
@@ -66,8 +68,11 @@ class _ProductScreenState extends State<ProductScreen> {
   Future<void> _edit(StockVariant v) async {
     final p = _p;
     if (p == null) return;
+    setState(() => _selected = v.id);
     final np = await showEntryDialog<StockProduct>(context, builder: (_) => _EditVariantDialog(v));
-    if (np == null || !mounted) return;
+    if (!mounted) return;
+    setState(() => _selected = null);
+    if (np == null) return;
     setState(() => _p = np);
     _mark(v.id);
   }
@@ -107,14 +112,15 @@ class _ProductScreenState extends State<ProductScreen> {
         ]),
       );
     }
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 30), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 0), children: [
       _ThreeStat(qty: p.qty, capital: p.capital, profit: p.profitIfSold),
       SectionTitle(p.hasVariants ? 'Aina' : 'Taarifa',
           trailing: p.hasVariants ? '${p.variants.length}' : null, padding: const EdgeInsets.fromLTRB(2, 18, 2, 10)),
       for (final v in p.variants) ...[
-        _VariantCard(v, highlight: v.id == _hl, onTap: () => _edit(v)),
+        _VariantCard(v, highlight: v.id == _hl || v.id == _selected, onTap: () => _edit(v)),
         const SizedBox(height: 8),
       ],
+      const SizedBox(height: 120),
     ]);
   }
 }
