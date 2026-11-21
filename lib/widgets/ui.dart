@@ -96,7 +96,7 @@ class SectionTitle extends StatelessWidget {
         padding: padding,
         child: Row(children: [
           Expanded(child: Text(text.toUpperCase(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .9, color: color))),
-          if (trailing != null) Text(trailing!, style: const TextStyle(fontSize: 12, color: C.muted, fontWeight: FontWeight.w600)),
+          if (trailing != null) Text(trailing!, style: const TextStyle(fontSize: 12.5, color: C.muted, fontWeight: FontWeight.w600)),
         ]),
       );
 }
@@ -788,7 +788,7 @@ class PrimaryButton extends StatelessWidget {
         onTap: on ? onTap : null,
         borderRadius: BorderRadius.circular(8),
         child: Container(
-          height: 36,
+          height: 34,
           padding: const EdgeInsets.fromLTRB(14, 0, 8, 0),
           decoration: BoxDecoration(color: C.blue, borderRadius: BorderRadius.circular(8)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [

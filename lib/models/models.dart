@@ -257,7 +257,10 @@ class ReceiptItem {
   int get amount => qty * (price - discount);
   factory ReceiptItem.fromJson(Map<String, dynamic> j) => ReceiptItem(
       variantId: _s(j['variant_id']), name: _s(j['name']), qty: _i(j['qty']), price: _i(j['price']), discount: _i(j['discount']), buying: _i(j['buying']));
-  Map<String, dynamic> toJson() => {'variant_id': variantId, 'qty': qty, 'price': price, 'discount': discount};
+  /// Bidhaa isiyo kwenye stock inatumwa kwa `variant_id: null` + jina + buying.
+  Map<String, dynamic> toJson() => variantId.isEmpty
+      ? {'variant_id': null, 'name': name, 'qty': qty, 'price': price, 'discount': discount, 'buying': buying}
+      : {'variant_id': variantId, 'qty': qty, 'price': price, 'discount': discount};
 }
 
 class Receipt {
@@ -267,7 +270,8 @@ class Receipt {
   final String customerName;
   final String customerPhone;
   final List<ReceiptItem> items;
-  Receipt({required this.id, required this.number, required this.createdAt, required this.customerName, required this.customerPhone, required this.items});
+  final Shop? shop; // inatumwa na C2 (jina/simu/email ya duka)
+  Receipt({required this.id, required this.number, required this.createdAt, required this.customerName, required this.customerPhone, required this.items, this.shop});
   int get gross => items.fold(0, (a, b) => a + b.gross);
   int get discountTotal => items.fold(0, (a, b) => a + b.discountTotal);
   int get paid => items.fold(0, (a, b) => a + b.amount);
@@ -285,8 +289,66 @@ class Receipt {
       customerName: _s(c['name']),
       customerPhone: _s(c['phone']),
       items: _l(j['items'], ReceiptItem.fromJson),
+      shop: j['shop'] is Map ? Shop.fromJson(Map<String, dynamic>.from(j['shop'] as Map)) : null,
     );
   }
+}
+
+/// Mstari wa risiti kwenye orodha (C0, C3) — hakuna items.
+class ReceiptRow {
+  final String id, number, customer, time;
+  final int paid;
+  ReceiptRow({required this.id, required this.number, required this.customer, required this.time, required this.paid});
+  factory ReceiptRow.fromJson(Map<String, dynamic> j) {
+    final c = _s(j['customer']);
+    return ReceiptRow(
+      id: _s(j['id']),
+      number: _s(j['number']),
+      customer: c.isEmpty ? 'Mteja' : c,
+      time: _s(j['time']),
+      paid: _i(j['paid']),
+    );
+  }
+}
+
+/// Jibu la C0: `{date, receipts, count, total, next_number}`.
+class TodayReceipts {
+  final String date, nextNumber;
+  final List<ReceiptRow> rows;
+  final int count, total;
+  TodayReceipts({required this.date, required this.rows, required this.count, required this.total, required this.nextNumber});
+  factory TodayReceipts.fromJson(Map<String, dynamic> j) => TodayReceipts(
+        date: _s(j['date']),
+        rows: _l(j['receipts'], ReceiptRow.fromJson),
+        count: _i(j['count']),
+        total: _i(j['total']),
+        nextNumber: _s(j['next_number']).isEmpty ? '0001' : _s(j['next_number']),
+      );
+}
+
+/// Kikundi cha siku kwenye C3 (label inatoka server: LEO · IJUMAA 20 NOV).
+class ReceiptDay {
+  final String date, label;
+  final int total;
+  final List<ReceiptRow> rows;
+  ReceiptDay({required this.date, required this.label, required this.total, required this.rows});
+  factory ReceiptDay.fromJson(Map<String, dynamic> j) => ReceiptDay(
+        date: _s(j['date']),
+        label: _s(j['label']),
+        total: _i(j['total']),
+        rows: _l(j['receipts'], ReceiptRow.fromJson),
+      );
+}
+
+/// Jibu la C3: siku + `next_before` (null = zimeisha).
+class ReceiptHistory {
+  final List<ReceiptDay> days;
+  final String? nextBefore;
+  ReceiptHistory({required this.days, this.nextBefore});
+  factory ReceiptHistory.fromJson(Map<String, dynamic> j) => ReceiptHistory(
+        days: _l(j['days'], ReceiptDay.fromJson),
+        nextBefore: j['next_before'] == null ? null : _s(j['next_before']),
+      );
 }
 
 /// RIPOTI (P1 – P4) — jibu moja kwa vipindi vyote: siku · wiki · mwezi · mwaka.

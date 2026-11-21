@@ -64,9 +64,10 @@ abstract class Api {
   Future<List<String>> expenseNames();
 
   // Risiti
-  Future<List<Receipt>> receipts(DateTime date);
-  Future<Receipt> createReceipt({required String name, required String phone, required List<ReceiptItem> items});
-  Future<Receipt> receipt(String id);
+  Future<TodayReceipts> receipts(DateTime date); // C0
+  Future<Receipt> createReceipt({required String name, required String phone, required List<ReceiptItem> items}); // C1
+  Future<Receipt> receipt(String id); // C2
+  Future<ReceiptHistory> receiptHistory({String q = '', String? before}); // C3
   Future<void> cancelReceipt(String id);
 
   // Ripoti — P1 GET /reports/day/{date} · P2–P4 GET /reports/{period}?date=
@@ -262,16 +263,26 @@ class HttpApi extends Api {
   Future<List<String>> expenseNames() async => ((await _send('GET', '/expenses/names')) as List).map((e) => '$e').toList();
 
   @override
-  Future<List<Receipt>> receipts(DateTime date) async => _list(await _send('GET', '/receipts', query: {'date': iso(date)})).map(Receipt.fromJson).toList();
+  @override
+  Future<TodayReceipts> receipts(DateTime date) async =>
+      TodayReceipts.fromJson(_m(await _send('GET', '/receipts', query: {'date': iso(date)})));
 
   @override
   Future<Receipt> createReceipt({required String name, required String phone, required List<ReceiptItem> items}) async => Receipt.fromJson(_m(await _send('POST', '/receipts', body: {
-        'customer': {'name': name, 'phone': phone},
+        'date': todayIso(),
+        'customer': {'name': name.trim(), 'phone': phone.replaceAll(RegExp(r'\D'), '')},
         'items': items.map((e) => e.toJson()).toList(),
       })));
 
   @override
   Future<Receipt> receipt(String id) async => Receipt.fromJson(_m(await _send('GET', '/receipts/$id')));
+
+  @override
+  Future<ReceiptHistory> receiptHistory({String q = '', String? before}) async => ReceiptHistory.fromJson(_m(await _send('GET', '/receipts/history', query: {
+        'limit': '50',
+        if (q.trim().isNotEmpty) 'q': q.trim(),
+        if (before != null) 'before': before,
+      })));
 
   @override
   Future<void> cancelReceipt(String id) async => _send('POST', '/receipts/$id/cancel');

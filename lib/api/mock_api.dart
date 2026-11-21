@@ -458,16 +458,67 @@ class MockApi extends Api {
 
   // ------------------------------------------------------------------ risiti
   @override
-  Future<List<Receipt>> receipts(DateTime date) {
+  Future<TodayReceipts> receipts(DateTime date) {
     final l = _receipts.where((r) => _same(r.createdAt, date)).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    return _d(l);
+    final rows = [
+      for (final r in l)
+        ReceiptRow(id: r.id, number: r.number, customer: r.customerName.isEmpty ? 'Mteja' : r.customerName, time: hhmm(r.createdAt), paid: r.paid),
+    ];
+    return _d(TodayReceipts(
+      date: iso(date),
+      rows: rows,
+      count: rows.length,
+      total: rows.fold(0, (a, r) => a + r.paid),
+      nextNumber: '${_receiptNo + 1}'.padLeft(4, '0'),
+    ));
+  }
+
+  @override
+  Future<ReceiptHistory> receiptHistory({String q = '', String? before}) {
+    final t = q.trim().toLowerCase();
+    var rs = _receipts.where((r) {
+      if (before != null && iso(r.createdAt).compareTo(before) >= 0) return false;
+      if (t.isEmpty) return true;
+      if (RegExp(r'^\d+$').hasMatch(t)) return r.number.replaceFirst(RegExp(r'^0+'), '') == t.replaceFirst(RegExp(r'^0+'), '');
+      return r.customerName.toLowerCase().split(RegExp(r'\s+')).any((w) => w.startsWith(t));
+    }).toList()
+      ..sort((a, b) {
+        final d = b.createdAt.compareTo(a.createdAt);
+        return d != 0 ? d : b.number.compareTo(a.number);
+      });
+    rs = rs.take(50).toList();
+    final today = _today;
+    final days = <ReceiptDay>[];
+    final idx = <String, ReceiptDay>{};
+    for (final r in rs) {
+      final key = iso(r.createdAt);
+      final d = dayOnly(r.createdAt);
+      final base = '${daysSw[d.weekday - 1]} ${d.day} ${monthsShort[d.month - 1]}'.toUpperCase();
+      final label = d == today ? 'LEO · $base' : d == today.subtract(const Duration(days: 1)) ? 'JANA · $base' : base;
+      final day = idx.putIfAbsent(key, () {
+        final x = ReceiptDay(date: key, label: label, total: 0, rows: []);
+        days.add(x);
+        return x;
+      });
+      day.rows.add(ReceiptRow(id: r.id, number: r.number, customer: r.customerName.isEmpty ? 'Mteja' : r.customerName, time: hhmm(r.createdAt), paid: r.paid));
+    }
+    final next = rs.length >= 50 ? iso(dayOnly(rs.last.createdAt).subtract(const Duration(days: 1))) : null;
+    return _d(ReceiptHistory(days: days, nextBefore: next));
   }
 
   @override
   Future<Receipt> createReceipt({required String name, required String phone, required List<ReceiptItem> items}) async {
-    if (name.trim().isEmpty) throw ApiException('Andika jina la mteja');
-    if (items.isEmpty) throw ApiException('Ongeza bidhaa');
-    final fixed = items.map((it) => ReceiptItem(variantId: it.variantId, name: it.name, qty: it.qty, price: it.price, discount: it.discount, buying: _v(it.variantId).buying)).toList();
+    if (items.isEmpty) throw ApiException('Weka bidhaa angalau moja');
+    final fixed = items
+        .map((it) => ReceiptItem(
+              variantId: it.variantId,
+              name: it.name,
+              qty: it.qty,
+              price: it.price,
+              discount: it.discount,
+              buying: it.variantId.isEmpty ? it.buying : _v(it.variantId).buying,
+            ))
+        .toList();
     return _d(_makeReceipt(name.trim(), phone.trim(), fixed, DateTime.now()));
   }
 

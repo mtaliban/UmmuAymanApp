@@ -230,11 +230,6 @@ class _Body extends StatelessWidget {
           total: ['Jumla', '${r.totalQty}', money(s.sales), money(s.productProfit)],
           blueLast: true,
         ));
-      } else {
-        w.add(const Padding(
-          padding: EdgeInsets.fromLTRB(2, 18, 2, 0),
-          child: Text('Hakuna mauzo siku hii', style: TextStyle(fontSize: 13, color: C.muted)),
-        ));
       }
     } else {
       final unit = _unit(r.period);

@@ -104,7 +104,7 @@ class _StockScreenState extends State<StockScreen> {
     return Box(
       radius: 12,
       color: hl ? C.blue3 : Colors.white,
-      border: hl ? C.blue : null,
+      border: hl ? C.blue : C.cardLine,
       padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
       onTap: () => _open(p),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -142,9 +142,9 @@ class _SearchField extends StatelessWidget {
             contentPadding: const EdgeInsets.fromLTRB(0, 11, 12, 11),
             filled: true,
             fillColor: Colors.white,
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 1.2)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: const BorderSide(color: C.cardLine, width: 1.2)),
             focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: const BorderSide(color: C.blue, width: 1.5)),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 1.2)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: const BorderSide(color: C.cardLine, width: 1.2)),
           ),
         ),
       );

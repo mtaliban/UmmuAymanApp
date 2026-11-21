@@ -14,6 +14,7 @@ String moneyShort(num v) {
 
 /// Juu ya nguzo za grafu: 142000 -> "142k", 2400000 -> "2.4M"
 String moneyBar(num v) {
+  if (v == 0) return '0';
   if (v.abs() >= 1000000) return '${(v / 1000000).toStringAsFixed(1).replaceAll('.0', '')}M';
   return '${(v / 1000).round()}k';
 }

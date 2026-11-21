@@ -215,6 +215,13 @@ class _EditVariantDialogState extends State<_EditVariantDialog> {
   bool _busy = false;
   String? _error;
 
+  /// Hifadhi inawaka tu ikiwa kuna kilichobadilika (idadi ≠ 0 au bei mpya).
+  bool get _changed {
+    if (_busy) return false;
+    final add = parseMoney(_add.text), b = parseMoney(_buy.text), s = parseMoney(_sell.text);
+    return s >= 1 && (add > 0 || b != widget.v.buying || s != widget.v.selling);
+  }
+
   Future<void> _save() async {
     final v = widget.v;
     final add = parseMoney(_add.text), b = parseMoney(_buy.text), s = parseMoney(_sell.text);
@@ -265,7 +272,7 @@ class _EditVariantDialogState extends State<_EditVariantDialog> {
               TextSpan(text: '$will', style: const TextStyle(color: C.text, fontWeight: FontWeight.w700, fontFeatures: tabular)),
             ])),
           ),
-          PrimaryButton('Hifadhi', busy: _busy, onTap: _save),
+          PrimaryButton('Hifadhi', busy: _busy, onTap: _changed ? _save : null),
         ]),
         if (_error != null) ErrorText(_error!),
       ]),

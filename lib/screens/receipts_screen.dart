@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
@@ -27,7 +29,7 @@ class ReceiptsScreen extends StatefulWidget {
 
 class ReceiptsScreenState extends State<ReceiptsScreen> {
   late DateTime _day = dayOnly(widget.initialDay ?? DateTime.now());
-  List<Receipt> _list = [];
+  TodayReceipts? _today;
   bool _loading = true;
   Object? _loadError;
 
@@ -78,10 +80,10 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
 
   Future<void> _load() async {
     try {
-      final list = await Api.i.receipts(_day);
+      final t = await Api.i.receipts(_day);
       if (!mounted) return;
       setState(() {
-        _list = list;
+        _today = t;
         _loading = false;
         _loadError = null;
       });
@@ -95,15 +97,8 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
     }
   }
 
-  /// Namba inayokuja (mf. "0009").
-  String get _nextNo {
-    var max = 0;
-    for (final r in _list) {
-      final n = int.tryParse(r.number.replaceAll(RegExp(r'[^0-9]'), ''));
-      if (n != null && n > max) max = n;
-    }
-    return '${max + 1}'.padLeft(4, '0');
-  }
+  /// Namba inayokuja (C0 `next_number`, mf. "0009").
+  String get _nextNo => _today?.nextNumber ?? '0001';
 
   List<Variant> get _matches {
     final q = _q.text.trim().toLowerCase();
@@ -231,6 +226,10 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
   @override
   Widget build(BuildContext context) {
     final isToday = _day == dayOnly(DateTime.now());
+    final t = _today;
+    final rows = t?.rows ?? const <ReceiptRow>[];
+    final count = t?.count ?? rows.length;
+    final total = t?.total ?? rows.fold<int>(0, (a, r) => a + r.paid);
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: pageBar(
@@ -259,13 +258,13 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
               : Stack(children: [
                   if (_open)
                     ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 14, 16, 420), children: _draftView())
-                  else if (_list.isEmpty)
+                  else if (rows.isEmpty)
                     const Center(child: _NoReceipts())
                   else
                     ListView(padding: const EdgeInsets.fromLTRB(16, 6, 16, 120), children: [
                       SectionTitle(_day == dayOnly(DateTime.now()) ? 'Risiti za leo' : 'Risiti za ${dateShortDay(_day)}',
-                          trailing: '${_list.length}', padding: const EdgeInsets.fromLTRB(2, 14, 2, 8)),
-                      for (final r in _list)
+                          trailing: '$count', padding: const EdgeInsets.fromLTRB(2, 14, 2, 8)),
+                      for (final r in rows)
                         _RcCard(
                           row: r,
                           highlight: r.id == _newId,
@@ -275,8 +274,8 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
                           },
                         ),
                       _TotalLine(
-                        left: 'Jumla · risiti ${_list.length}',
-                        right: money(_list.fold<int>(0, (a, r) => a + r.paid)),
+                        left: 'Jumla · risiti $count',
+                        right: money(total),
                       ),
                     ]),
                   if (_open) _window(),
@@ -387,7 +386,7 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
           const SizedBox(height: 10),
           Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
             if (showFields) ...[
-              DialogField(label: 'Idadi', controller: _qty, focus: _qtyF, number: true, width: 54, align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _next()),
+              DialogField(label: 'Idadi', controller: _qty, focus: _qtyF, number: true, width: 48, align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _next()),
               const SizedBox(width: 8),
               DialogField(label: 'Bei', controller: _price, money: true, width: 80, align: TextAlign.right, onChanged: (_) => setState(() {})),
               const SizedBox(width: 8),
@@ -438,7 +437,7 @@ class _NoReceipts extends StatelessWidget {
 
 /// Kadi ya risiti: mteja · Na. 0006 · 09:14 · kiasi ›
 class _RcCard extends StatelessWidget {
-  final Receipt row;
+  final ReceiptRow row;
   final bool highlight;
   final VoidCallback onTap;
   const _RcCard({required this.row, this.highlight = false, required this.onTap});
@@ -455,9 +454,9 @@ class _RcCard extends StatelessWidget {
           child: Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(titleCase(row.customerName), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                Text(titleCase(row.customer), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 3),
-                Text('Na. ${row.number} · ${hhmm(row.createdAt)}', style: const TextStyle(fontSize: 12.5, color: C.muted, fontFeatures: tabular)),
+                Text('Na. ${row.number} · ${row.time}', style: const TextStyle(fontSize: 12.5, color: C.muted, fontFeatures: tabular)),
               ]),
             ),
             Text(money(row.paid), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFeatures: tabular)),
@@ -618,7 +617,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     if (r == null || _busy) return;
     setState(() => _busy = true);
     try {
-      final shop = _shop ?? Shop(name: 'UMMU AYMAN OUTFITS', phone: '', email: '');
+      final shop = _shop ?? r.shop ?? Shop(name: 'UMMU AYMAN OUTFITS', phone: '', email: '');
       final bytes = await receiptPdf(r, shop);
       final name = 'Risiti-${r.number}.pdf';
       if (share) {
@@ -651,9 +650,9 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
               : ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 120), children: [
                   Box(
                     radius: 14,
-                    border: C.field,
+                    border: C.cardLine,
                     padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
-                    child: ReceiptBody(r, shop: _shop),
+                    child: ReceiptBody(r, shop: r.shop ?? _shop),
                   ),
                   const SizedBox(height: 14),
                   Row(children: [
@@ -818,111 +817,148 @@ class ReceiptHistoryScreen extends StatefulWidget {
 }
 
 class _ReceiptHistoryScreenState extends State<ReceiptHistoryScreen> {
-  late Future<List<(DateTime, List<Receipt>)>> _f = _load();
   final _search = TextEditingController();
+  final _scroll = ScrollController();
+  final List<ReceiptDay> _days = [];
+  String? _before;
+  bool _loading = true, _more = false;
+  Object? _error;
+  Timer? _debounce;
+  int _seq = 0;
 
-  Future<List<(DateTime, List<Receipt>)>> _load() async {
-    final today = dayOnly(DateTime.now());
-    final days = [today, for (var i = 1; i <= 20; i++) today.subtract(Duration(days: i))];
-    final lists = await Future.wait(days.map((d) => Api.i.receipts(d)));
-    return [for (var i = 0; i < days.length; i++) (days[i], lists[i])];
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+    _load();
   }
-
-  String _dayLabel(DateTime d) {
-    final today = dayOnly(DateTime.now());
-    final wd = daysSw[d.weekday - 1];
-    final md = '${d.day} ${monthsShort[d.month - 1]}';
-    if (d == today) return 'Leo · $wd, $md';
-    if (d == today.subtract(const Duration(days: 1))) return 'Jana · $wd, $md';
-    return '$wd, $md';
-  }
-
-  void _reload() => setState(() => _f = _load());
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _search.dispose();
+    _scroll.dispose();
     super.dispose();
+  }
+
+  /// Scroll -> C3 kwa `before={next_before}`.
+  void _onScroll() {
+    if (!_scroll.hasClients || _before == null || _more || _loading) return;
+    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 160) _load(more: true);
+  }
+
+  Future<void> _load({bool more = false}) async {
+    final seq = ++_seq;
+    setState(() {
+      _error = null;
+      if (more) {
+        _more = true;
+      } else {
+        _loading = true;
+      }
+    });
+    try {
+      final h = await Api.i.receiptHistory(q: _search.text.trim(), before: more ? _before : null);
+      if (!mounted || seq != _seq) return;
+      setState(() {
+        if (!more) _days.clear();
+        _days.addAll(h.days);
+        _before = h.nextBefore;
+        _loading = false;
+        _more = false;
+      });
+    } catch (e) {
+      if (!mounted || seq != _seq) return;
+      setState(() {
+        _error = e;
+        _loading = false;
+        _more = false;
+      });
+    }
+  }
+
+  /// Kutafuta: subiri 300ms baada ya kuandika.
+  void _onSearch(String _) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), _load);
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: Colors.white,
         appBar: pageBar('Historia', subtitle: 'Risiti zote', back: true, boxBack: true),
-        body: FutureBuilder<List<(DateTime, List<Receipt>)>>(
-          future: _f,
-          builder: (c, s) {
-            if (s.connectionState != ConnectionState.done) return const Loading();
-            if (s.hasError) return ErrorView(s.error!, onRetry: _reload);
-            final q = _search.text.trim().toLowerCase();
-            final groups = s.data!
-                .map((g) {
-                  final list = q.isEmpty
-                      ? g.$2
-                      : g.$2.where((r) => r.customerName.toLowerCase().contains(q) || r.number.toLowerCase().contains(q)).toList();
-                  return (g.$1, list);
-                })
-                .where((g) => g.$2.isNotEmpty)
-                .toList();
-            return ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 60), children: [
-              Container(
-                height: 42,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: C.line)),
-                child: Row(children: [
-                  const Icon(Icons.search_rounded, size: 18, color: C.faint),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: _search,
-                      onChanged: (_) => setState(() {}),
-                      style: const TextStyle(fontSize: 14),
-                      decoration: const InputDecoration(
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
-                        border: InputBorder.none,
-                        hintText: 'Tafuta mteja au namba…',
-                        hintStyle: TextStyle(color: C.faint, fontSize: 14, fontWeight: FontWeight.w400),
-                      ),
-                    ),
-                  ),
-                ]),
-              ),
-              if (groups.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(top: 60),
-                  child: Text('Hakuna risiti', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: C.muted)),
-                ),
-              for (final g in groups) ...[
-                SectionTitle(_dayLabel(g.$1),
-                    trailing: money(g.$2.fold<int>(0, (a, r) => a + r.paid)), padding: const EdgeInsets.fromLTRB(2, 18, 2, 4)),
-                for (final (i, r) in g.$2.indexed)
-                  InkWell(
-                    onTap: () async {
-                      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReceiptScreen(id: r.id)));
-                      _reload();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 11),
-                      decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: C.line))),
-                      child: Row(children: [
-                        Expanded(
-                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            Text(titleCase(r.customerName), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
-                            const SizedBox(height: 2),
-                            Text('Na. ${r.number} · ${hhmm(r.createdAt)}', style: const TextStyle(fontSize: 12, color: C.muted, fontFeatures: tabular)),
-                          ]),
+        body: _loading && _days.isEmpty
+            ? const Loading()
+            : ListView(
+                controller: _scroll,
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 60),
+                children: [
+                  Container(
+                    height: 42,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: C.cardLine)),
+                    child: Row(children: [
+                      const Icon(Icons.search_rounded, size: 18, color: C.faint),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _search,
+                          onChanged: _onSearch,
+                          style: const TextStyle(fontSize: 14),
+                          decoration: const InputDecoration(
+                            isDense: true,
+                            contentPadding: EdgeInsets.zero,
+                            border: InputBorder.none,
+                            hintText: 'Tafuta mteja au namba…',
+                            hintStyle: TextStyle(color: C.faint, fontSize: 14, fontWeight: FontWeight.w400),
+                          ),
                         ),
-                        const SizedBox(width: 10),
-                        Text(money(r.paid), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, fontFeatures: tabular)),
-                        const Icon(Icons.chevron_right_rounded, size: 18, color: C.faint),
+                      ),
+                    ]),
+                  ),
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 20),
+                      child: Column(children: [
+                        Text('$_error', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.red)),
+                        const SizedBox(height: 8),
+                        SmallButton('Jaribu tena', onTap: () => _load()),
                       ]),
                     ),
-                  ),
-              ],
-            ]);
-          },
-        ),
+                  if (_error == null && !_loading && _days.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 60),
+                      child: Text('Hakuna risiti', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: C.muted)),
+                    ),
+                  for (final d in _days) ...[
+                    SectionTitle(d.label, trailing: money(d.total), padding: const EdgeInsets.fromLTRB(2, 18, 2, 4)),
+                    for (final (i, r) in d.rows.indexed)
+                      InkWell(
+                        onTap: () async {
+                          await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReceiptScreen(id: r.id)));
+                          _load();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 11),
+                          decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: C.softLine))),
+                          child: Row(children: [
+                            Expanded(
+                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                                Text(titleCase(r.customer), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+                                const SizedBox(height: 2),
+                                Text('Na. ${r.number} · ${r.time}', style: const TextStyle(fontSize: 12, color: C.muted, fontFeatures: tabular)),
+                              ]),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(money(r.paid), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, fontFeatures: tabular)),
+                            const Icon(Icons.chevron_right_rounded, size: 18, color: C.faint),
+                          ]),
+                        ),
+                      ),
+                  ],
+                  if (_more) const Padding(padding: EdgeInsets.symmetric(vertical: 18), child: Center(child: DotsLoader(size: 6))),
+                ],
+              ),
       );
 }
 
