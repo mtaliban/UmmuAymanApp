@@ -333,11 +333,11 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
             const Spacer(),
             InkWell(
               onTap: _busy ? null : _closeWindow,
-              customBorder: const CircleBorder(),
+              borderRadius: BorderRadius.circular(8),
               child: Container(
                 width: 30,
                 height: 30,
-                decoration: BoxDecoration(color: C.soft, shape: BoxShape.circle, border: Border.all(color: C.line)),
+                decoration: BoxDecoration(color: C.soft, borderRadius: BorderRadius.circular(8), border: Border.all(color: C.line)),
                 child: _busy
                     ? const Padding(padding: EdgeInsets.all(8), child: DotsLoader(size: 3))
                     : const Icon(Icons.close_rounded, size: 16, color: C.text),

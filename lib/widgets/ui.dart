@@ -17,10 +17,12 @@ import 'app_icons.dart';
 ///    JUU ya jina, jina kubwa chini yake, kama kwenye muundo.
 const double kHeaderHeight = 96; // urefu wa kichwa chini ya status bar
 const double kHeaderBackHeight = 118; // urefu ukiwa na kitufe cha kurudi juu
+const double kHeaderFlatHeight = 110; // kurudi 42 kando ya jina (Historia)
 const double kHeaderBottomGap = 10; // nafasi kati ya maneno na mstari
 
-PreferredSizeWidget pageBar(String title, {String? subtitle, Widget? action, bool back = false, bool boxBack = false}) =>
-    _PageHeader(title: title, subtitle: subtitle, action: action, back: back, boxBack: boxBack);
+PreferredSizeWidget pageBar(String title,
+        {String? subtitle, Widget? action, bool back = false, bool boxBack = false, bool flatBack = false, bool light = false}) =>
+    _PageHeader(title: title, subtitle: subtitle, action: action, back: back, boxBack: boxBack, flatBack: flatBack, light: light);
 
 class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -28,12 +30,16 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
   final Widget? action;
   final bool back;
   final bool boxBack;
-  const _PageHeader({required this.title, this.subtitle, this.action, this.back = false, this.boxBack = false});
+  final bool flatBack;
+  final bool light;
+  const _PageHeader(
+      {required this.title, this.subtitle, this.action, this.back = false, this.boxBack = false, this.flatBack = false, this.light = false});
 
   bool get _stacked => back && boxBack;
 
   @override
-  Size get preferredSize => Size.fromHeight((_stacked ? kHeaderBackHeight : kHeaderHeight) + 1);
+  Size get preferredSize =>
+      Size.fromHeight((flatBack ? kHeaderFlatHeight : (_stacked ? kHeaderBackHeight : kHeaderHeight)) + 1);
 
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
@@ -42,7 +48,7 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
           color: Colors.white,
           child: SafeArea(
             bottom: false,
-            child: _stacked ? _stackedBar(context) : _inlineBar(context),
+            child: flatBack ? _flatBar(context) : (_stacked ? _stackedBar(context) : _inlineBar(context)),
           ),
         ),
       );
@@ -66,6 +72,41 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
               ),
           ],
         ),
+      );
+
+  /// Historia / siku ya historia: kitufe 42 kando ya jina, kila kitu kimeshuka
+  /// 44px kutoka juu ya eneo salama.
+  Widget _flatBar(BuildContext context) => Container(
+        height: kHeaderFlatHeight + 1,
+        padding: const EdgeInsets.fromLTRB(16, 44, 16, 16),
+        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB)))),
+        child: Row(children: [
+          InkWell(
+            onTap: () => Navigator.of(context).maybePop(),
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(border: Border.all(color: C.cardLine), borderRadius: BorderRadius.circular(8)),
+              child: const Center(child: AppIcon(AppIcons.chevronLeft, size: 24, color: C.text)),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 24, height: 1.15, fontWeight: FontWeight.w500, color: C.text)),
+              if (subtitle != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(subtitle!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: C.muted)),
+                ),
+            ]),
+          ),
+          if (action != null) ...[const SizedBox(width: 12), action!],
+        ]),
       );
 
   Widget _backBox(BuildContext context) => InkWell(
@@ -94,11 +135,20 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
             ),
           Expanded(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 22, height: 1.15, fontWeight: FontWeight.w800, color: C.text)),
+              Text(title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: light ? 20 : 22,
+                    height: 1.15,
+                    fontWeight: light ? FontWeight.w500 : FontWeight.w800,
+                    color: C.text,
+                  )),
               if (subtitle != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
-                  child: Text(subtitle!, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.muted)),
+                  child: Text(subtitle!,
+                      style: TextStyle(fontSize: light ? 12 : 12.5, fontWeight: light ? FontWeight.w400 : FontWeight.w600, color: C.muted)),
                 ),
             ]),
           ),
@@ -113,13 +163,16 @@ class SectionTitle extends StatelessWidget {
   final String? trailing;
   final Color color;
   final EdgeInsets padding;
-  const SectionTitle(this.text, {super.key, this.trailing, this.color = C.text, this.padding = const EdgeInsets.fromLTRB(2, 24, 2, 8)});
+  const SectionTitle(this.text,
+      {super.key, this.trailing, this.color = C.text, this.padding = const EdgeInsets.fromLTRB(2, 24, 2, 8)});
   @override
   Widget build(BuildContext context) => Padding(
         padding: padding,
         child: Row(children: [
-          Expanded(child: Text(text.toUpperCase(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: .9, color: color))),
-          if (trailing != null) Text(trailing!, style: const TextStyle(fontSize: 12.5, color: C.muted, fontWeight: FontWeight.w600)),
+          Expanded(
+              child: Text(text.toUpperCase(),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: .04 * 11, color: color))),
+          if (trailing != null) Text(trailing!, style: const TextStyle(fontSize: 11, color: C.muted, fontWeight: FontWeight.w500)),
         ]),
       );
 }
@@ -681,11 +734,11 @@ class EntryHeader extends StatelessWidget {
         ),
         InkWell(
           onTap: () => Navigator.of(context).pop(),
-          customBorder: const CircleBorder(),
+          borderRadius: BorderRadius.circular(8),
           child: Container(
             width: 30,
             height: 30,
-            decoration: BoxDecoration(color: C.soft, shape: BoxShape.circle, border: Border.all(color: C.line)),
+            decoration: BoxDecoration(color: C.soft, borderRadius: BorderRadius.circular(8), border: Border.all(color: C.line)),
             child: const Icon(Icons.close_rounded, size: 16, color: C.text),
           ),
         ),
@@ -709,8 +762,12 @@ class DialogHeader extends StatelessWidget {
         ),
         InkWell(
           onTap: () => Navigator.of(context).pop(),
-          customBorder: const CircleBorder(),
-          child: Container(width: 34, height: 34, decoration: const BoxDecoration(color: Color(0xFFF3F4F6), shape: BoxShape.circle), child: const Icon(Icons.close, size: 18, color: C.text2)),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(8)),
+              child: const Icon(Icons.close, size: 18, color: C.text2)),
         ),
       ]);
 }
@@ -822,7 +879,7 @@ class MiniStat extends StatelessWidget {
   const MiniStat(this.label, this.value, {super.key, this.bold = false, this.color});
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label.toUpperCase(), style: const TextStyle(fontSize: 11, color: C.muted)),
+        Text(label.toUpperCase(), style: const TextStyle(fontSize: 10, letterSpacing: .4, fontWeight: FontWeight.w500, color: C.muted)),
         const SizedBox(height: 2),
         Text(value,
             style: TextStyle(fontSize: 14, fontWeight: bold ? FontWeight.w800 : FontWeight.w600, color: color ?? (value == '–' ? const Color(0xFFCBD5E1) : C.text), fontFeatures: tabular)),

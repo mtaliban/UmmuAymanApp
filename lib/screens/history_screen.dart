@@ -24,6 +24,9 @@ class _HistoryState extends State<HistoryScreen> {
   Object? _error;
   final _sc = ScrollController();
 
+  /// Miezi iliyofunguliwa kwa mkono (ya zamani hufungwa; ya sasa hufunguka).
+  final Map<String, bool> _shown = {};
+
   @override
   void initState() {
     super.initState();
@@ -64,11 +67,12 @@ class _HistoryState extends State<HistoryScreen> {
     }
   }
 
-  Future<void> _open(String date) async {
+  Future<void> _openDay(String date) async {
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => SalesScreen(date: date)));
     if (!mounted) return;
     setState(() {
       _months.clear();
+      _shown.clear();
       _next = null;
       _first = true;
     });
@@ -78,7 +82,7 @@ class _HistoryState extends State<HistoryScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: Colors.white,
-        appBar: pageBar('Historia', subtitle: 'Mauzo ya siku zilizopita', back: true, boxBack: true),
+        appBar: pageBar('Historia', subtitle: 'Mauzo ya siku zilizopita', flatBack: true),
         bottomNavigationBar: const AppNav(index: 1),
         body: _first
             ? const SizedBox.expand()
@@ -89,20 +93,98 @@ class _HistoryState extends State<HistoryScreen> {
                   })
                 : _months.isEmpty
                     ? const Center(child: _NoHistory())
-                    : ListView(
-                        controller: _sc,
-                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 40),
-                        children: [
-                          for (final m in _months) ...[
-                            SectionTitle(m.label, trailing: 'siku ${m.days.length}', padding: const EdgeInsets.fromLTRB(2, 16, 2, 8)),
-                            for (final d in m.days) ...[
-                              _DayCard(d, onTap: () => _open(d.date)),
-                              const SizedBox(height: 8),
-                            ],
-                          ],
-                        ],
-                      ),
+                    : _list(),
       );
+
+  Widget _list() {
+    final total = _months.fold(0, (a, m) => a + m.days.length);
+    final collapsible = total >= 3;
+    return ListView(
+      controller: _sc,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+      children: [
+        for (final (i, m) in _months.indexed) ...[
+          _monthHead(m, i, collapsible),
+          if (!collapsible || (_shown[m.label] ?? i == 0)) ...[
+            if (m.days.length >= 2) ...[
+              _MonthSummary(m),
+              const SizedBox(height: 8),
+            ],
+            for (final d in m.days) ...[
+              _DayCard(d, onTap: () => _openDay(d.date)),
+              const SizedBox(height: 8),
+            ],
+          ],
+        ],
+      ],
+    );
+  }
+
+  /// Kichwa cha mwezi: "NOVEMBA 2026" kushoto, "siku N" kulia; siku 3+ zinafungwa.
+  Widget _monthHead(HistoryMonth m, int i, bool collapsible) {
+    final shown = _shown[m.label] ?? i == 0;
+    final row = Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(children: [
+        Expanded(
+          child: Text(m.label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: .44, color: C.text)),
+        ),
+        Text('siku ${m.days.length}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: C.muted)),
+        if (collapsible) ...[
+          const SizedBox(width: 2),
+          Transform.rotate(
+            angle: shown ? 1.5708 : 0,
+            child: const AppIcon(AppIcons.chevronRight, size: 15, color: C.faint),
+          ),
+        ],
+      ]),
+    );
+    final top = EdgeInsets.only(top: i == 0 ? 0 : 22);
+    if (!collapsible) return Padding(padding: top, child: row);
+    return InkWell(
+      onTap: () => setState(() => _shown[m.label] = !shown),
+      child: Padding(padding: top, child: row),
+    );
+  }
+}
+
+/// Muhtasari wa mwezi: SIKU | MAUZO | FAIDA HALISI
+class _MonthSummary extends StatelessWidget {
+  final HistoryMonth month;
+  const _MonthSummary(this.month);
+
+  @override
+  Widget build(BuildContext context) {
+    final sales = month.days.fold(0, (a, d) => a + d.sales);
+    final net = month.days.fold(0, (a, d) => a + d.net);
+    final cells = [('SIKU', '${month.days.length}', false), ('MAUZO', money(sales), false), ('FAIDA HALISI', money(net), true)];
+    return Container(
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.cardLine)),
+      child: Row(children: [
+        for (final (i, c) in cells.indexed)
+          Expanded(
+            child: Container(
+              padding: EdgeInsets.fromLTRB(i == 0 ? 14 : 12, 12, 12, 12),
+              decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: C.line))),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(c.$1,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: .4, color: C.muted)),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(c.$2,
+                      maxLines: 1,
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: c.$3 ? C.blue : C.text, fontFeatures: tabular)),
+                ),
+              ]),
+            ),
+          ),
+      ]),
+    );
+  }
 }
 
 class _DayCard extends StatelessWidget {
@@ -111,38 +193,36 @@ class _DayCard extends StatelessWidget {
   const _DayCard(this.day, {required this.onTap});
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Box(
-          radius: 14,
-          border: C.cardLine,
-          onTap: onTap,
-          child: Column(children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 12, 13),
-              child: Row(children: [
-                Expanded(
-                  child: Text(day.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
-                ),
-                const SizedBox(width: 8),
-                const AppIcon(AppIcons.chevronRight, size: 19, color: C.faint),
-              ]),
-            ),
-            const Divider(height: 1, thickness: 1, color: C.line),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 12, 14),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                _Cell('MAUZO', money(day.sales)),
-                _Cell('BIDHAA', '${day.items}'),
-                _Cell('FAIDA HALISI', money(day.net), blue: true),
-              ]),
-            ),
-          ]),
-        ),
+  Widget build(BuildContext context) => Box(
+        radius: 12,
+        border: C.cardLine,
+        onTap: onTap,
+        child: Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            child: Row(children: [
+              Expanded(
+                child: Text(day.label,
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+              ),
+              const SizedBox(width: 8),
+              const AppIcon(AppIcons.chevronRight, size: 18, color: C.faint),
+            ]),
+          ),
+          const Divider(height: 1, thickness: 1, color: C.line),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 11, 12, 13),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              _Cell('MAUZO', money(day.sales)),
+              _Cell('BIDHAA', '${day.items}'),
+              _Cell('FAIDA HALISI', money(day.net), blue: true),
+            ]),
+          ),
+        ]),
       );
 }
 
-/// Seli ya kadi: lebo ndogo ya kijivu juu, namba kubwa chini.
+/// Seli ya kadi: lebo ndogo hafifu juu, namba 17 chini.
 class _Cell extends StatelessWidget {
   final String label;
   final String value;
@@ -152,14 +232,17 @@ class _Cell extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: C.muted, letterSpacing: .3)),
+          Text(label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: .4, color: C.muted)),
           const SizedBox(height: 3),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(value,
                 maxLines: 1,
-                style: TextStyle(fontSize: 17.5, fontWeight: FontWeight.w700, color: blue ? C.blue : C.text, fontFeatures: tabular)),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: blue ? C.blue : C.text, fontFeatures: tabular)),
           ),
         ]),
       );
@@ -168,17 +251,9 @@ class _Cell extends StatelessWidget {
 class _NoHistory extends StatelessWidget {
   const _NoHistory();
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: const BoxDecoration(color: C.blue2, shape: BoxShape.circle),
-            child: const Center(child: AppIcon(AppIcons.history, size: 28, color: C.text)),
-          ),
-          const SizedBox(height: 16),
-          const Text('Hakuna historia', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-        ]),
-      );
+  Widget build(BuildContext context) => Column(mainAxisSize: MainAxisSize.min, children: [
+        const AppIcon(AppIcons.history, size: 28, color: C.muted),
+        const SizedBox(height: 12),
+        const Text('Hakuna historia', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: C.muted)),
+      ]);
 }

@@ -185,18 +185,37 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
   }
 
   // ------------------------------------------------------------ vitendo
-  void _openAdd() {
+  void _openAdd(_Tab tab) {
     if (_saved) return;
     setState(() {
       _open = true;
-      _tab = _Tab.bidhaa;
+      _tab = tab;
       _editLine = null;
       _editExp = null;
       _sel = null;
       _error = null;
     });
-    _focusSoon(_qF);
-    _keepAbove();
+    _focusSoon(tab == _Tab.gharama ? _eF : _qF);
+    _keepAbove(target: tab == _Tab.gharama ? _expKey : null);
+  }
+
+  /// Kitufe kimoja cha +: kinatoa chaguo la "Bidhaa" au "Gharama".
+  Future<void> _pickAdd() async {
+    if (_saved) return;
+    final r = await showGeneralDialog<_Tab>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'funga',
+      barrierColor: const Color(0x1A0B1220),
+      transitionDuration: const Duration(milliseconds: 120),
+      pageBuilder: (ctx, a1, a2) => _AddMenu(
+        top: MediaQuery.of(ctx).padding.top + 58,
+        onPick: (t) => Navigator.of(ctx).pop(t),
+      ),
+      transitionBuilder: (ctx, a, b, child) => FadeTransition(opacity: a, child: child),
+    );
+    if (!mounted || r == null) return;
+    _openAdd(r);
   }
 
   /// Focus baada ya dirisha kujengwa (requestFocus kabla haijulikani haifanyi kazi).
@@ -442,18 +461,19 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
       appBar: pageBar(
         title,
         subtitle: sub,
-        back: !_isToday,
-        boxBack: !_isToday,
+        light: _isToday,
+        // Historia / siku ya historia: kurudi kando ya jina, kila kitu kimeshuka.
+        flatBack: !_isToday,
         // Siku ya historia imehifadhiwa: hakuna vitufe kichwani, kama kwenye muundo.
         action: !_isToday
             ? null
             : Row(mainAxisSize: MainAxisSize.min, children: [
-                _IconBtn(svg: AppIcons.history, round: true, onTap: _openHistory),
+                _IconBtn(svg: AppIcons.history, onTap: _openHistory),
                 const SizedBox(width: 8),
                 if (_saved)
-                  SmallButton('Hariri', color: C.text2, borderColor: C.faint, height: 32, onTap: _busy ? null : _reopen)
+                  SmallButton('Hariri', color: C.text2, borderColor: C.faint, height: 34, onTap: _busy ? null : _reopen)
                 else
-                  _IconBtn(icon: Icons.add_rounded, filled: true, onTap: _openAdd),
+                  _IconBtn(icon: Icons.add_rounded, filled: true, onTap: _busy ? null : _pickAdd),
               ]),
       ),
       bottomNavigationBar: _isToday ? null : const AppNav(index: 1),
@@ -463,25 +483,17 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
               ? ErrorView(_loadError!, onRetry: _load)
               : Stack(children: [
                   if (!_hasLines && !_hasExp && !_open)
-                    const Center(child: _NoSales())
+                    Center(child: _NoSales(_isToday))
                   else
                     ListView(
                       controller: _scroll,
-                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 96),
                       children: [
                         ..._cards(d!),
-                        if (_hasLines)
-                          _SumCard(
-                            key: _totKey,
-                            items: [
-                              (_isToday ? 'Jumla' : 'Idadi', '${d.qty}'),
-                              ('Mauzo', money(d.totals.sales)),
-                              ('Faida', money(d.totals.productProfit)),
-                            ],
-                          ),
+                        if (_hasLines) _SumCard(key: _totKey, qty: d.qty, sales: d.totals.sales, profit: d.totals.productProfit),
                         if (_hasExp) ...[
-                          const SectionTitle('Gharama', padding: EdgeInsets.fromLTRB(2, 20, 2, 8)),
-                          _ExpensesCard(
+                          const SectionTitle('Gharama'),
+                          _ExpenseList(
                             items: d.expenses,
                             total: d.totals.expenses,
                             totalKey: _expKey,
@@ -490,32 +502,39 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                           ),
                         ],
                         if (!_open && (_hasLines || _hasExp)) ...[
-                          SectionTitle(_isToday ? 'Hesabu ya leo' : 'Hesabu ya siku', padding: const EdgeInsets.fromLTRB(2, 20, 2, 8)),
-                          Statement(
+                          SectionTitle(_isToday ? 'Hesabu ya leo' : 'Hesabu ya siku'),
+                          _StatementCard(
                             sales: d.totals.sales,
                             capital: d.totals.capital,
                             expenses: d.totals.expenses,
                             netLabel: _isToday ? 'Faida halisi ya leo' : 'Faida halisi',
                           ),
                           const SizedBox(height: 12),
-                          Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                            _IconBtn(svg: AppIcons.download, onTap: _pdfBusy ? null : () => _pdf(downloadDayPdf)),
-                            const SizedBox(width: 8),
-                            _IconBtn(svg: AppIcons.share2, onTap: _pdfBusy ? null : () => _pdf(shareDayPdf)),
-                            if (!_saved) ...[
-                              const SizedBox(width: 8),
-                              _IconBtn(svg: AppIcons.fileText, filled: true, onTap: _busy ? null : _closeDay),
-                            ],
-                          ]),
-                          const SizedBox(height: 120),
                         ],
                         if (_open) const SizedBox(height: 420),
                       ],
                     ),
+                  if (!_open && (_hasLines || _hasExp)) _actions(),
                   if (_open) _window(),
                 ]),
     );
   }
+
+  /// Upau wa vitendo: unakaa juu ya menyu ya chini, upande wa kulia.
+  /// Siku ya historia: Pakua na Shiriki tu (hakuna Hifadhi).
+  Widget _actions() => Positioned(
+        right: 16,
+        bottom: 12,
+        child: Row(children: [
+          _IconBtn(svg: AppIcons.download, size: 40, onTap: _pdfBusy ? null : () => _pdf(downloadDayPdf)),
+          const SizedBox(width: 8),
+          _IconBtn(svg: AppIcons.share2, size: 40, onTap: _pdfBusy ? null : () => _pdf(shareDayPdf)),
+          if (_isToday && !_saved) ...[
+            const SizedBox(width: 8),
+            _IconBtn(svg: AppIcons.save, size: 40, filled: true, onTap: _busy ? null : _closeDay),
+          ],
+        ]),
+      );
 
   // ------------------------------------------------------------ dirisha (M02–M11)
   Widget _window() {
@@ -734,11 +753,11 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
 
   Widget _closeX() => InkWell(
         onTap: _close,
-        customBorder: const CircleBorder(),
+        borderRadius: BorderRadius.circular(8),
         child: Container(
           width: 30,
           height: 30,
-          decoration: BoxDecoration(color: C.soft, shape: BoxShape.circle, border: Border.all(color: C.line)),
+          decoration: BoxDecoration(color: C.soft, borderRadius: BorderRadius.circular(8), border: Border.all(color: C.line)),
           child: const Icon(Icons.close_rounded, size: 16, color: C.text),
         ),
       );
@@ -748,7 +767,8 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
 
 /// M01 — hakuna mauzo leo
 class _NoSales extends StatelessWidget {
-  const _NoSales();
+  final bool today;
+  const _NoSales(this.today);
   @override
   Widget build(BuildContext context) => Column(mainAxisSize: MainAxisSize.min, children: [
         Container(
@@ -758,7 +778,7 @@ class _NoSales extends StatelessWidget {
           child: const Center(child: AppIcon(AppIcons.pencil, size: 28, color: C.text)),
         ),
         const SizedBox(height: 16),
-        const Text('Hakuna mauzo leo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+        Text(today ? 'Hakuna mauzo leo' : 'Hakuna mauzo', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
       ]);
 }
 
@@ -776,7 +796,6 @@ class _InfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const flex = [62, 100, 100, 100];
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Box(
@@ -784,16 +803,20 @@ class _InfoCard extends StatelessWidget {
         onTap: onTap,
         color: highlight ? C.blue3 : bg,
         border: highlight ? C.blue : C.cardLine,
-        padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             if (rank != null)
               Padding(
                 padding: const EdgeInsets.only(right: 8),
-                child: Text('$rank', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: C.text2)),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+                  decoration: BoxDecoration(color: C.line, borderRadius: BorderRadius.circular(6)),
+                  child: Text('$rank', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.text2, fontFeatures: tabular)),
+                ),
               ),
             Expanded(
-              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
             ),
             if (tag != null)
               Container(
@@ -802,15 +825,17 @@ class _InfoCard extends StatelessWidget {
                 child: Text(tag!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.blue)),
               ),
           ]),
-          const SizedBox(height: 7),
+          const SizedBox(height: 9),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             for (var i = 0; i < cols.length; i++) ...[
               if (i > 0) const SizedBox(width: 12),
               Expanded(
-                flex: flex[i],
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(cols[i].$1, style: const TextStyle(fontSize: 11, color: C.muted)),
-                  const SizedBox(height: 2),
+                  Text(cols[i].$1,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: .4, color: C.muted)),
+                  const SizedBox(height: 3),
                   FittedBox(
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerLeft,
@@ -818,8 +843,8 @@ class _InfoCard extends StatelessWidget {
                       cols[i].$2,
                       maxLines: 1,
                       style: TextStyle(
-                        fontSize: 14.5,
-                        fontWeight: i == cols.length - 1 ? FontWeight.w800 : FontWeight.w700,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                         color: i != cols.length - 1 ? C.text : ((profit ?? 0) < 0 ? C.red : C.blue),
                         fontFeatures: tabular,
                       ),
@@ -835,142 +860,219 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-/// Jumla ya mauzo: kadi yenye seli JUMLA · MAUZO · FAIDA
+/// Muhtasari: kadi moja yenye seli tatu sawa IDADI · MAUZO · FAIDA
 class _SumCard extends StatelessWidget {
-  final List<(String, String)> items;
-  const _SumCard({super.key, required this.items});
+  final int qty, sales, profit;
+  const _SumCard({super.key, required this.qty, required this.sales, required this.profit});
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.cardLine)),
-        child: Row(children: [
-          for (final (i, x) in items.indexed)
-            Expanded(
-              child: Container(
-                padding: EdgeInsets.fromLTRB(i == 0 ? 14 : 12, 0, 12, 0),
-                decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: C.line))),
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(x.$1.toUpperCase(),
+  Widget build(BuildContext context) {
+    final cells = [('IDADI', '$qty', false), ('MAUZO', money(sales), false), ('FAIDA', money(profit), true)];
+    return Container(
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.cardLine)),
+      child: Row(children: [
+        for (final (i, c) in cells.indexed)
+          Expanded(
+            child: Container(
+              padding: EdgeInsets.fromLTRB(i == 0 ? 14 : 12, 12, 12, 12),
+              decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: C.line))),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(c.$1,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: .4, color: C.muted)),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(c.$2,
                       maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: C.muted, letterSpacing: .5)),
-                  const SizedBox(height: 2),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(x.$2,
-                        maxLines: 1,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: i == items.length - 1 ? C.blue : C.text,
-                          fontFeatures: tabular,
-                        )),
-                  ),
-                ]),
-              ),
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: c.$3 ? C.blue : C.text, fontFeatures: tabular)),
+                ),
+              ]),
             ),
-        ]),
-      );
+          ),
+      ]),
+    );
+  }
 }
 
-/// Kadi ya GHARAMA: namba · jina · kiasi, mstari mnene, kisha "Jumla ya gharama".
-class _ExpensesCard extends StatelessWidget {
+/// GHARAMA: mistari mitupu (jina kushoto, kiasi kulia). Hakuna kadi.
+/// "Jumla ya gharama" inaonekana tu kama kuna gharama mbili au zaidi.
+class _ExpenseList extends StatelessWidget {
   final List<Expense> items;
   final int total;
   final Key? totalKey;
   final Set<String?> highlight;
   final ValueChanged<Expense>? onTap;
-  const _ExpensesCard({required this.items, required this.total, this.totalKey, this.highlight = const {}, this.onTap});
+  const _ExpenseList({required this.items, required this.total, this.totalKey, this.highlight = const {}, this.onTap});
 
   @override
-  Widget build(BuildContext context) => Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: C.cardLine),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(15),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            for (final (i, e) in items.indexed) ...[
-              if (i > 0) const Divider(height: 1, thickness: 1, color: C.softLine),
-              InkWell(
-                onTap: onTap == null ? null : () => onTap!(e),
-                child: Container(
-                  color: highlight.contains(e.id) ? C.blue3 : null,
-                  padding: const EdgeInsets.fromLTRB(15, 15, 16, 15),
-                  child: Row(children: [
-                    SizedBox(
-                      width: 36,
-                      child: Text('${i + 1}.',
-                          style: const TextStyle(fontSize: 15, height: 1.1, fontWeight: FontWeight.w700, color: C.faint, fontFeatures: tabular)),
-                    ),
-                    Expanded(
-                      child: Text(e.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 15, height: 1.1, fontWeight: FontWeight.w700, color: C.text)),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(money(e.amount),
-                        style: const TextStyle(fontSize: 15, height: 1.1, fontWeight: FontWeight.w800, color: C.text, fontFeatures: tabular)),
-                  ]),
-                ),
-              ),
-            ],
-            Container(height: 3, color: C.field),
-            Container(
-              key: totalKey,
-              color: C.soft,
-              padding: const EdgeInsets.fromLTRB(15, 16, 16, 16),
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        for (final (i, e) in items.indexed) ...[
+          if (i > 0) const Divider(height: 1, thickness: 1, color: C.line),
+          InkWell(
+            onTap: onTap == null ? null : () => onTap!(e),
+            child: Container(
+              color: highlight.contains(e.id) ? C.blue3 : null,
+              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 12),
               child: Row(children: [
-                const Expanded(
-                  child: Text('Jumla ya gharama',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: C.text)),
+                Expanded(
+                  child: Text(e.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: C.text)),
                 ),
-                Text(money(total),
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: C.text, fontFeatures: tabular)),
+                const SizedBox(width: 10),
+                Text(money(e.amount),
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: C.text, fontFeatures: tabular)),
               ]),
             ),
-          ]),
-        ),
-      );
+          ),
+        ],
+        if (items.length >= 2)
+          Container(
+            key: totalKey,
+            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 13),
+            decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.text, width: 1.5))),
+            child: Row(children: [
+              const Expanded(
+                child: Text('Jumla ya gharama', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text2)),
+              ),
+              Text(money(total),
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text, fontFeatures: tabular)),
+            ]),
+          ),
+      ]);
 }
 
-/// Kitufe cha ikoni (Historia, +, Pakua, Shiriki, Hifadhi)
+/// HESABU: kadi yenye mistari — Mauzo · Mtaji · Faida ya bidhaa · Gharama · Faida halisi
+class _StatementCard extends StatelessWidget {
+  final int sales, capital, expenses;
+  final String netLabel;
+  const _StatementCard({required this.sales, required this.capital, required this.expenses, required this.netLabel});
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <(String, int)>[
+      ('Mauzo', sales),
+      ('Mtaji wa vilivyouzwa', capital),
+      ('Faida ya bidhaa', sales - capital),
+      ('Gharama', expenses),
+      (netLabel, sales - capital - expenses),
+    ];
+    final last = rows.length - 1;
+    return Container(
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.cardLine)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: [
+        for (final (i, r) in rows.indexed)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: i == last ? C.blue3 : null,
+              border: i == 0
+                  ? null
+                  : Border(top: BorderSide(color: i == 2 ? C.text : (i == last ? C.blueLine : C.line), width: i == 2 ? 1.5 : 1)),
+            ),
+            child: Row(children: [
+              Expanded(
+                child: Text(
+                  r.$1,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: i == last || i == 2 ? FontWeight.w500 : FontWeight.w400,
+                    color: i == last ? C.blue : (i == 3 ? C.muted : C.text2),
+                  ),
+                ),
+              ),
+              Text(
+                money(r.$2),
+                style: TextStyle(
+                  fontSize: i == last ? 18 : 14.5,
+                  fontWeight: FontWeight.w500,
+                  color: i == last ? C.blue : (i == 3 ? C.muted : C.text),
+                  fontFeatures: tabular,
+                ),
+              ),
+            ]),
+          ),
+      ]),
+    );
+  }
+}
+
+/// Kitufe cha ikoni — mara zote MRABA wenye pembe ndogo (Historia, +, Pakua,
+/// Shiriki, Hifadhi). Hakuna vitufe vya duara.
 class _IconBtn extends StatelessWidget {
   final String? svg;
   final IconData? icon;
   final VoidCallback? onTap;
   final bool filled;
-  final bool round;
-  const _IconBtn({this.svg, this.icon, this.onTap, this.filled = false, this.round = false});
+  final double size;
+  const _IconBtn({this.svg, this.icon, this.onTap, this.filled = false, this.size = 38});
 
   @override
   Widget build(BuildContext context) {
     final fg = filled ? Colors.white : C.text2;
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(round ? 17 : 9),
+      borderRadius: BorderRadius.circular(10),
       child: Container(
-        width: 34,
-        height: 34,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: filled ? C.blue : Colors.white,
-          shape: round ? BoxShape.circle : BoxShape.rectangle,
-          borderRadius: round ? null : BorderRadius.circular(9),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: filled ? C.blue : C.cardLine),
         ),
         child: Center(
           child: svg != null
-              ? AppIcon(svg!, size: 17, color: fg)
-              : Icon(icon, size: 20, color: fg),
+              ? AppIcon(svg!, size: size * .5, color: fg)
+              : Icon(icon, size: size * .55, color: fg),
         ),
       ),
     );
   }
+}
+
+/// Chaguo mbili za kitufe cha +: Bidhaa au Gharama.
+class _AddMenu extends StatelessWidget {
+  final double top;
+  final ValueChanged<_Tab> onPick;
+  const _AddMenu({required this.top, required this.onPick});
+
+  @override
+  Widget build(BuildContext context) => Align(
+        alignment: Alignment.topRight,
+        child: Padding(
+          padding: EdgeInsets.only(top: top, right: 16),
+          child: Material(
+            color: Colors.white,
+            elevation: 10,
+            shadowColor: const Color(0x33000000),
+            borderRadius: BorderRadius.circular(10),
+            clipBehavior: Clip.antiAlias,
+            child: Container(
+              width: 152,
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: C.cardLine)),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                _row('Bidhaa', _Tab.bidhaa),
+                const Divider(height: 1, thickness: 1, color: C.line),
+                _row('Gharama', _Tab.gharama),
+              ]),
+            ),
+          ),
+        ),
+      );
+
+  Widget _row(String label, _Tab tab) => InkWell(
+        onTap: () => onPick(tab),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+          child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: C.text)),
+        ),
+      );
 }
 
 class _NextBtn extends StatelessWidget {
