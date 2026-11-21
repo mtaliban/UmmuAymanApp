@@ -662,7 +662,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
         _nextRow(editing),
       ] else
         Align(
-          alignment: Alignment.centerRight,
+          alignment: Alignment.center,
           child: Padding(
             padding: const EdgeInsets.only(top: 10),
             child: _NextBtn(onTap: null),
@@ -671,9 +671,9 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
     ]);
   }
 
-  /// Next/Hifadhi chini ya kisanduku: namba zipate upana wote wa dirisha.
+  /// Next/Hifadhi chini ya kisanduku, katikati ya dirisha.
   Widget _nextRow(bool editing) => Align(
-        alignment: Alignment.centerRight,
+        alignment: Alignment.center,
         child: Padding(
           padding: const EdgeInsets.only(top: 10),
           child: _NextBtn(label: editing ? 'Hifadhi' : 'Next', onTap: _canNext ? _next : null),
