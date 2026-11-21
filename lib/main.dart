@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'api/api.dart';
-import 'screens/pin_screen.dart';
-import 'screens/shell.dart';
+import 'screens/splash_screen.dart';
 import 'services/notifications.dart';
 import 'theme.dart';
 
@@ -38,7 +37,7 @@ class UmmuAymanApp extends StatelessWidget {
             child: child!,
           );
         },
-        // App inafunguka moja kwa moja kwenye PIN (hakuna splash).
-        home: logged ? const Shell() : const PinScreen(),
+        // Splash (nembo inajijenga + mstari wa bluu) kisha PIN au Nyumbani.
+        home: SplashScreen(logged: logged),
       );
 }

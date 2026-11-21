@@ -30,6 +30,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/brand/
   # Font ya Inter iko ndani ya app (haihitaji intaneti)
   fonts:
     - family: Inter
