@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../theme.dart';
-import '../widgets/app_icons.dart';
+import '../widgets/app_nav.dart';
 import 'home_screen.dart';
 import 'receipts_screen.dart';
 import 'reports_screen.dart';
@@ -20,6 +19,20 @@ class Shell extends StatefulWidget {
 class ShellState extends State<Shell> {
   int _tab = 0;
   int _reload = 0;
+
+  late final void Function(int) _link = go;
+
+  @override
+  void initState() {
+    super.initState();
+    AppNav.onSelect = _link;
+  }
+
+  @override
+  void dispose() {
+    if (identical(AppNav.onSelect, _link)) AppNav.onSelect = null;
+    super.dispose();
+  }
 
   void go(int i) => setState(() {
         _tab = i;
@@ -43,46 +56,9 @@ class ShellState extends State<Shell> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    // Icons za mstari mwembamba (Chaguo B) — zinatofautishwa kwa rangi
-    const items = [
-      ('Nyumbani', AppIcons.house),
-      ('Mauzo', AppIcons.pencil),
-      ('Stock', AppIcons.package),
-      ('Ripoti', AppIcons.chart),
-      ('Risiti', AppIcons.fileText),
-    ];
-    return Scaffold(
-      body: AnimatedSwitcher(duration: const Duration(milliseconds: 180), child: _page()),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: C.line))),
-        child: SafeArea(
-          top: false,
-          child: SizedBox(
-            height: 70,
-            child: Row(children: [
-              for (var i = 0; i < items.length; i++)
-                Expanded(
-                  child: InkWell(
-                    onTap: () => go(i),
-                    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 56,
-                        height: 30,
-                        decoration: BoxDecoration(color: i == _tab ? C.blue2 : Colors.transparent, borderRadius: BorderRadius.circular(15)),
-                        child: Center(child: AppIcon(items[i].$2, size: 22, color: i == _tab ? C.blue : const Color(0xFF4B5563))),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(items[i].$1,
-                          style: TextStyle(fontSize: 12, fontWeight: i == _tab ? FontWeight.w700 : FontWeight.w600, color: i == _tab ? C.blue : C.muted)),
-                    ]),
-                  ),
-                ),
-            ]),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+        body: AnimatedSwitcher(duration: const Duration(milliseconds: 180), child: _page()),
+        // Icons za mstari mwembamba (Chaguo B) — zinatofautishwa kwa rangi
+        bottomNavigationBar: AppNav(index: _tab),
+      );
 }

@@ -9,6 +9,7 @@ import '../theme.dart';
 import '../utils/format.dart';
 import '../utils/home_bus.dart';
 import '../widgets/app_icons.dart';
+import '../widgets/app_nav.dart';
 import '../widgets/ui.dart';
 import 'history_screen.dart';
 import 'pin_screen.dart';
@@ -398,10 +399,10 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
     var n = 0;
     for (final l in d.receiptLines) {
       out.add(_InfoCard(
-        rank: ++n,
+        rank: _isToday ? ++n : null,
         title: l.name,
         tag: 'Risiti ${l.receiptNo}',
-        bg: C.receiptBg,
+        bg: _isToday ? C.receiptBg : null,
         profit: l.profit,
         cols: _cols(l),
         onTap: () => _openReceipt(l.receiptId),
@@ -409,7 +410,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
     }
     for (final l in d.lines) {
       out.add(_InfoCard(
-        rank: ++n,
+        rank: _isToday ? ++n : null,
         title: l.name,
         profit: l.profit,
         cols: _cols(l),
@@ -444,17 +445,19 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
         subtitle: sub,
         back: !_isToday,
         boxBack: !_isToday,
-        action: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (_isToday) ...[
-            _IconBtn(svg: AppIcons.history, round: true, onTap: _openHistory),
-            const SizedBox(width: 8),
-          ],
-          if (_saved)
-            SmallButton('Hariri', color: C.text2, borderColor: C.faint, height: 32, onTap: _busy ? null : _reopen)
-          else if (_isToday || d != null)
-            _IconBtn(icon: Icons.add_rounded, filled: true, onTap: _openAdd),
-        ]),
+        // Siku ya historia imehifadhiwa: hakuna vitufe kichwani, kama kwenye muundo.
+        action: !_isToday
+            ? null
+            : Row(mainAxisSize: MainAxisSize.min, children: [
+                _IconBtn(svg: AppIcons.history, round: true, onTap: _openHistory),
+                const SizedBox(width: 8),
+                if (_saved)
+                  SmallButton('Hariri', color: C.text2, borderColor: C.faint, height: 32, onTap: _busy ? null : _reopen)
+                else
+                  _IconBtn(icon: Icons.add_rounded, filled: true, onTap: _openAdd),
+              ]),
       ),
+      bottomNavigationBar: _isToday ? null : const AppNav(index: 1),
       body: _loading
           ? const SizedBox.expand()
           : _loadError != null
@@ -472,7 +475,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                           _SumCard(
                             key: _totKey,
                             items: [
-                              ('Jumla', '${d.qty}'),
+                              (_isToday ? 'Jumla' : 'Idadi', '${d.qty}'),
                               ('Mauzo', money(d.totals.sales)),
                               ('Faida', money(d.totals.productProfit)),
                             ],
@@ -498,9 +501,9 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                           ),
                           const SizedBox(height: 12),
                           Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                            _IconBtn(icon: Icons.download_rounded, onTap: _pdfBusy ? null : () => _pdf(downloadDayPdf)),
+                            _IconBtn(svg: AppIcons.download, onTap: _pdfBusy ? null : () => _pdf(downloadDayPdf)),
                             const SizedBox(width: 8),
-                            _IconBtn(icon: Icons.share_outlined, onTap: _pdfBusy ? null : () => _pdf(shareDayPdf)),
+                            _IconBtn(svg: AppIcons.share2, onTap: _pdfBusy ? null : () => _pdf(shareDayPdf)),
                             if (!_saved) ...[
                               const SizedBox(width: 8),
                               _IconBtn(svg: AppIcons.fileText, filled: true, onTap: _busy ? null : _closeDay),
@@ -767,9 +770,9 @@ class _InfoCard extends StatelessWidget {
             ),
             if (tag != null)
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(color: C.blue2, borderRadius: BorderRadius.circular(4)),
-                child: Text(tag!, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: C.blue)),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(color: C.blue2, borderRadius: BorderRadius.circular(6)),
+                child: Text(tag!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.blue)),
               ),
           ]),
           const SizedBox(height: 7),

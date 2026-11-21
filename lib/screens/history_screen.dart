@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/app_icons.dart';
+import '../widgets/app_nav.dart';
 import '../widgets/ui.dart';
 import 'sales_screen.dart';
 
@@ -78,6 +79,7 @@ class _HistoryState extends State<HistoryScreen> {
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: Colors.white,
         appBar: pageBar('Historia', subtitle: 'Mauzo ya siku zilizopita', back: true, boxBack: true),
+        bottomNavigationBar: const AppNav(index: 1),
         body: _first
             ? const SizedBox.expand()
             : _error != null
@@ -109,26 +111,56 @@ class _DayCard extends StatelessWidget {
   const _DayCard(this.day, {required this.onTap});
 
   @override
-  Widget build(BuildContext context) => Box(
-        radius: 12,
-        border: C.cardLine,
-        padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
-        onTap: onTap,
-        child: Row(children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(day.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 3),
-              Text('Mauzo ${money(day.sales)} · bidhaa ${day.items}',
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.muted)),
-            ]),
-          ),
-          const SizedBox(width: 10),
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            const Text('Faida halisi', style: TextStyle(fontSize: 11, color: C.muted)),
-            Text(money(day.net), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular)),
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Box(
+          radius: 14,
+          border: C.cardLine,
+          onTap: onTap,
+          child: Column(children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 12, 13),
+              child: Row(children: [
+                Expanded(
+                  child: Text(day.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                ),
+                const SizedBox(width: 8),
+                const AppIcon(AppIcons.chevronRight, size: 19, color: C.faint),
+              ]),
+            ),
+            const Divider(height: 1, thickness: 1, color: C.line),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 12, 14),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                _Cell('MAUZO', money(day.sales)),
+                _Cell('BIDHAA', '${day.items}'),
+                _Cell('FAIDA HALISI', money(day.net), blue: true),
+              ]),
+            ),
           ]),
-          const Icon(Icons.chevron_right_rounded, size: 20, color: C.faint),
+        ),
+      );
+}
+
+/// Seli ya kadi: lebo ndogo ya kijivu juu, namba kubwa chini.
+class _Cell extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool blue;
+  const _Cell(this.label, this.value, {this.blue = false});
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600, color: C.muted, letterSpacing: .3)),
+          const SizedBox(height: 3),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(value,
+                maxLines: 1,
+                style: TextStyle(fontSize: 17.5, fontWeight: FontWeight.w700, color: blue ? C.blue : C.text, fontFeatures: tabular)),
+          ),
         ]),
       );
 }

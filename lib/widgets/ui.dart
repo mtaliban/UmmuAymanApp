@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import '../theme.dart';
 import '../utils/format.dart';
+import 'app_icons.dart';
 
 // ======================================================================= vipande vidogo
 
@@ -12,7 +13,10 @@ import '../utils/format.dart';
 ///  - nafasi nyeupe juu (chini ya saa/betri)
 ///  - jina la ukurasa + kitufe vimekaa CHINI, juu kidogo ya mstari mwembamba
 ///  - mstari wa kijivu #E5E7EB unatenganisha kichwa na maudhui
+///  - ukurasa wenye kurudi (Historia, siku ya historia): kitufe cha kurudi kiko
+///    JUU ya jina, jina kubwa chini yake, kama kwenye muundo.
 const double kHeaderHeight = 96; // urefu wa kichwa chini ya status bar
+const double kHeaderBackHeight = 118; // urefu ukiwa na kitufe cha kurudi juu
 const double kHeaderBottomGap = 10; // nafasi kati ya maneno na mstari
 
 PreferredSizeWidget pageBar(String title, {String? subtitle, Widget? action, bool back = false, bool boxBack = false}) =>
@@ -26,8 +30,10 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
   final bool boxBack;
   const _PageHeader({required this.title, this.subtitle, this.action, this.back = false, this.boxBack = false});
 
+  bool get _stacked => back && boxBack;
+
   @override
-  Size get preferredSize => const Size.fromHeight(kHeaderHeight + 1);
+  Size get preferredSize => Size.fromHeight((_stacked ? kHeaderBackHeight : kHeaderHeight) + 1);
 
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
@@ -36,51 +42,68 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
           color: Colors.white,
           child: SafeArea(
             bottom: false,
-            child: Container(
-              height: kHeaderHeight + 1,
-              padding: EdgeInsets.fromLTRB(back ? 6 : 18, 0, 16, kHeaderBottomGap),
-              decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB)))),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                if (back && boxBack)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 2),
-                    child: InkWell(
-                      onTap: () => Navigator.of(context).maybePop(),
-                      borderRadius: BorderRadius.circular(9),
-                      child: Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: C.field),
-                          borderRadius: BorderRadius.circular(9),
-                        ),
-                        child: const Icon(Icons.arrow_back_rounded, color: C.text, size: 20),
-                      ),
-                    ),
-                  )
-                else if (back)
-                  IconButton(
-                    onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(Icons.arrow_back_rounded, color: C.text, size: 22),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(minWidth: 40, minHeight: 30),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                Expanded(
-                  child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 22, height: 1.15, fontWeight: FontWeight.w800, color: C.text)),
-                    if (subtitle != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(subtitle!, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.muted)),
-                      ),
-                  ]),
-                ),
-                if (action != null) ...[const SizedBox(width: 12), action!],
-              ]),
-            ),
+            child: _stacked ? _stackedBar(context) : _inlineBar(context),
           ),
         ),
+      );
+
+  /// Historia / siku ya historia: [<-] juu, jina kubwa chini yake.
+  Widget _stackedBar(BuildContext context) => Container(
+        height: kHeaderBackHeight + 1,
+        padding: const EdgeInsets.fromLTRB(16, 2, 16, kHeaderBottomGap),
+        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB)))),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [_backBox(context), const Spacer(), if (action != null) action!]),
+            const SizedBox(height: 10),
+            Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 25, height: 1.1, fontWeight: FontWeight.w800, color: C.text)),
+            if (subtitle != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(subtitle!, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: C.muted)),
+              ),
+          ],
+        ),
+      );
+
+  Widget _backBox(BuildContext context) => InkWell(
+        onTap: () => Navigator.of(context).maybePop(),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(border: Border.all(color: C.cardLine), borderRadius: BorderRadius.circular(10)),
+          child: const Center(child: AppIcon(AppIcons.arrowLeft, size: 20, color: C.text)),
+        ),
+      );
+
+  Widget _inlineBar(BuildContext context) => Container(
+        height: kHeaderHeight + 1,
+        padding: EdgeInsets.fromLTRB(back ? 6 : 18, 0, 16, kHeaderBottomGap),
+        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB)))),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          if (back)
+            IconButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              icon: const Icon(Icons.arrow_back_rounded, color: C.text, size: 22),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 30),
+              visualDensity: VisualDensity.compact,
+            ),
+          Expanded(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 22, height: 1.15, fontWeight: FontWeight.w800, color: C.text)),
+              if (subtitle != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(subtitle!, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.muted)),
+                ),
+            ]),
+          ),
+          if (action != null) ...[const SizedBox(width: 12), action!],
+        ]),
       );
 }
 
@@ -386,7 +409,8 @@ class Statement extends StatelessWidget {
                 style: TextStyle(
                   fontSize: i == rows.length - 1 ? 15.5 : 14.5,
                   fontWeight: i == rows.length - 1 ? FontWeight.w800 : FontWeight.w600,
-                  color: i == rows.length - 1 ? C.blue : C.text,
+                  // Gharama 0 inaonekana kijivu kama kwenye muundo
+                  color: i == rows.length - 1 ? C.blue : (r.$2 == 0 ? C.muted : C.text),
                   fontFeatures: tabular,
                 ),
               ),
