@@ -112,18 +112,14 @@ class Box extends StatelessWidget {
   const Box({super.key, required this.child, this.padding = EdgeInsets.zero, this.color, this.border, this.radius = 14, this.onTap});
   @override
   Widget build(BuildContext context) {
-    final c = Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: color ?? Colors.white,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: border ?? C.line),
-      ),
+    final r = BorderRadius.circular(radius);
+    final content = Padding(padding: padding, child: child);
+    return Material(
+      color: color ?? Colors.white,
       clipBehavior: Clip.antiAlias,
-      child: child,
+      shape: RoundedRectangleBorder(borderRadius: r, side: BorderSide(color: border ?? C.line)),
+      child: onTap == null ? content : InkWell(onTap: onTap, child: content),
     );
-    if (onTap == null) return c;
-    return GestureDetector(onTap: onTap, behavior: HitTestBehavior.opaque, child: c);
   }
 }
 
@@ -209,13 +205,13 @@ class TopButton extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(9),
         child: Container(
-          height: 34,
+          height: 32,
           padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(9), border: Border.all(color: C.blue, width: 1.3)),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: C.blue, width: 1.3)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             const Icon(Icons.add, size: 17, color: C.blue),
             const SizedBox(width: 5),
-            Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: C.blue)),
+            Text(label, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.blue)),
           ]),
         ),
       );
@@ -568,6 +564,83 @@ class _CenterShell extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Dirisha la chini (kama Mauzo/Risiti): hukaa 10px juu ya kibodi.
+Future<T?> showEntryDialog<T>(BuildContext context,
+    {required WidgetBuilder builder, double radius = 14, Color border = C.winBorder}) {
+  return showGeneralDialog<T>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'funga',
+    barrierColor: Colors.transparent,
+    transitionDuration: const Duration(milliseconds: 180),
+    pageBuilder: (ctx, a1, a2) => _EntryShell(radius: radius, border: border, child: builder(ctx)),
+    transitionBuilder: (ctx, a, b, child) {
+      final c = CurvedAnimation(parent: a, curve: Curves.easeOutCubic);
+      return FadeTransition(
+        opacity: c,
+        child: SlideTransition(position: Tween(begin: const Offset(0, .06), end: Offset.zero).animate(c), child: child),
+      );
+    },
+  );
+}
+
+class _EntryShell extends StatelessWidget {
+  final Widget child;
+  final double radius;
+  final Color border;
+  const _EntryShell({required this.child, this.radius = 14, this.border = C.winBorder});
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    return Padding(
+      padding: EdgeInsets.fromLTRB(12, mq.padding.top + 16, 12, mq.viewInsets.bottom + 10),
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 520,
+            maxHeight: math.max(200, mq.size.height - mq.padding.top - mq.viewInsets.bottom - 26),
+          ),
+          child: Material(
+            color: Colors.white,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius), side: BorderSide(color: border)),
+            elevation: 18,
+            shadowColor: const Color(0x33000000),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Kichwa cha dirisha la chini: jina 15.5/w700 + ✕ 30
+class EntryHeader extends StatelessWidget {
+  final String title;
+  final String? sub;
+  const EntryHeader(this.title, {super.key, this.sub});
+  @override
+  Widget build(BuildContext context) => Row(children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700)),
+            if (sub != null) Text(sub!, style: const TextStyle(fontSize: 11.5, color: C.muted)),
+          ]),
+        ),
+        InkWell(
+          onTap: () => Navigator.of(context).pop(),
+          customBorder: const CircleBorder(),
+          child: Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(color: C.soft, shape: BoxShape.circle, border: Border.all(color: C.line)),
+            child: const Icon(Icons.close_rounded, size: 16, color: C.text),
+          ),
+        ),
+      ]);
 }
 
 /// Kichwa cha dirisha: jina + ✕

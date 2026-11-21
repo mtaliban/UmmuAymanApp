@@ -56,7 +56,7 @@ class _ProductScreenState extends State<ProductScreen> {
   Future<void> _addType() async {
     final p = _p;
     if (p == null) return;
-    final np = await showCenterDialog<StockProduct>(context, radius: 14, border: C.winBorder, builder: (_) => _AddVariantDialog(p));
+    final np = await showEntryDialog<StockProduct>(context, builder: (_) => _AddVariantDialog(p));
     if (np == null || !mounted) return;
     final added = np.variants.where((v) => !p.variants.any((x) => x.id == v.id)).toList();
     setState(() => _p = np);
@@ -66,7 +66,7 @@ class _ProductScreenState extends State<ProductScreen> {
   Future<void> _edit(StockVariant v) async {
     final p = _p;
     if (p == null) return;
-    final np = await showCenterDialog<StockProduct>(context, radius: 14, border: C.winBorder, builder: (_) => _EditVariantDialog(v));
+    final np = await showEntryDialog<StockProduct>(context, builder: (_) => _EditVariantDialog(v));
     if (np == null || !mounted) return;
     setState(() => _p = np);
     _mark(v.id);
@@ -161,7 +161,7 @@ class _VariantCard extends StatelessWidget {
   Widget _cell(String label, String value, {bool blue = false, bool bold = false}) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: C.muted, letterSpacing: .4)),
+          Text(label, style: const TextStyle(fontSize: 11, color: C.muted)),
           const SizedBox(height: 3),
           FittedBox(
             fit: BoxFit.scaleDown,
@@ -188,7 +188,7 @@ class _VariantCard extends StatelessWidget {
           Text(v.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(flex: 62, child: _cell('ZIPO', '${v.qty}', bold: true)),
+            Expanded(flex: 62, child: _cell('ZIPO', '${v.qty}')),
             const SizedBox(width: 12),
             Expanded(flex: 100, child: _cell('BUYING', money(v.buying))),
             const SizedBox(width: 12),
@@ -252,9 +252,9 @@ class _EditVariantDialogState extends State<_EditVariantDialog> {
   Widget build(BuildContext context) {
     final will = widget.v.qty + parseMoney(_add.text);
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        DialogHeader(widget.v.name),
+        EntryHeader(widget.v.name),
         const SizedBox(height: 4),
         Text('Zipo ${widget.v.qty}', style: const TextStyle(fontSize: 11.5, color: C.muted)),
         const SizedBox(height: 10),
@@ -317,9 +317,9 @@ class _AddVariantDialogState extends State<_AddVariantDialog> {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        DialogHeader('Aina mpya ya ${widget.p.name}'),
+        EntryHeader('Aina mpya ya ${widget.p.name}'),
         const SizedBox(height: 14),
         Field(
           label: 'Jina la aina',

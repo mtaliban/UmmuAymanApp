@@ -169,7 +169,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
     }).take(6).toList();
   }
 
-  bool get _newName => _sel == null && _editLine == null && _q.text.trim().isNotEmpty && _matches.isEmpty;
+  bool get _newName => _sel == null && _editLine == null && _q.text.trim().length >= 2 && _matches.isEmpty;
 
   bool get _canNext {
     if (_busy) return false;
@@ -194,9 +194,14 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
       _sel = null;
       _error = null;
     });
-    _qF.requestFocus();
+    _focusSoon(_qF);
     _keepAbove();
   }
+
+  /// Focus baada ya dirisha kujengwa (requestFocus kabla haijulikani haifanyi kazi).
+  void _focusSoon(FocusNode f) => WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _open) f.requestFocus();
+      });
 
   void _openEditLine(SaleLine l) {
     setState(() {
@@ -210,7 +215,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
       _price.text = money(l.selling);
       _buy.text = money(l.buying);
     });
-    _qtyF.requestFocus();
+    _focusSoon(_qtyF);
     _keepAbove();
   }
 
@@ -224,7 +229,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
       _eName.text = e.name;
       _eAmt.text = money(e.amount);
     });
-    _eF.requestFocus();
+    _focusSoon(_eF);
     _keepAbove(target: _expKey);
   }
 
@@ -465,7 +470,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                               highlight: e.id == _newExpId || e.id == _editExp?.id,
                               onTap: _filled ? () => _openEditExp(e) : null,
                             ),
-                          _TotalLine(key: _expKey, left: 'Jumla', right: money(d.totals.expenses)),
+                          _TotalLine(key: _expKey, left: 'Jumla', right: money(d.totals.expenses), blue: false),
                         ],
                         if (!_open && (_hasLines || _hasExp)) ...[
                           SectionTitle(_isToday ? 'Hesabu ya leo' : 'Hesabu ya siku', padding: const EdgeInsets.fromLTRB(2, 20, 2, 8)),
@@ -589,10 +594,10 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
         const SizedBox(height: 10),
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           _labelled('Idadi',
-              _WinField(controller: _qty, focus: _qtyF, number: true, width: 54, align: TextAlign.center, onChanged: (_) => setState(() {}))),
+              _WinField(controller: _qty, focus: _qtyF, number: true, width: _newName ? 50 : 54, align: TextAlign.center, onChanged: (_) => setState(() {}))),
           const SizedBox(width: 8),
           _labelled(
-            (_newName || (_editLine != null && !_editLine!.fromStock)) ? 'Selling' : 'Bei',
+            _newName ? 'Selling' : 'Bei',
             _WinField(
               controller: _price,
               number: true,
@@ -774,7 +779,8 @@ class _TotalLine extends StatelessWidget {
   final String left;
   final String? middle;
   final String right;
-  const _TotalLine({super.key, required this.left, this.middle, required this.right});
+  final bool blue;
+  const _TotalLine({super.key, required this.left, this.middle, required this.right, this.blue = true});
 
   @override
   Widget build(BuildContext context) => Container(
@@ -794,7 +800,7 @@ class _TotalLine extends StatelessWidget {
                   Text(middle!, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.muted, fontFeatures: tabular)),
                   const SizedBox(width: 12),
                 ],
-                Text(right, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular)),
+                Text(right, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: blue ? C.blue : C.text, fontFeatures: tabular)),
               ]),
             ),
           ),

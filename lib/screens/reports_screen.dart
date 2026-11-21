@@ -434,10 +434,7 @@ class _BarChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (bars.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 34),
-        child: Center(child: Text('Hakuna mauzo kipindi hiki', style: TextStyle(fontSize: 13, color: C.muted))),
-      );
+      return const SizedBox(height: 40);
     }
     final nets = [for (final b in bars) if (b.net != null) b.net!];
     final mx = nets.isEmpty ? 1 : nets.reduce(math.max);

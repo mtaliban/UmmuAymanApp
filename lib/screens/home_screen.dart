@@ -121,7 +121,7 @@ class _HomeState extends State<HomeScreen> with WidgetsBindingObserver {
           offset: const Offset(0, 44),
           constraints: const BoxConstraints.tightFor(width: 200),
           padding: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: C.line)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: C.cardLine)),
           onSelected: _menu,
           itemBuilder: (_) => [
             _menuItem('pin', AppIcons.key, 'Badilisha PIN'),
@@ -150,10 +150,9 @@ class _HomeState extends State<HomeScreen> with WidgetsBindingObserver {
           child: Text(dayLabel(day),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, letterSpacing: .9, color: C.text2)),
+              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: C.text2)),
         ),
-        const SizedBox(width: 10),
-        Text(dayShort(day), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.muted)),
+        Text(dayShort(day), style: const TextStyle(fontSize: 12.5, color: C.muted)),
       ]),
       const SizedBox(height: 8),
       _Summary(s),
@@ -265,7 +264,7 @@ class _TopCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.line)),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.cardLine)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           SizedBox(width: 22, child: Text('$rank', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.faint))),

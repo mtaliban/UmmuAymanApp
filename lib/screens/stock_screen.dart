@@ -26,7 +26,7 @@ class _StockScreenState extends State<StockScreen> {
   void _reload() => setState(() => _f = Api.i.stock());
 
   Future<void> _new() async {
-    final p = await showCenterDialog<StockProduct>(context, radius: 14, border: C.winBorder, builder: (_) => const NewProductDialog());
+    final p = await showEntryDialog<StockProduct>(context, builder: (_) => const NewProductDialog());
     if (p == null || !mounted) return;
     setState(() => _newId = p.id);
     _reload();
@@ -93,7 +93,7 @@ class _StockScreenState extends State<StockScreen> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: shown.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 8, crossAxisSpacing: 8, mainAxisExtent: 98),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 8, crossAxisSpacing: 8, childAspectRatio: 1.55),
           itemBuilder: (_, i) => _tile(shown[i]),
         ),
     ]);
@@ -221,9 +221,9 @@ class _NewProductDialogState extends State<NewProductDialog> {
   Widget build(BuildContext context) {
     final example = _name.text.trim().isEmpty ? 'Mtandio' : _name.text.trim();
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const DialogHeader('Bidhaa mpya'),
+        const EntryHeader('Bidhaa mpya'),
         const SizedBox(height: 14),
         Field(
           label: 'Jina',
