@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:printing/printing.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/api.dart';
@@ -128,7 +127,9 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
       _sel = null;
       _error = null;
     });
-    _nameF.requestFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _open) _nameF.requestFocus();
+    });
     try {
       final v = await Api.i.searchList();
       if (mounted) setState(() => _stock = v);
@@ -449,7 +450,7 @@ class _RcCard extends StatelessWidget {
           onTap: onTap,
           radius: 12,
           color: highlight ? C.blue3 : null,
-          border: highlight ? C.blue : null,
+          border: highlight ? C.blue : C.cardLine,
           padding: const EdgeInsets.fromLTRB(14, 13, 10, 13),
           child: Row(children: [
             Expanded(
@@ -477,7 +478,7 @@ class _DraftCard extends StatelessWidget {
   Widget build(BuildContext context) => Box(
         radius: 12,
         color: highlight ? C.blue3 : null,
-        border: highlight ? C.blue : null,
+        border: highlight ? C.blue : C.cardLine,
         padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(it.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
@@ -618,12 +619,10 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
     setState(() => _busy = true);
     try {
       final shop = _shop ?? r.shop ?? Shop(name: 'UMMU AYMAN OUTFITS', phone: '', email: '');
-      final bytes = await receiptPdf(r, shop);
-      final name = 'Risiti-${r.number}.pdf';
       if (share) {
-        await Printing.sharePdf(bytes: bytes, filename: name);
+        await shareReceiptPdf(r, shop);
       } else {
-        await Printing.layoutPdf(onLayout: (_) async => bytes, name: name);
+        await downloadReceiptPdf(r, shop);
       }
     } catch (e) {
       if (mounted) showError(context, e);

@@ -1,7 +1,11 @@
+import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
 
 import '../models/models.dart';
 import '../utils/format.dart';
@@ -195,4 +199,24 @@ Future<Uint8List> dailyPdf({
     ]),
   ));
   return doc.save();
+}
+
+/// Hifadhi risiti kama PDF (Risiti-0006.pdf)
+Future<File> receiptPdfFile(Receipt r, Shop shop) async {
+  final bytes = await receiptPdf(r, shop);
+  Directory? dir;
+  if (Platform.isAndroid) dir = await getExternalStorageDirectory();
+  dir ??= await getApplicationDocumentsDirectory();
+  final f = File('${dir.path}/Risiti-${r.number}.pdf');
+  await f.writeAsBytes(bytes, flush: true);
+  return f;
+}
+
+/// Pakua PDF ya risiti -> inahifadhiwa kisha inafunguka.
+Future<void> downloadReceiptPdf(Receipt r, Shop shop) async => OpenFilex.open((await receiptPdfFile(r, shop)).path);
+
+/// Shiriki PDF ya risiti.
+Future<void> shareReceiptPdf(Receipt r, Shop shop) async {
+  final f = await receiptPdfFile(r, shop);
+  await Share.shareXFiles([XFile(f.path, mimeType: 'application/pdf')], text: 'Risiti Na. ${r.number} · ${dateShort(r.createdAt)}');
 }

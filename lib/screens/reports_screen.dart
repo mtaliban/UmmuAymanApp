@@ -130,7 +130,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               if (error)
                 Padding(padding: const EdgeInsets.only(top: 24), child: ErrorView(s.error!, onRetry: _reload))
               else if (r == null || waiting)
-                const Padding(padding: EdgeInsets.only(top: 40), child: Loading())
+                const SizedBox(height: 80)
               else
                 _Body(r: r, busy: _busy, onBarTap: r.isDay ? null : _openBar, onPdf: (share) => _pdf(r, share: share)),
             ]);
@@ -193,7 +193,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
         builder: (c, s) {
           if (s.hasError) return ErrorView(s.error!, onRetry: _reload);
           final r = s.data;
-          if (r == null || s.connectionState != ConnectionState.done) return const Loading();
+          if (r == null || s.connectionState != ConnectionState.done) return const SizedBox.expand();
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 120),
             children: [_Body(r: r, busy: _busy, onBarTap: r.isDay ? null : _openBar, onPdf: (share) => _pdf(r, share: share))],
@@ -503,7 +503,7 @@ class _BarChart extends StatelessWidget {
           child: FittedBox(
             child: Text(b.label,
                 style: TextStyle(
-                  fontSize: dense ? 9 : 11.5,
+                  fontSize: 11.5,
                   fontWeight: isBest ? FontWeight.w800 : FontWeight.w600,
                   color: isBest ? C.blue : (n == null ? const Color(0xFFD1D5DB) : C.muted),
                 )),

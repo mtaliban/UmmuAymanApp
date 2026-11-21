@@ -126,6 +126,7 @@ class _ThreeStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Box(
         radius: 16,
+        border: C.cardLine,
         child: IntrinsicHeight(
           child: Row(children: [
             Expanded(child: _cell('Zipo', '$qty', false)),
@@ -180,7 +181,7 @@ class _VariantCard extends StatelessWidget {
   Widget build(BuildContext context) => Box(
         radius: 12,
         color: highlight ? C.blue3 : null,
-        border: highlight ? C.blue : null,
+        border: highlight ? C.blue : C.cardLine,
         padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
         onTap: onTap,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

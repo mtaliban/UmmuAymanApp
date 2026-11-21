@@ -157,6 +157,7 @@ class _TwoStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Box(
         radius: 16,
+        border: C.cardLine,
         child: IntrinsicHeight(
           child: Row(children: [
             Expanded(child: _cell(a, false)),
