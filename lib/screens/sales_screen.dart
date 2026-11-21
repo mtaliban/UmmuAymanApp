@@ -391,6 +391,35 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
     await _scroll.animateTo(to, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
   }
 
+  /// Kadi za bidhaa kwa mpangilio mmoja: za risiti kwanza, kisha za mkono —
+  /// namba inaendelea 1, 2, 3 … kama kwenye muundo.
+  List<Widget> _cards(DailySheet d) {
+    final out = <Widget>[];
+    var n = 0;
+    for (final l in d.receiptLines) {
+      out.add(_InfoCard(
+        rank: ++n,
+        title: l.name,
+        tag: 'Risiti ${l.receiptNo}',
+        bg: C.receiptBg,
+        profit: l.profit,
+        cols: _cols(l),
+        onTap: () => _openReceipt(l.receiptId),
+      ));
+    }
+    for (final l in d.lines) {
+      out.add(_InfoCard(
+        rank: ++n,
+        title: l.name,
+        profit: l.profit,
+        cols: _cols(l),
+        highlight: l.id == _newLineId || l.id == _editLine?.id,
+        onTap: _filled ? () => _openEditLine(l) : null,
+      ));
+    }
+    return out;
+  }
+
   List<(String, String)> _cols(SaleLine l) => [
         ('IDADI', '${l.qty}'),
         ('SELLING', money(l.selling)),
@@ -417,15 +446,13 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
         boxBack: !_isToday,
         action: Row(mainAxisSize: MainAxisSize.min, children: [
           if (_isToday) ...[
-            SmallButton('Historia',
-                color: C.text2, borderColor: C.field, height: 32,
-                icon: const AppIcon(AppIcons.history, size: 14, color: C.text2), onTap: _openHistory),
+            _IconBtn(svg: AppIcons.history, round: true, onTap: _openHistory),
             const SizedBox(width: 8),
           ],
           if (_saved)
             SmallButton('Hariri', color: C.text2, borderColor: C.faint, height: 32, onTap: _busy ? null : _reopen)
           else if (_isToday || d != null)
-            SmallButton('+ Ongeza', height: 32, onTap: _openAdd),
+            _IconBtn(icon: Icons.add_rounded, filled: true, onTap: _openAdd),
         ]),
       ),
       body: _loading
@@ -440,27 +467,15 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                       controller: _scroll,
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                       children: [
-                        for (final l in d!.receiptLines)
-                          _InfoCard(
-                            title: l.name,
-                            tag: 'Risiti ${l.receiptNo}',
-                            bg: C.receiptBg,
-                            cols: _cols(l),
-                            onTap: () => _openReceipt(l.receiptId),
-                          ),
-                        for (final l in d.lines)
-                          _InfoCard(
-                            title: l.name,
-                            cols: _cols(l),
-                            highlight: l.id == _newLineId || l.id == _editLine?.id,
-                            onTap: _filled ? () => _openEditLine(l) : null,
-                          ),
+                        ..._cards(d!),
                         if (_hasLines)
-                          _TotalLine(
+                          _SumCard(
                             key: _totKey,
-                            left: 'Jumla · ${d.qty}',
-                            middle: 'Mauzo ${money(d.totals.sales)}',
-                            right: 'Faida ${money(d.totals.productProfit)}',
+                            items: [
+                              ('Jumla', '${d.qty}'),
+                              ('Mauzo', money(d.totals.sales)),
+                              ('Faida', money(d.totals.productProfit)),
+                            ],
                           ),
                         if (_hasExp) ...[
                           const SectionTitle('Gharama', padding: EdgeInsets.fromLTRB(2, 20, 2, 8)),
@@ -470,7 +485,8 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                               highlight: e.id == _newExpId || e.id == _editExp?.id,
                               onTap: _filled ? () => _openEditExp(e) : null,
                             ),
-                          _TotalLine(key: _expKey, left: 'Jumla', right: money(d.totals.expenses), blue: false),
+                          const SizedBox(height: 4),
+                          _ExpTotal(key: _expKey, amount: d.totals.expenses),
                         ],
                         if (!_open && (_hasLines || _hasExp)) ...[
                           SectionTitle(_isToday ? 'Hesabu ya leo' : 'Hesabu ya siku', padding: const EdgeInsets.fromLTRB(2, 20, 2, 8)),
@@ -482,18 +498,12 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                           ),
                           const SizedBox(height: 12),
                           Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                            SmallButton('Pakua PDF',
-                                color: C.text2, borderColor: C.field, height: 32,
-                                icon: const Icon(Icons.download_rounded, size: 14, color: C.text2),
-                                onTap: _pdfBusy ? null : () => _pdf(downloadDayPdf)),
+                            _IconBtn(icon: Icons.download_rounded, onTap: _pdfBusy ? null : () => _pdf(downloadDayPdf)),
                             const SizedBox(width: 8),
-                            SmallButton('Shiriki',
-                                color: C.text2, borderColor: C.field, height: 32,
-                                icon: const Icon(Icons.share_outlined, size: 13, color: C.text2),
-                                onTap: _pdfBusy ? null : () => _pdf(shareDayPdf)),
+                            _IconBtn(icon: Icons.share_outlined, onTap: _pdfBusy ? null : () => _pdf(shareDayPdf)),
                             if (!_saved) ...[
                               const SizedBox(width: 8),
-                              SmallButton('Hifadhi', filled: true, height: 32, busy: _busy, onTap: _busy ? null : _closeDay),
+                              _IconBtn(svg: AppIcons.fileText, filled: true, onTap: _busy ? null : _closeDay),
                             ],
                           ]),
                           const SizedBox(height: 120),
@@ -722,15 +732,17 @@ class _NoSales extends StatelessWidget {
       ]);
 }
 
-/// Kadi ya bidhaa: jina · IDADI · SELLING · BUYING · FAIDA
+/// Kadi ya bidhaa: namba · jina · IDADI · SELLING · BUYING · FAIDA
 class _InfoCard extends StatelessWidget {
+  final int? rank;
   final String title;
   final String? tag;
   final List<(String, String)> cols;
   final Color? bg;
   final bool highlight;
+  final int? profit;
   final VoidCallback? onTap;
-  const _InfoCard({required this.title, required this.cols, this.tag, this.bg, this.highlight = false, this.onTap});
+  const _InfoCard({required this.title, required this.cols, this.rank, this.tag, this.bg, this.highlight = false, this.profit, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -745,6 +757,11 @@ class _InfoCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
+            if (rank != null)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text('$rank', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: C.text2)),
+              ),
             Expanded(
               child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
             ),
@@ -771,9 +788,9 @@ class _InfoCard extends StatelessWidget {
                       cols[i].$2,
                       maxLines: 1,
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: i == cols.length - 1 ? FontWeight.w800 : FontWeight.w600,
-                        color: i == cols.length - 1 ? C.blue : C.text,
+                        fontSize: 14.5,
+                        fontWeight: i == cols.length - 1 ? FontWeight.w800 : FontWeight.w700,
+                        color: i != cols.length - 1 ? C.text : ((profit ?? 0) < 0 ? C.red : C.blue),
                         fontFeatures: tabular,
                       ),
                     ),
@@ -788,38 +805,94 @@ class _InfoCard extends StatelessWidget {
   }
 }
 
-/// Mstari wa Jumla (mstari mweusi juu)
-class _TotalLine extends StatelessWidget {
-  final String left;
-  final String? middle;
-  final String right;
-  final bool blue;
-  const _TotalLine({super.key, required this.left, this.middle, required this.right, this.blue = true});
+/// Jumla ya mauzo: kadi yenye seli JUMLA · MAUZO · FAIDA
+class _SumCard extends StatelessWidget {
+  final List<(String, String)> items;
+  const _SumCard({super.key, required this.items});
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 11),
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.text, width: 1.5))),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.cardLine)),
         child: Row(children: [
-          Expanded(
-            child: Text(left, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800)),
-          ),
-          // Namba kubwa zinapungua (FittedBox) — hazifuriki wala hazigusani.
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                if (middle != null) ...[
-                  Text(middle!, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.muted, fontFeatures: tabular)),
-                  const SizedBox(width: 12),
-                ],
-                Text(right, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: blue ? C.blue : C.text, fontFeatures: tabular)),
-              ]),
+          for (final (i, x) in items.indexed)
+            Expanded(
+              child: Container(
+                padding: EdgeInsets.fromLTRB(i == 0 ? 14 : 12, 0, 12, 0),
+                decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: C.line))),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(x.$1.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: C.muted, letterSpacing: .5)),
+                  const SizedBox(height: 2),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(x.$2,
+                        maxLines: 1,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: i == items.length - 1 ? C.blue : C.text,
+                          fontFeatures: tabular,
+                        )),
+                  ),
+                ]),
+              ),
             ),
-          ),
         ]),
       );
+}
+
+/// Jumla ya gharama (kadi moja: Jumla ... 10,000)
+class _ExpTotal extends StatelessWidget {
+  final int amount;
+  const _ExpTotal({super.key, required this.amount});
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.cardLine)),
+        child: Row(children: [
+          const Expanded(child: Text('Jumla', style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700))),
+          Text(money(amount), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, fontFeatures: tabular)),
+        ]),
+      );
+}
+
+/// Kitufe cha ikoni (Historia, +, Pakua, Shiriki, Hifadhi)
+class _IconBtn extends StatelessWidget {
+  final String? svg;
+  final IconData? icon;
+  final VoidCallback? onTap;
+  final bool filled;
+  final bool round;
+  const _IconBtn({this.svg, this.icon, this.onTap, this.filled = false, this.round = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = filled ? Colors.white : C.text2;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(round ? 17 : 9),
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: filled ? C.blue : Colors.white,
+          shape: round ? BoxShape.circle : BoxShape.rectangle,
+          borderRadius: round ? null : BorderRadius.circular(9),
+          border: Border.all(color: filled ? C.blue : C.cardLine),
+        ),
+        child: Center(
+          child: svg != null
+              ? AppIcon(svg!, size: 17, color: fg)
+              : Icon(icon, size: 20, color: fg),
+        ),
+      ),
+    );
+  }
 }
 
 class _ExpenseRow extends StatelessWidget {

@@ -351,25 +351,50 @@ class Statement extends StatelessWidget {
   final String? salesSub;
   const Statement({super.key, required this.sales, required this.capital, required this.expenses, this.netLabel = 'Faida halisi ya leo', this.salesSub});
   @override
-  Widget build(BuildContext context) => Box(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
-        child: Column(children: [
+  Widget build(BuildContext context) {
+    final rows = <(String, int)>[
+      ('Mauzo', sales),
+      ('Mtaji wa vilivyouzwa', capital),
+      ('Faida ya bidhaa', sales - capital),
+      ('Gharama', expenses),
+      (netLabel, sales - capital - expenses),
+    ];
+    return Container(
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.cardLine)),
+      clipBehavior: Clip.antiAlias,
+      child: Column(children: [
+        for (final (i, r) in rows.indexed)
           Container(
-            decoration: const BoxDecoration(border: Border(top: BorderSide(color: Colors.transparent))),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 11),
-              child: Row(children: [
-                const Expanded(child: Text('Mauzo', style: TextStyle(fontSize: 14.5, color: C.text2))),
-                Text(money(sales), style: const TextStyle(fontSize: 14.5, color: C.text2, fontFeatures: tabular)),
-              ]),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: i == rows.length - 1 ? C.blue3 : null,
+              border: i == 0 ? null : Border(top: BorderSide(color: i == rows.length - 1 ? C.blueLine : C.line)),
             ),
+            child: Row(children: [
+              Expanded(
+                child: Text(
+                  r.$1,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: i == rows.length - 1 ? FontWeight.w700 : FontWeight.w500,
+                    color: i == rows.length - 1 ? C.blue : C.text2,
+                  ),
+                ),
+              ),
+              Text(
+                money(r.$2),
+                style: TextStyle(
+                  fontSize: i == rows.length - 1 ? 15.5 : 14.5,
+                  fontWeight: i == rows.length - 1 ? FontWeight.w800 : FontWeight.w600,
+                  color: i == rows.length - 1 ? C.blue : C.text,
+                  fontFeatures: tabular,
+                ),
+              ),
+            ]),
           ),
-          StatRow('Mtaji wa vilivyouzwa', capital),
-          StatRow('Faida ya bidhaa', sales - capital, bold: true, topLine: true),
-          StatRow('Gharama', expenses),
-          StatRow(netLabel, sales - capital - expenses, bold: true, topLine: true, blue: true, doubleUnder: true, size: 16),
-        ]),
-      );
+      ]),
+    );
+  }
 }
 
 /// Kichwa cha jedwali (bluu, mstari mweusi chini)
