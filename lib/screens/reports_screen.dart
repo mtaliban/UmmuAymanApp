@@ -332,7 +332,7 @@ class _SummaryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Box(
         radius: 18,
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+        padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(title, style: const TextStyle(fontSize: 12.5, color: C.muted, fontWeight: FontWeight.w600)),
           const SizedBox(height: 2),
@@ -364,7 +364,7 @@ class _Mini extends StatelessWidget {
           Text(label, style: const TextStyle(fontSize: 11.5, color: C.muted)),
           const SizedBox(height: 2),
           FittedBox(
-            child: Text(value, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, fontFeatures: tabular)),
+            child: Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFeatures: tabular)),
           ),
         ]),
       );

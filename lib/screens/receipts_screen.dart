@@ -451,7 +451,7 @@ class _RcCard extends StatelessWidget {
           radius: 12,
           color: highlight ? C.blue3 : null,
           border: highlight ? C.blue : C.cardLine,
-          padding: const EdgeInsets.fromLTRB(14, 13, 10, 13),
+          padding: const EdgeInsets.fromLTRB(14, 13, 12, 13),
           child: Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

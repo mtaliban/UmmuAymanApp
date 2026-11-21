@@ -102,8 +102,8 @@ class _ProductScreenState extends State<ProductScreen> {
             decoration: const BoxDecoration(color: C.blue2, shape: BoxShape.circle),
             child: const Center(child: AppIcon(AppIcons.package, size: 28, color: C.text)),
           ),
-          const SizedBox(height: 12),
-          const Text('Hakuna aina bado', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 16),
+          const Text('Hakuna aina bado', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
         ]),
       );
     }
@@ -321,9 +321,7 @@ class _AddVariantDialogState extends State<_AddVariantDialog> {
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         EntryHeader('Aina mpya ya ${widget.p.name}'),
         const SizedBox(height: 14),
-        Field(
-          label: 'Jina la aina',
-          showLabel: false,
+        DialogField(
           controller: _name,
           focus: _fName,
           autofocus: true,

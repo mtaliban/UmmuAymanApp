@@ -773,10 +773,10 @@ class MiniStat extends StatelessWidget {
   const MiniStat(this.label, this.value, {super.key, this.bold = false, this.color});
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label.toUpperCase(), style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: C.muted, letterSpacing: .4)),
+        Text(label.toUpperCase(), style: const TextStyle(fontSize: 11, color: C.muted)),
         const SizedBox(height: 2),
         Text(value,
-            style: TextStyle(fontSize: 15, fontWeight: bold ? FontWeight.w800 : FontWeight.w600, color: color ?? (value == '–' ? const Color(0xFFCBD5E1) : C.text), fontFeatures: tabular)),
+            style: TextStyle(fontSize: 14, fontWeight: bold ? FontWeight.w800 : FontWeight.w600, color: color ?? (value == '–' ? const Color(0xFFCBD5E1) : C.text), fontFeatures: tabular)),
       ]);
 }
 
@@ -810,7 +810,7 @@ class DialogField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    OutlineInputBorder b(Color c, double w) => OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: c, width: w));
+    OutlineInputBorder b(Color c, double w) => OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: BorderSide(color: c, width: w));
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
       if (label != null) ...[
         Text(label!, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: C.muted)),

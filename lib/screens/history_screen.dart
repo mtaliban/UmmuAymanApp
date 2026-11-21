@@ -112,7 +112,7 @@ class _DayCard extends StatelessWidget {
   Widget build(BuildContext context) => Box(
         radius: 12,
         border: C.cardLine,
-        padding: const EdgeInsets.fromLTRB(14, 13, 10, 13),
+        padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
         onTap: onTap,
         child: Row(children: [
           Expanded(

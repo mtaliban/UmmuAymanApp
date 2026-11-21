@@ -225,9 +225,7 @@ class _NewProductDialogState extends State<NewProductDialog> {
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         const EntryHeader('Bidhaa mpya'),
         const SizedBox(height: 14),
-        Field(
-          label: 'Jina',
-          showLabel: false,
+        DialogField(
           controller: _name,
           focus: _fName,
           hint: 'Jina la bidhaa…',

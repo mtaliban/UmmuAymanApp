@@ -251,12 +251,21 @@ class ReceiptItem {
   int price;
   int discount; // kwa kila kimoja
   final int buying;
-  ReceiptItem({required this.variantId, required this.name, required this.qty, required this.price, this.discount = 0, required this.buying});
+  final int? _amount; // value ya server (C2), ikiwepo
+  ReceiptItem({required this.variantId, required this.name, required this.qty, required this.price, this.discount = 0, required this.buying, int? amount})
+      : _amount = amount;
   int get gross => qty * price;
   int get discountTotal => qty * discount;
-  int get amount => qty * (price - discount);
+  int get amount => _amount ?? qty * (price - discount);
   factory ReceiptItem.fromJson(Map<String, dynamic> j) => ReceiptItem(
-      variantId: _s(j['variant_id']), name: _s(j['name']), qty: _i(j['qty']), price: _i(j['price']), discount: _i(j['discount']), buying: _i(j['buying']));
+        variantId: _s(j['variant_id']),
+        name: _s(j['name']),
+        qty: _i(j['qty']),
+        price: _i(j['price']),
+        discount: _i(j['discount']),
+        buying: _i(j['buying']),
+        amount: j['amount'] == null ? null : _i(j['amount']),
+      );
   /// Bidhaa isiyo kwenye stock inatumwa kwa `variant_id: null` + jina + buying.
   Map<String, dynamic> toJson() => variantId.isEmpty
       ? {'variant_id': null, 'name': name, 'qty': qty, 'price': price, 'discount': discount, 'buying': buying}
@@ -271,10 +280,24 @@ class Receipt {
   final String customerPhone;
   final List<ReceiptItem> items;
   final Shop? shop; // inatumwa na C2 (jina/simu/email ya duka)
-  Receipt({required this.id, required this.number, required this.createdAt, required this.customerName, required this.customerPhone, required this.items, this.shop});
-  int get gross => items.fold(0, (a, b) => a + b.gross);
-  int get discountTotal => items.fold(0, (a, b) => a + b.discountTotal);
-  int get paid => items.fold(0, (a, b) => a + b.amount);
+  final int? _gross, _discount, _paid; // values za server (C1/C2), ikiwepo
+  Receipt({
+    required this.id,
+    required this.number,
+    required this.createdAt,
+    required this.customerName,
+    required this.customerPhone,
+    required this.items,
+    this.shop,
+    int? gross,
+    int? discount,
+    int? paid,
+  })  : _gross = gross,
+        _discount = discount,
+        _paid = paid;
+  int get gross => _gross ?? items.fold(0, (a, b) => a + b.gross);
+  int get discountTotal => _discount ?? items.fold(0, (a, b) => a + b.discountTotal);
+  int get paid => _paid ?? items.fold(0, (a, b) => a + b.amount);
   int get qty => items.fold(0, (a, b) => a + b.qty);
   String get itemsText => items.map((e) => '${e.name} ${e.qty}').join(' · ');
   factory Receipt.fromJson(Map<String, dynamic> j) {
@@ -290,6 +313,9 @@ class Receipt {
       customerPhone: _s(c['phone']),
       items: _l(j['items'], ReceiptItem.fromJson),
       shop: j['shop'] is Map ? Shop.fromJson(Map<String, dynamic>.from(j['shop'] as Map)) : null,
+      gross: j['gross'] == null ? null : _i(j['gross']),
+      discount: j['discount'] == null ? null : _i(j['discount']),
+      paid: j['paid'] == null ? null : _i(j['paid']),
     );
   }
 }
