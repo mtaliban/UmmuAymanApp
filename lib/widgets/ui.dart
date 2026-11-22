@@ -121,7 +121,7 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
               child: const Center(child: AppIcon(AppIcons.chevronLeft, size: 24, color: C.text)),
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(title,

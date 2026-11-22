@@ -11,6 +11,7 @@ import '../theme.dart';
 import '../utils/format.dart';
 import '../utils/home_bus.dart';
 import '../widgets/app_icons.dart';
+import '../widgets/app_nav.dart';
 import '../widgets/ui.dart';
 
 /// RISITI (T01–T10)
@@ -880,38 +881,43 @@ class _ReceiptHistoryScreenState extends State<ReceiptHistoryScreen> {
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: Colors.white,
         appBar: pageBar('Historia', subtitle: 'Risiti zote', flatBack: true),
+        // Menyu ya chini inaonekana pia hapa; Risiti ikiwa active.
+        bottomNavigationBar: const AppNav(index: 4),
         body: _loading && _days.isEmpty
             ? const Loading()
             : ListView(
                 controller: _scroll,
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 60),
+                padding: EdgeInsets.zero,
                 children: [
-                  Container(
-                    height: 42,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10), border: Border.all(color: C.cardLine)),
-                    child: Row(children: [
-                      const Icon(Icons.search_rounded, size: 18, color: C.faint),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _search,
-                          onChanged: _onSearch,
-                          style: const TextStyle(fontSize: 14),
-                          decoration: const InputDecoration(
-                            isDense: true,
-                            contentPadding: EdgeInsets.zero,
-                            border: InputBorder.none,
-                            hintText: 'Tafuta mteja au namba…',
-                            hintStyle: TextStyle(color: C.faint, fontSize: 14, fontWeight: FontWeight.w400),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                    child: Container(
+                      height: 46,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.cardLine)),
+                      child: Row(children: [
+                        const Icon(Icons.search_rounded, size: 20, color: C.faint),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: _search,
+                            onChanged: _onSearch,
+                            style: const TextStyle(fontSize: 14),
+                            decoration: const InputDecoration(
+                              isDense: true,
+                              contentPadding: EdgeInsets.zero,
+                              border: InputBorder.none,
+                              hintText: 'Tafuta mteja au namba…',
+                              hintStyle: TextStyle(color: C.faint, fontSize: 14, fontWeight: FontWeight.w400),
+                            ),
                           ),
                         ),
-                      ),
-                    ]),
+                      ]),
+                    ),
                   ),
                   if (_error != null)
                     Padding(
-                      padding: const EdgeInsets.only(top: 20),
+                      padding: const EdgeInsets.fromLTRB(18, 20, 18, 0),
                       child: Column(children: [
                         Text('$_error', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.red)),
                         const SizedBox(height: 8),
@@ -924,34 +930,66 @@ class _ReceiptHistoryScreenState extends State<ReceiptHistoryScreen> {
                       child: Text('Hakuna risiti', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: C.muted)),
                     ),
                   for (final d in _days) ...[
-                    SectionTitle(d.label, trailing: money(d.total), padding: const EdgeInsets.fromLTRB(2, 18, 2, 4)),
-                    for (final (i, r) in d.rows.indexed)
-                      InkWell(
-                        onTap: () async {
-                          await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReceiptScreen(id: r.id)));
-                          _load();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 11),
-                          decoration: BoxDecoration(border: i == 0 ? null : const Border(top: BorderSide(color: C.softLine))),
-                          child: Row(children: [
-                            Expanded(
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                                Text(titleCase(r.customer), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
-                                const SizedBox(height: 2),
-                                Text('Na. ${r.number} · ${r.time}', style: const TextStyle(fontSize: 12, color: C.muted, fontFeatures: tabular)),
-                              ]),
-                            ),
-                            const SizedBox(width: 10),
-                            Text(money(r.paid), style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700, fontFeatures: tabular)),
-                            const Icon(Icons.chevron_right_rounded, size: 18, color: C.faint),
-                          ]),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 24, 18, 10),
+                      child: Row(children: [
+                        Expanded(
+                          child: Text(d.label.toUpperCase(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: .55, color: C.text)),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(money(d.total), style: const TextStyle(fontSize: 13, color: C.muted, fontFeatures: tabular)),
+                      ]),
+                    ),
+                    for (final r in d.rows)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                        child: _HistCard(
+                          row: r,
+                          onTap: () async {
+                            await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReceiptScreen(id: r.id)));
+                            _load();
+                          },
                         ),
                       ),
                   ],
                   if (_more) const Padding(padding: EdgeInsets.symmetric(vertical: 18), child: Center(child: DotsLoader(size: 6))),
+                  const SizedBox(height: 24),
                 ],
               ),
+      );
+}
+
+/// Kadi ya risiti kwenye Historia: mteja · Na./saa kushoto, kiasi › kulia.
+class _HistCard extends StatelessWidget {
+  final ReceiptRow row;
+  final VoidCallback onTap;
+  const _HistCard({required this.row, required this.onTap});
+  @override
+  Widget build(BuildContext context) => Box(
+        onTap: onTap,
+        radius: 13,
+        border: C.cardLine,
+        padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(titleCase(row.customer),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 3),
+              Text('Na. ${row.number} · ${row.time}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13, color: C.muted, fontFeatures: tabular)),
+            ]),
+          ),
+          const SizedBox(width: 10),
+          Text(money(row.paid), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, fontFeatures: tabular)),
+          const SizedBox(width: 6),
+          const Icon(Icons.chevron_right_rounded, size: 20, color: C.faint),
+        ]),
       );
 }
 
