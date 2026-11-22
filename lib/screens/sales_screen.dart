@@ -526,8 +526,8 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
     final kb = MediaQuery.of(context).viewInsets.bottom;
     final editing = _editLine != null || _editExp != null;
     final expMode = _editExp != null || (!editing && _tab == _Tab.gharama);
-    // Hakuna menyu: + inafungua fomu ya Bidhaa. Gharama inapatikana kwa kiungo
-    // kidogo kwenye kichwa cha fomu.
+    // Hakuna menyu: + inafungua fomu ya Bidhaa, na kitufe cha "+ Gharama"
+    // kilicho wazi kwenye kichwa cha fomu kinabadilisha kwenda fomu ya gharama.
     final header = editing
         ? const Text('Rekebisha', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700))
         : const SizedBox.shrink();
@@ -549,16 +549,9 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: header),
-            // Kiungo kidogo: kutoka fomu ya Bidhaa kwenda ya Gharama.
+            // Kitufe cha wazi: kutoka fomu ya Bidhaa kwenda ya Gharama.
             if (!editing && !expMode)
-              InkWell(
-                onTap: () => _openAdd(_Tab.gharama),
-                borderRadius: BorderRadius.circular(6),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Text('Gharama', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.blue)),
-                ),
-              ),
+              SmallButton('+ Gharama', color: C.text2, borderColor: C.faint, height: 30, onTap: () => _openAdd(_Tab.gharama)),
             _closeX(),
           ]),
           const SizedBox(height: 12),
