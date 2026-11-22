@@ -12,13 +12,24 @@ import '../widgets/ui.dart';
 
 /// RIPOTI — vipindi 4: SIKU · WIKI · MWEZI · MWAKA
 ///  1. Tab + ‹ label › (› imefifia kwa kipindi cha leo)
-///  2. Muhtasari: faida halisi (bluu 32/w800) + Mauzo · Mtaji · Gharama
-///  3. Siku: jedwali la bidhaa zote + Jumla · Wiki/Mwezi/Mwaka: grafu ya faida
-///     (gusa nguzo = ripoti ya kipindi chake) + zilizouzika zaidi/kidogo/hazijauzika
-///  4. Kadi ya PDF + Pakua PDF · Shiriki
+///  2. Kadi ya faida halisi (34/w500 bluu + maneno ya Kiswahili) na safu tatu
+///     sawa: Mauzo · Mtaji · Gharama (kila moja na kiasi chake kwa maneno).
+///  3. Siku: hakuna grafu. Wiki: nguzo 7 za siku. Mwezi: nguzo 5 za wiki.
+///     Mwaka: miezi 12 kwa mistari miwili (Jan–Jun, Jul–Des). Gusa nguzo
+///     kuchagua; gusa tena kufungua ripoti ya kipindi chake.
+///  4. Zilizouzika zaidi (5 za juu) na zilizouzwa kidogo (za chini) — namba,
+///     mstari wa faida na idadi kwenye kidonge.
+///  5. Kadi ya PDF yenye Pakua na Shiriki.
 /// API: P1 GET /reports/day/{date} · P2–P4 GET /reports/{period}?date=
 const _periods = ['day', 'week', 'month', 'year'];
 const _tabs = ['Siku', 'Wiki', 'Mwezi', 'Mwaka'];
+
+/// Rangi za muundo wa Ripoti (vidoti vya safu na grafu).
+const _mauzoDot = Color(0xFF73ADD6);
+const _mtajiDot = Color(0xFFD85A30);
+const _gharamaDot = Color(0xFFBA7517);
+const _fill = Color(0xFFF3F4F6); // uso wa kijivu (kichwa cha jedwali, kidonge)
+const _softRed = Color(0xFFF9D6D6); // mstari wa faida hasi
 
 /// Kiasi pamoja na "Sh" (shilingi) — kama zinavyoonekana kwenye risiti.
 String _sh(num v) => '${money(v)} Sh';
@@ -28,6 +39,10 @@ String _unit(String period) => const {'day': 'siku', 'week': 'wiki', 'month': 'm
 
 /// Aina ya ripoti inayofunguliwa kwa kugusa nguzo
 const _child = {'week': 'day', 'month': 'week', 'year': 'month'};
+
+/// Kichwa cha grafu — nguzo za wiki ni siku, za mwezi ni wiki, za mwaka ni miezi.
+String _chartTitle(String period) =>
+    const {'week': 'Faida kila siku', 'month': 'Faida kila wiki', 'year': 'Faida kila mwezi'}[period] ?? 'Faida';
 
 /// Kichwa cha ukurasa wa kipindi (short_label)
 String _detailTitle(String period, DateTime d) => switch (period) {
@@ -217,82 +232,44 @@ class _Body extends StatelessWidget {
   final ValueChanged<bool> onPdf;
   const _Body({required this.r, required this.busy, this.onBarTap, required this.onPdf});
 
+  /// Bidhaa 5 za juu na 5 za chini za kipindi.
+  /// Siku huja na bidhaa zote tu, kwa hiyo tunazipanga wenyewe.
+  (List<RProduct>, List<RProduct>) _ranked() {
+    final byQty = [for (final p in r.products) if (p.qty > 0) p]
+      ..sort((a, b) => b.qty != a.qty ? b.qty.compareTo(a.qty) : b.sales.compareTo(a.sales));
+    final top = (r.isDay ? byQty : [for (final p in r.top) if (p.qty > 0) p]).take(5).toList();
+    final low = r.isDay
+        ? ([for (final p in byQty) if (!top.contains(p)) p]..sort((a, b) => a.qty != b.qty ? a.qty.compareTo(b.qty) : a.sales.compareTo(b.sales)))
+            .take(5)
+            .toList()
+        : [for (final p in r.low) if (p.qty > 0) p].take(5).toList();
+    return (top, low);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final s = r.summary;
-    final w = <Widget>[_SummaryCard('Faida halisi ya ${r.title}', s)];
-
-    if (r.isDay) {
-      if (r.products.isNotEmpty) {
-        w.add(SectionTitle('Bidhaa zilizouzwa', trailing: '${r.products.length} bidhaa', padding: const EdgeInsets.fromLTRB(2, 20, 2, 10)));
-        w.add(_Table(
-          head: const ['BIDHAA', 'IDADI', 'MAUZO', 'FAIDA'],
-          widths: const [null, 34, 90, 86],
-          rows: [
-            for (final p in r.products) [p.name, '${p.qty}', _sh(p.sales), _sh(p.profit)],
-          ],
-          total: ['Jumla', '${r.totalQty}', _sh(s.sales), _sh(s.productProfit)],
-          blueLast: true,
-        ));
-      }
-    } else {
-      final unit = _unit(r.period);
-      w.add(SectionTitle('Faida kila $unit', trailing: 'gusa $unit kuona ripoti yake', padding: const EdgeInsets.fromLTRB(2, 20, 2, 10)));
-      // Grafu ya mraba (hakuna pembe za duara), fremu nyembamba.
-      w.add(Box(
-        radius: 0,
-        border: C.cardLine,
-        padding: const EdgeInsets.fromLTRB(6, 12, 6, 8),
-        child: _BarChart(bars: r.bars, onTap: onBarTap),
-      ));
+    const gap = EdgeInsets.fromLTRB(2, 20, 2, 10);
+    final (top, low) = _ranked();
+    final w = <Widget>[
+      _ProfitCard('Faida halisi ya ${r.title}', r.summary),
+      if (!r.isDay) ...[
+        SectionTitle(_chartTitle(r.period), trailing: 'gusa kuona ripoti yake', padding: gap),
+        _ChartCard(bars: r.bars, onOpen: onBarTap),
+      ],
       // Bidhaa 5 zilizouzika zaidi na 5 zenye mauzo ya chini; zisizouzika hazionyeshwi.
-      final top = [for (final p in r.top) if (p.qty > 0) p].take(5).toList();
-      final low = [for (final p in r.low) if (p.qty > 0) p].take(5).toList();
-      if (top.isNotEmpty) {
-        w.add(SectionTitle('Zilizouzika zaidi', trailing: '5 za juu', padding: const EdgeInsets.fromLTRB(2, 20, 2, 10)));
-        w.add(_Table(
-          head: const ['BIDHAA', 'IDADI', 'FAIDA'],
-          widths: const [null, 44, 102],
-          blueLast: true,
-          rows: [
-            for (final p in top) [p.name, '${p.qty}', _sh(p.profit)],
-          ],
-        ));
-      }
-      if (low.isNotEmpty) {
-        w.add(SectionTitle('Zilizouzwa kidogo', trailing: '5 za chini', padding: const EdgeInsets.fromLTRB(2, 20, 2, 10)));
-        w.add(_Table(
-          head: const ['BIDHAA', 'IDADI', 'FAIDA'],
-          widths: const [null, 44, 102],
-          blueLast: true,
-          rows: [
-            for (final p in low) [p.name, '${p.qty}', _sh(p.profit)],
-          ],
-        ));
-      }
-    }
-
-    w.add(const SizedBox(height: 22));
-    w.add(_PdfCard(r));
-    w.add(const SizedBox(height: 10));
-    // Vitufe vya mraba kama vya ukurasa wa Risiti (pakua · shiriki).
-    w.add(Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-      _ReportAction(AppIcons.download, busy: busy, onTap: () => onPdf(false)),
-      const SizedBox(width: 10),
-      _ReportAction(AppIcons.share2, onTap: () => onPdf(true)),
-    ]));
+      if (top.isNotEmpty) ...[
+        SectionTitle('Zilizouzika zaidi', trailing: '5 za juu', padding: gap),
+        _ProductTable(top),
+      ],
+      if (low.isNotEmpty) ...[
+        SectionTitle('Zilizouzwa kidogo', trailing: 'za chini', padding: gap),
+        _ProductTable(low),
+      ],
+      const SizedBox(height: 20),
+      _PdfCard(r, busy: busy, onPdf: onPdf),
+    ];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: w);
   }
-}
-
-/// "BIDHAA ZILIZOUZWA · 4 bidhaa" — kichwa cha sehemu kinachogusika kwa ukurasa
-class SectionHeader extends StatelessWidget {
-  final String text;
-  final String? trailing;
-  final double top;
-  const SectionHeader(this.text, {super.key, this.trailing, this.top = 20});
-  @override
-  Widget build(BuildContext context) => SectionTitle(text, trailing: trailing, padding: EdgeInsets.fromLTRB(2, top, 2, 10));
 }
 
 // ======================================================================= vipande
@@ -328,227 +305,307 @@ class _PeriodNav extends StatelessWidget {
       ]);
 }
 
-/// Kadi: faida halisi (32/w800 bluu) + Mauzo · Mtaji · Gharama
-class _SummaryCard extends StatelessWidget {
-  final String title;
+/// Kadi: faida halisi (34/w500 bluu + " Sh") na maneno yake, kisha
+/// Mauzo · Mtaji · Gharama — kila safu sawa, na kiasi chake kwa maneno.
+class _ProfitCard extends StatelessWidget {
+  final String label;
   final Summary s;
-  const _SummaryCard(this.title, this.s);
+  const _ProfitCard(this.label, this.s);
+
   @override
   Widget build(BuildContext context) => Box(
-        radius: 18,
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+        radius: 16,
+        border: C.cardLine,
+        padding: const EdgeInsets.fromLTRB(16, 15, 16, 4),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(title, style: const TextStyle(fontSize: 12.5, color: C.muted, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 2),
+          Text(label, style: const TextStyle(fontSize: 13, color: C.muted)),
+          const SizedBox(height: 3),
           FittedBox(
             fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
             child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
-              Text(money(s.net), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular)),
-              const SizedBox(width: 5),
-              const Text('Sh', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.muted)),
+              Text(money(s.net), style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w500, color: C.blue, fontFeatures: tabular)),
+              const SizedBox(width: 4),
+              const Text('Sh', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: C.muted)),
             ]),
           ),
-          const SizedBox(height: 3),
           // Kiasi kwa maneno ya Kiswahili: 128,000 -> "Laki 1 na elfu 28"
-          Text(amountInWords(s.net), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.muted)),
-          const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Divider(height: 1, color: C.line)),
-          IntrinsicHeight(
-            child: Row(children: [
-              Expanded(child: _Mini('Mauzo', _sh(s.sales))),
-              const VerticalDivider(width: 1, color: C.line),
-              Expanded(child: _Mini('Mtaji', _sh(s.capital))),
-              const VerticalDivider(width: 1, color: C.line),
-              Expanded(child: _Mini('Gharama', _sh(s.expenses))),
+          Text(amountInWords(s.net), style: const TextStyle(fontSize: 13, color: C.muted)),
+          const SizedBox(height: 6),
+          _MetricRow(_mauzoDot, 'Mauzo', s.sales),
+          _MetricRow(_mtajiDot, 'Mtaji', s.capital),
+          _MetricRow(_gharamaDot, 'Gharama', s.expenses),
+        ]),
+      );
+}
+
+/// Doti · jina (15) na maneno (12 kijivu) · kiasi 15/w500 kulia
+class _MetricRow extends StatelessWidget {
+  final Color color;
+  final String name;
+  final int amount;
+  const _MetricRow(this.color, this.name, this.amount);
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.softLine))),
+        child: Row(children: [
+          Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(amountInWords(amount), maxLines: 1, style: const TextStyle(fontSize: 12, color: C.muted)),
+              ),
             ]),
           ),
+          const SizedBox(width: 8),
+          Text(_sh(amount), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, fontFeatures: tabular)),
         ]),
       );
 }
 
-class _Mini extends StatelessWidget {
-  final String label;
-  final String value;
-  const _Mini(this.label, this.value);
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: const TextStyle(fontSize: 11.5, color: C.muted)),
-          const SizedBox(height: 2),
-          FittedBox(
-            child: Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFeatures: tabular)),
-          ),
-        ]),
-      );
-}
-
-/// Jedwali la ripoti: vichwa 10.5/w800 bluu + mstari mweusi, mistari 13.5
-class _Table extends StatelessWidget {
-  final List<String> head;
-  final List<double?> widths;
-  final List<List<String>> rows;
-  final List<String>? total;
-  final bool blueLast;
-  const _Table({required this.head, required this.widths, required this.rows, this.total, this.blueLast = false});
-
-  TextStyle _st(int i, bool h, bool t, int n) => h
-      ? const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: C.blue, letterSpacing: .4)
-      : TextStyle(
-          fontSize: 13.5,
-          fontFeatures: tabular,
-          fontWeight: (t || i == 1 || (blueLast && i == n - 1)) ? FontWeight.w800 : (i == 0 ? FontWeight.w600 : FontWeight.w400),
-          color: (blueLast && i == n - 1) || (t && i == n - 1) ? C.blue : C.text,
-        );
-
-  Widget _row(List<String> c, {bool isHead = false, bool isTotal = false}) => Container(
-        padding: EdgeInsets.fromLTRB(2, isHead ? 0 : 11, 2, isHead ? 6 : 11),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: isHead
-                ? const BorderSide(color: C.text, width: 1.5)
-                : isTotal
-                    ? BorderSide.none
-                    : const BorderSide(color: Color(0xFFF1F2F5)),
-            top: isTotal ? const BorderSide(color: C.text, width: 1.5) : BorderSide.none,
-          ),
-        ),
-        child: Row(children: [
-          for (var i = 0; i < c.length; i++)
-            widths[i] == null
-                ? Expanded(
-                    child: Text(c[i], maxLines: 1, overflow: TextOverflow.ellipsis, style: _st(i, isHead, isTotal, c.length)),
-                  )
-                : SizedBox(
-                    width: widths[i],
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerRight,
-                      child: Text(c[i], textAlign: TextAlign.right, style: _st(i, isHead, isTotal, c.length)),
-                    ),
-                  ),
-        ]),
-      );
-
-  @override
-  Widget build(BuildContext context) => Column(children: [
-        _row(head, isHead: true),
-        for (final r in rows) _row(r),
-        if (total != null) _row(total!, isTotal: true),
-      ]);
-}
-
-/// Grafu ya faida: 0 = nguzo fupi (6px), null = mpaka wa vidoti (haigusiki)
-class _BarChart extends StatelessWidget {
+/// Fremu ya grafu (kadi 14, mpaka hafifu)
+class _ChartCard extends StatelessWidget {
   final List<RBar> bars;
-  final ValueChanged<RBar>? onTap;
-  const _BarChart({required this.bars, this.onTap});
+  final ValueChanged<RBar>? onOpen;
+  const _ChartCard({required this.bars, this.onOpen});
+
+  @override
+  Widget build(BuildContext context) => Box(
+        radius: 14,
+        border: C.cardLine,
+        padding: const EdgeInsets.fromLTRB(8, 12, 8, 10),
+        child: _BarChart(bars: bars, onOpen: onOpen),
+      );
+}
+
+/// Grafu ya faida. Nguzo 8+ zinagawanywa mistari miwili (miezi 12 = 6 + 6).
+/// Gusa nguzo kuichagua (bluu kuu); gusa tena kufungua ripoti yake.
+/// `net == null` = kipindi bado hakijafika (mstari mwembamba, haugusiki).
+class _BarChart extends StatefulWidget {
+  final List<RBar> bars;
+  final ValueChanged<RBar>? onOpen;
+  const _BarChart({required this.bars, this.onOpen});
+
+  @override
+  State<_BarChart> createState() => _BarChartState();
+}
+
+class _BarChartState extends State<_BarChart> {
+  int _sel = -1;
+
+  /// Nguzo yenye faida kubwa ndiyo ichaguliwe mwanzoni.
+  int get _best {
+    var best = -1;
+    for (var i = 0; i < widget.bars.length; i++) {
+      final n = widget.bars[i].net;
+      if (n == null) continue;
+      if (best < 0 || n > (widget.bars[best].net ?? 0)) best = i;
+    }
+    return best;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _sel = _best;
+  }
+
+  @override
+  void didUpdateWidget(covariant _BarChart old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.bars, widget.bars)) _sel = _best;
+  }
+
+  void _tap(int i) {
+    final b = widget.bars[i];
+    if (b.net == null) return;
+    if (i == _sel && widget.onOpen != null) {
+      widget.onOpen!(b);
+    } else {
+      setState(() => _sel = i);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (bars.isEmpty) {
-      return const SizedBox(height: 40);
-    }
+    final bars = widget.bars;
+    if (bars.isEmpty) return const SizedBox(height: 40);
+    final per = bars.length > 7 ? (bars.length / 2).ceil() : bars.length;
+    return Column(children: [
+      for (var start = 0; start < bars.length; start += per) ...[
+        if (start > 0) const Divider(height: 22, color: C.softLine),
+        _row(start, math.min(start + per, bars.length)),
+      ],
+    ]);
+  }
+
+  Widget _row(int start, int end) {
+    final bars = widget.bars;
     final nets = [for (final b in bars) if (b.net != null) b.net!];
     final mx = nets.isEmpty ? 1 : nets.reduce(math.max);
-    var best = -1;
-    for (var i = 0; i < bars.length; i++) {
-      final n = bars[i].net;
-      if (n == null) continue;
-      if (best < 0 || n > bars[best].net!) best = i;
-    }
-    final dense = bars.length > 8;
-    return SizedBox(
-      height: 158,
-      child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-        for (var i = 0; i < bars.length; i++) Expanded(child: _column(bars[i], i == best, mx, dense)),
-      ]),
-    );
-  }
-
-  Widget _column(RBar b, bool isBest, int mx, bool dense) {
-    final n = b.net;
-    final h = n == null ? 0.0 : (n <= 0 ? 6.0 : math.max(6.0, 118 * n / mx));
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: n == null ? null : () => onTap?.call(b),
-      child: _bar(b, n, h, isBest, dense),
-    );
-  }
-
-  Widget _bar(RBar b, int? n, double h, bool isBest, bool dense) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: dense ? 3 : 4),
-      child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
-        SizedBox(
-          height: 15,
-          child: n == null
-              ? null
-              : FittedBox(
-                  child: Text(moneyBar(n),
-                      style: TextStyle(fontSize: dense ? 9 : 10.5, fontWeight: FontWeight.w700, color: isBest ? C.blue : C.muted)),
-                ),
-        ),
-        const SizedBox(height: 4),
-        SizedBox(
-          height: 118,
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: n == null
-                ? const SizedBox(width: double.infinity, child: _Dotted())
-                : Container(
-                    height: h,
-                    width: double.infinity,
-                    constraints: const BoxConstraints(maxWidth: 34),
-                    decoration: BoxDecoration(
-                      color: isBest ? C.blue : const Color(0xFF6FAFD6),
+    final dense = bars.length > 7;
+    return Row(children: [
+      for (var i = start; i < end; i++)
+        Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: bars[i].net == null ? null : () => _tap(i),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: 15,
+                  child: FittedBox(
+                    child: Text(
+                      bars[i].net == null ? '' : moneyBar(bars[i].net!),
+                      style: TextStyle(fontSize: dense ? 10 : 11, fontWeight: FontWeight.w600, color: i == _sel ? C.blue : C.muted),
                     ),
                   ),
+                ),
+                const SizedBox(height: 4),
+                SizedBox(height: 108, child: Align(alignment: Alignment.bottomCenter, child: _bar(bars[i], i, mx))),
+                const SizedBox(height: 6),
+                SizedBox(
+                  height: 15,
+                  child: FittedBox(
+                    child: Text(
+                      bars[i].label,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: i == _sel ? FontWeight.w600 : FontWeight.w400,
+                        color: bars[i].net == null ? const Color(0xFFD1D5DB) : (i == _sel ? C.blue : C.muted),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: 6),
-        SizedBox(
-          height: 15,
-          child: FittedBox(
-            child: Text(b.label,
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: isBest ? FontWeight.w800 : FontWeight.w600,
-                  color: isBest ? C.blue : (n == null ? const Color(0xFFD1D5DB) : C.muted),
-                )),
-          ),
-        ),
-      ]),
+    ]);
+  }
+
+  Widget _bar(RBar b, int i, int mx) {
+    final n = b.net;
+    final h = n == null ? 2.0 : (n <= 0 ? 5.0 : math.max(6.0, 8 + 98 * n / mx));
+    return Container(
+      height: h,
+      width: double.infinity,
+      constraints: const BoxConstraints(maxWidth: 28),
+      decoration: BoxDecoration(
+        color: n == null ? C.cardLine : (i == _sel ? C.blue : _mauzoDot),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(5), bottom: Radius.circular(2)),
+      ),
     );
   }
 }
 
-/// Mpaka wa vidoti kwa kipindi ambacho bado hakijafika
-class _Dotted extends StatelessWidget {
-  const _Dotted();
+/// Jedwali la bidhaa: namba, jina + mstari wa faida, idadi kwenye kidonge, faida.
+class _ProductTable extends StatelessWidget {
+  final List<RProduct> rows;
+  const _ProductTable(this.rows);
+
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-        builder: (c, b) => Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            for (var x = 0.0; x < b.maxWidth - 3; x += 6) Container(width: 3, height: 2, color: const Color(0xFFD1D5DB)),
-          ],
-        ),
+  Widget build(BuildContext context) {
+    final mx = rows.map((r) => r.profit.abs()).reduce(math.max);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        decoration: BoxDecoration(border: Border.all(color: C.cardLine), borderRadius: BorderRadius.circular(14)),
+        child: Column(children: [
+          Container(
+            color: _fill,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            child: const Row(children: [
+              Expanded(child: Text('BIDHAA', style: _head)),
+              SizedBox(width: 52, child: Text('IDADI', style: _head, textAlign: TextAlign.center)),
+              SizedBox(width: 92, child: Text('FAIDA', style: _head, textAlign: TextAlign.right)),
+            ]),
+          ),
+          for (var i = 0; i < rows.length; i++) _row(rows[i], i, mx),
+        ]),
+      ),
+    );
+  }
+
+  Widget _row(RProduct p, int i, int mx) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.cardLine))),
+        child: Row(children: [
+          Container(
+            width: 24,
+            height: 24,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(color: _fill, shape: BoxShape.circle),
+            child: Text('${i + 1}', style: const TextStyle(fontSize: 12, color: C.muted)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 6),
+              FractionallySizedBox(
+                widthFactor: (p.profit.abs() / (mx == 0 ? 1 : mx)).clamp(0.06, 1.0),
+                child: Container(
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: p.profit < 0 ? _softRed : _mauzoDot,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+            ]),
+          ),
+          SizedBox(
+            width: 52,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(color: _fill, borderRadius: BorderRadius.circular(10)),
+                child: Text('${p.qty}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 92,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(_sh(p.profit),
+                  textAlign: TextAlign.right,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: p.profit < 0 ? C.red : C.blue, fontFeatures: tabular)),
+            ),
+          ),
+        ]),
       );
+
+  static const _head = TextStyle(fontSize: 11, letterSpacing: .5, color: C.blue, fontWeight: FontWeight.w500);
 }
 
-/// Kadi ya PDF (Ripoti ya siku/wiki/mwezi/mwaka + short_label)
+/// Kadi ya PDF (Ripoti ya siku/wiki/mwezi/mwaka + short_label) na vitufe
+/// viwili vya mraba — Pakua PDF · Shiriki (sawa na vya ukurasa wa Risiti).
 class _PdfCard extends StatelessWidget {
   final Report r;
-  const _PdfCard(this.r);
+  final bool busy;
+  final ValueChanged<bool> onPdf;
+  const _PdfCard(this.r, {required this.busy, required this.onPdf});
+
   @override
   Widget build(BuildContext context) => Box(
-        radius: 12,
+        radius: 14,
+        border: C.cardLine,
         padding: const EdgeInsets.all(12),
         child: Row(children: [
           Container(
             width: 42,
             height: 42,
-            decoration: BoxDecoration(color: C.blue2, borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: C.blue2, borderRadius: BorderRadius.circular(10)),
             alignment: Alignment.center,
             child: const Text('PDF', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: C.blue)),
           ),
@@ -559,11 +616,15 @@ class _PdfCard extends StatelessWidget {
               Text(r.shortLabel, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.muted)),
             ]),
           ),
+          const SizedBox(width: 8),
+          _ReportAction(AppIcons.download, busy: busy, onTap: () => onPdf(false)),
+          const SizedBox(width: 8),
+          _ReportAction(AppIcons.share2, onTap: () => onPdf(true)),
         ]),
       );
 }
 
-/// Kitufe cha mraba (46×46) cha pakua/shiriki — sawa na cha ukurasa wa Risiti.
+/// Kitufe cha mraba (44×44) cha pakua/shiriki — sawa na cha ukurasa wa Risiti.
 class _ReportAction extends StatelessWidget {
   final String icon;
   final bool busy;
@@ -575,14 +636,14 @@ class _ReportAction extends StatelessWidget {
         onTap: busy ? null : onTap,
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          width: 46,
-          height: 46,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: C.blue, width: 1.2),
           ),
-          child: Center(child: busy ? const DotsLoader(color: C.blue, size: 5) : AppIcon(icon, size: 22, color: C.blue)),
+          child: Center(child: busy ? const DotsLoader(color: C.blue, size: 5) : AppIcon(icon, size: 21, color: C.blue)),
         ),
       );
 }
