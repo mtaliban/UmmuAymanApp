@@ -637,25 +637,32 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
         subtitle: r == null ? '' : '${titleCase(r.customerName.isEmpty ? 'Mteja' : r.customerName)} · ${hhmm(r.createdAt)}',
         flatBack: true,
       ),
+      // Upau wa vitufe (46×46, icon pekee) umekaa juu ya menyu ya chini.
+      bottomNavigationBar: Column(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+          decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: C.line))),
+          child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            _IconAction(AppIcons.download, busy: _busy, onTap: r == null ? null : () => _pdf(share: false)),
+            const SizedBox(width: 10),
+            _IconAction(AppIcons.share2, onTap: r == null ? null : () => _pdf(share: true)),
+            const SizedBox(width: 10),
+            _IconAction(AppIcons.whatsapp, whatsapp: true, onTap: r == null ? null : () => openReceiptWhatsApp(r, _shop)),
+          ]),
+        ),
+        const AppNav(index: 4),
+      ]),
       body: _err != null
           ? ErrorView(_err!, onRetry: _load)
           : r == null
               ? const SizedBox.expand()
-              : ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 120), children: [
+              : ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 24), children: [
                   Box(
                     radius: 14,
                     border: C.cardLine,
-                    padding: const EdgeInsets.fromLTRB(18, 20, 18, 16),
+                    padding: EdgeInsets.zero,
                     child: ReceiptBody(r, shop: r.shop ?? _shop),
                   ),
-                  const SizedBox(height: 14),
-                  Row(children: [
-                    Expanded(child: _Action('Pakua PDF', Icons.download_rounded, busy: _busy, onTap: () => _pdf(share: false))),
-                    const SizedBox(width: 8),
-                    Expanded(child: _Action('WhatsApp', Icons.chat_bubble_outline_rounded, green: true, onTap: () => openReceiptWhatsApp(r, _shop))),
-                    const SizedBox(width: 8),
-                    Expanded(child: _Action('Shiriki', Icons.share_outlined, onTap: () => _pdf(share: true))),
-                  ]),
                 ]),
     );
   }
@@ -670,83 +677,96 @@ class ReceiptBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const mut = TextStyle(fontSize: 12.5, color: C.muted);
+    const sub = TextStyle(fontSize: 13, color: C.muted);
     const th = TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: C.blue, letterSpacing: .4);
+    const total = TextStyle(fontSize: 14.5, color: C.muted);
     final shopName = (shop?.name.isNotEmpty ?? false) ? shop!.name : 'UMMU AYMAN OUTFITS';
     final contact = [if (shop != null && shop!.phone.isNotEmpty) shop!.phone, if (shop != null && shop!.email.isNotEmpty) shop!.email].join(' · ');
 
-    Widget row(List<Widget> c) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(child: c[0]),
-          SizedBox(width: 36, child: c[1]),
-          SizedBox(width: 64, child: c[2]),
-          SizedBox(width: 74, child: c[3]),
-        ]);
-    Text rt(String s, [TextStyle st = const TextStyle(fontSize: 13, fontFeatures: tabular)]) => Text(s, textAlign: TextAlign.right, style: st);
-
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      Text(shopName, textAlign: TextAlign.center, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: C.blue, letterSpacing: .4)),
-      if (contact.isNotEmpty) ...[
-        const SizedBox(height: 4),
-        Text(contact, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11.5, color: C.muted)),
-      ],
-      const Padding(padding: EdgeInsets.symmetric(vertical: 14), child: DottedLine()),
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('MTEJA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.muted, letterSpacing: .3)),
-            const SizedBox(height: 2),
-            Text(titleCase(r.customerName.isEmpty ? 'Mteja' : r.customerName), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-            if (r.customerPhone.isNotEmpty) Text(phoneFmt(r.customerPhone), style: mut),
-          ]),
-        ),
-        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          Text('Risiti Na. ${r.number}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 2),
-          Text(dateShort(r.createdAt), style: mut),
-          Text('Saa ${hhmm(r.createdAt)}', style: mut),
-        ]),
-      ]),
-      const SizedBox(height: 16),
-      Container(
-        padding: const EdgeInsets.only(bottom: 6),
-        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.text, width: 1.5))),
-        child: row([
-          const Text('BIDHAA', style: th),
-          rt('IDADI', th),
-          rt('BEI', th),
-          rt('KIASI', th),
-        ]),
-      ),
-      for (final it in r.items)
-        Container(
-          padding: const EdgeInsets.symmetric(vertical: 9),
-          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFF1F2F5)))),
-          child: row([
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(it.name, style: const TextStyle(fontSize: 13)),
-              if (it.discount > 0) Text('punguzo ${money(it.discount)} kila moja', style: const TextStyle(fontSize: 11, color: C.muted)),
+    return Stack(children: [
+      // Nembo: kona ya juu kushoto ya kadi (34 juu, upana auto).
+      Positioned(left: 12, top: 14, child: Image.asset('assets/brand/logo_mark.png', height: 34)),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(18, 22, 18, 16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text(shopName,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: C.blue)),
+          if (contact.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(contact, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: sub),
+          ],
+          const Padding(padding: EdgeInsets.symmetric(vertical: 14), child: DottedLine()),
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('MTEJA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: C.muted, letterSpacing: .4)),
+                const SizedBox(height: 2),
+                Text(titleCase(r.customerName.isEmpty ? 'Mteja' : r.customerName),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                if (r.customerPhone.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(phoneFmt(r.customerPhone), style: sub),
+                  ),
+              ]),
+            ),
+            const SizedBox(width: 12),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text(dateShort(r.createdAt), style: const TextStyle(fontSize: 13.5, color: C.muted, fontFeatures: tabular)),
+              const SizedBox(height: 2),
+              Text('Saa ${hhmm(r.createdAt)}', style: const TextStyle(fontSize: 13.5, color: C.muted, fontFeatures: tabular)),
             ]),
-            rt('${it.qty}'),
-            rt(money(it.price)),
-            rt(money(it.amount), const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFeatures: tabular)),
           ]),
-        ),
-      if (r.discountTotal > 0) ...[
-        const SizedBox(height: 8),
-        Row(children: [const Expanded(child: Text('Jumla', style: mut)), Text(money(r.gross), style: const TextStyle(fontSize: 13, fontFeatures: tabular))]),
-        Row(children: [const Expanded(child: Text('Punguzo', style: mut)), Text('− ${money(r.discountTotal)}', style: const TextStyle(fontSize: 13, fontFeatures: tabular))]),
-      ],
-      Container(
-        margin: const EdgeInsets.only(top: 8),
-        padding: const EdgeInsets.only(top: 10),
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.text, width: 1.5))),
-        child: Row(children: [
-          const Expanded(child: Text('IMELIPWA', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800))),
-          Text(money(r.paid), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular)),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.only(bottom: 7),
+            decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.text, width: 1.5))),
+            child: Row(children: [const Expanded(child: Text('BIDHAA', style: th)), const Text('KIASI', style: th)]),
+          ),
+          for (final it in r.items)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.softLine))),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Row(children: [
+                  Expanded(
+                    child: Text(it.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(money(it.amount), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, fontFeatures: tabular)),
+                ]),
+                const SizedBox(height: 3),
+                Text(
+                  '${it.qty} × ${money(it.price)}${it.discount > 0 ? ' · punguzo ${money(it.discount)} kila moja' : ''}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: sub,
+                ),
+              ]),
+            ),
+          if (r.discountTotal > 0) ...[
+            const SizedBox(height: 12),
+            Row(children: [const Expanded(child: Text('Jumla kabla ya punguzo', style: total)), Text(money(r.gross), style: total)]),
+            const SizedBox(height: 6),
+            Row(children: [const Expanded(child: Text('Punguzo', style: total)), Text('− ${money(r.discountTotal)}', style: total)]),
+          ],
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            padding: const EdgeInsets.only(top: 10),
+            decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.text, width: 1.5))),
+            child: Row(children: [
+              const Expanded(child: Text('IMELIPWA', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700))),
+              Text(money(r.paid), style: const TextStyle(fontSize: 26, height: 1.1, fontWeight: FontWeight.w700, color: C.blue, fontFeatures: tabular)),
+            ]),
+          ),
+          const SizedBox(height: 16),
+          const DottedLine(),
+          const SizedBox(height: 12),
+          const Text('Asante kwa kununua nasi', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: C.muted)),
         ]),
       ),
-      const SizedBox(height: 16),
-      const Text('Asante kwa kununua nasi', textAlign: TextAlign.center, style: TextStyle(fontSize: 11.5, color: C.muted)),
     ]);
   }
 }
@@ -765,38 +785,29 @@ class DottedLine extends StatelessWidget {
       });
 }
 
-/// Kitufe cha chini ya risiti: Pakua PDF · WhatsApp · Shiriki (40 juu)
-class _Action extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool green;
+/// Kitufe cha ikoni pekee (46×46, radius 10): Pakua PDF · Shiriki · WhatsApp.
+class _IconAction extends StatelessWidget {
+  final String icon;
+  final bool whatsapp;
   final bool busy;
   final VoidCallback? onTap;
-  const _Action(this.label, this.icon, {this.green = false, this.busy = false, this.onTap});
+  const _IconAction(this.icon, {this.whatsapp = false, this.busy = false, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final bg = green ? C.green : Colors.white;
-    final fg = green ? Colors.white : C.blue;
+    final fg = whatsapp ? Colors.white : C.blue;
     return InkWell(
       onTap: busy ? null : onTap,
-      borderRadius: BorderRadius.circular(9),
+      borderRadius: BorderRadius.circular(10),
       child: Container(
-        height: 40,
+        width: 46,
+        height: 46,
         decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: green ? C.green : C.blue, width: 1.2),
+          color: whatsapp ? const Color(0xFF1FA855) : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: whatsapp ? const Color(0xFF1FA855) : C.blue, width: 1.2),
         ),
-        child: Center(
-          child: busy
-              ? DotsLoader(color: fg, size: 5)
-              : Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(icon, size: 16, color: fg),
-                  const SizedBox(width: 6),
-                  Text(label, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: fg)),
-                ]),
-        ),
+        child: Center(child: busy ? DotsLoader(color: fg, size: 5) : AppIcon(icon, size: 22, color: fg)),
       ),
     );
   }

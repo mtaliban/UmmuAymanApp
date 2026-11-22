@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:flutter/services.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -19,12 +19,22 @@ pw.Widget _t(String s, {bool b = false, double size = 10, PdfColor? c, pw.TextAl
 /// Risiti rasmi (A5)
 Future<Uint8List> receiptPdf(Receipt r, Shop shop) async {
   final doc = pw.Document();
+  // Nembo (PNG ya background uwazi) — inaonekana kwenye PDF na inayoshirikiwa.
+  final logo = pw.MemoryImage((await rootBundle.load('assets/brand/logo_mark.png')).buffer.asUint8List());
   doc.addPage(pw.Page(
     pageFormat: PdfPageFormat.a5,
     margin: const pw.EdgeInsets.all(28),
     build: (_) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
-      _t(shop.name, b: true, size: 16),
-      _t('${shop.phone}  ·  ${shop.email}', c: _grey, size: 9),
+      pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+        pw.SizedBox(height: 30, width: 30, child: pw.Image(logo, fit: pw.BoxFit.contain)),
+        pw.SizedBox(width: 10),
+        pw.Expanded(
+          child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+            _t(shop.name, b: true, size: 16),
+            _t('${shop.phone}  ·  ${shop.email}', c: _grey, size: 9),
+          ]),
+        ),
+      ]),
       pw.SizedBox(height: 10),
       pw.Divider(thickness: 1.2),
       pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
