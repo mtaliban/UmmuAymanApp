@@ -257,7 +257,7 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
               ? ErrorView(_loadError!, onRetry: _load)
               : Stack(children: [
                   if (_open)
-                    ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 16, 16, 470), children: _draftView())
+                    ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 16, 16, 520), children: _draftView())
                   else if (rows.isEmpty)
                     const Center(child: _NoReceipts())
                   else
@@ -394,8 +394,8 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
               ]),
             ),
           const SizedBox(height: 10),
-          // Mistari miwili kama fomu za Mauzo/Stock: Idadi · Bei, kisha
-          // Punguzo · Next — visanduku vipate nafasi, visijibane.
+          // Mistari kama fomu za Mauzo/Stock: Idadi · Bei, kisha Punguzo
+          // (bidhaa mpya: Buying · Punguzo) na Next — visijibane.
           if (showFields) ...[
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
               Expanded(
@@ -410,16 +410,30 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
               ),
             ]),
             const SizedBox(height: 10),
-            Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Expanded(
-                flex: 5,
-                child: _newName
-                    ? DialogField(label: 'Buying', controller: _buy, money: true, align: TextAlign.center, onChanged: (_) => setState(() {}))
-                    : DialogField(label: 'Punguzo', controller: _disc, money: true, align: TextAlign.center, onChanged: (_) => setState(() {})),
-              ),
-              const SizedBox(width: 10),
-              _NextBtn(onTap: _canNext ? _next : null),
-            ]),
+            // Bidhaa mpya (haipo stock): Buying na Punguzo zote zipo.
+            if (_newName) ...[
+              Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Expanded(
+                  flex: 5,
+                  child: DialogField(label: 'Buying', controller: _buy, money: true, align: TextAlign.center, onChanged: (_) => setState(() {})),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 5,
+                  child: DialogField(label: 'Punguzo', controller: _disc, money: true, align: TextAlign.center, onChanged: (_) => setState(() {})),
+                ),
+              ]),
+              const SizedBox(height: 10),
+              Align(alignment: Alignment.centerRight, child: _NextBtn(onTap: _canNext ? _next : null)),
+            ] else
+              Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Expanded(
+                  flex: 5,
+                  child: DialogField(label: 'Punguzo', controller: _disc, money: true, align: TextAlign.center, onChanged: (_) => setState(() {})),
+                ),
+                const SizedBox(width: 10),
+                _NextBtn(onTap: _canNext ? _next : null),
+              ]),
           ] else
             Align(alignment: Alignment.centerRight, child: _NextBtn(onTap: _canNext ? _next : null)),
           if (_error != null) ErrorText(_error!),
