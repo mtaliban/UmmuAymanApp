@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../services/report_pdf.dart';
 import '../theme.dart';
 import '../utils/format.dart';
+import '../widgets/app_icons.dart';
 import '../widgets/ui.dart';
 
 /// RIPOTI — vipindi 4: SIKU · WIKI · MWEZI · MWAKA
@@ -18,6 +19,9 @@ import '../widgets/ui.dart';
 /// API: P1 GET /reports/day/{date} · P2–P4 GET /reports/{period}?date=
 const _periods = ['day', 'week', 'month', 'year'];
 const _tabs = ['Siku', 'Wiki', 'Mwezi', 'Mwaka'];
+
+/// Kiasi pamoja na "Sh" (shilingi) — kama zinavyoonekana kwenye risiti.
+String _sh(num v) => '${money(v)} Sh';
 
 /// "siku" / "wiki" / "mwezi" / "mwaka"
 String _unit(String period) => const {'day': 'siku', 'week': 'wiki', 'month': 'mwezi', 'year': 'mwaka'}[period] ?? period;
@@ -223,47 +227,46 @@ class _Body extends StatelessWidget {
         w.add(SectionTitle('Bidhaa zilizouzwa', trailing: '${r.products.length} bidhaa', padding: const EdgeInsets.fromLTRB(2, 20, 2, 10)));
         w.add(_Table(
           head: const ['BIDHAA', 'IDADI', 'MAUZO', 'FAIDA'],
-          widths: const [null, 40, 82, 72],
+          widths: const [null, 34, 90, 86],
           rows: [
-            for (final p in r.products) [p.name, '${p.qty}', money(p.sales), money(p.profit)],
+            for (final p in r.products) [p.name, '${p.qty}', _sh(p.sales), _sh(p.profit)],
           ],
-          total: ['Jumla', '${r.totalQty}', money(s.sales), money(s.productProfit)],
+          total: ['Jumla', '${r.totalQty}', _sh(s.sales), _sh(s.productProfit)],
           blueLast: true,
         ));
       }
     } else {
       final unit = _unit(r.period);
       w.add(SectionTitle('Faida kila $unit', trailing: 'gusa $unit kuona ripoti yake', padding: const EdgeInsets.fromLTRB(2, 20, 2, 10)));
-      w.add(Box(radius: 14, padding: const EdgeInsets.fromLTRB(6, 12, 6, 8), child: _BarChart(bars: r.bars, onTap: onBarTap)));
-      if (r.top.isNotEmpty) {
-        w.add(const SectionTitle('Zilizouzika zaidi', trailing: 'idadi kubwa', padding: EdgeInsets.fromLTRB(2, 20, 2, 10)));
+      // Grafu ya mraba (hakuna pembe za duara), fremu nyembamba.
+      w.add(Box(
+        radius: 0,
+        border: C.cardLine,
+        padding: const EdgeInsets.fromLTRB(6, 12, 6, 8),
+        child: _BarChart(bars: r.bars, onTap: onBarTap),
+      ));
+      // Bidhaa 5 zilizouzika zaidi na 5 zenye mauzo ya chini; zisizouzika hazionyeshwi.
+      final top = [for (final p in r.top) if (p.qty > 0) p].take(5).toList();
+      final low = [for (final p in r.low) if (p.qty > 0) p].take(5).toList();
+      if (top.isNotEmpty) {
+        w.add(SectionTitle('Zilizouzika zaidi', trailing: '5 za juu', padding: const EdgeInsets.fromLTRB(2, 20, 2, 10)));
         w.add(_Table(
           head: const ['BIDHAA', 'IDADI', 'FAIDA'],
-          widths: const [null, 50, 86],
+          widths: const [null, 44, 102],
           blueLast: true,
           rows: [
-            for (final p in r.top) [p.name, '${p.qty}', money(p.profit)],
+            for (final p in top) [p.name, '${p.qty}', _sh(p.profit)],
           ],
         ));
       }
-      if (r.low.isNotEmpty) {
-        w.add(const SectionTitle('Zilizouzwa kidogo', trailing: 'idadi ndogo', padding: EdgeInsets.fromLTRB(2, 20, 2, 10)));
+      if (low.isNotEmpty) {
+        w.add(SectionTitle('Zilizouzwa kidogo', trailing: '5 za chini', padding: const EdgeInsets.fromLTRB(2, 20, 2, 10)));
         w.add(_Table(
           head: const ['BIDHAA', 'IDADI', 'FAIDA'],
-          widths: const [null, 50, 86],
+          widths: const [null, 44, 102],
           blueLast: true,
           rows: [
-            for (final p in r.low) [p.name, '${p.qty}', money(p.profit)],
-          ],
-        ));
-      }
-      if (r.unsold.isNotEmpty) {
-        w.add(SectionHeader('Hazijauzika kabisa', trailing: '${r.unsold.length}', top: 20));
-        w.add(_Table(
-          head: const ['BIDHAA', 'ZIPO', 'MTAJI'],
-          widths: const [null, 50, 86],
-          rows: [
-            for (final u in r.unsold) [u.name, '${u.qty}', money(u.capital)],
+            for (final p in low) [p.name, '${p.qty}', _sh(p.profit)],
           ],
         ));
       }
@@ -272,10 +275,11 @@ class _Body extends StatelessWidget {
     w.add(const SizedBox(height: 22));
     w.add(_PdfCard(r));
     w.add(const SizedBox(height: 10));
-    w.add(Row(children: [
-      Expanded(child: _PdfButton('Pakua PDF', Icons.download_rounded, busy: busy, onTap: () => onPdf(false))),
+    // Vitufe vya mraba kama vya ukurasa wa Risiti (pakua · shiriki).
+    w.add(Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+      _ReportAction(AppIcons.download, busy: busy, onTap: () => onPdf(false)),
       const SizedBox(width: 10),
-      Expanded(child: _PdfButton('Shiriki', Icons.share_outlined, filled: true, onTap: () => onPdf(true))),
+      _ReportAction(AppIcons.share2, onTap: () => onPdf(true)),
     ]));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: w);
   }
@@ -337,16 +341,24 @@ class _SummaryCard extends StatelessWidget {
           Text(title, style: const TextStyle(fontSize: 12.5, color: C.muted, fontWeight: FontWeight.w600)),
           const SizedBox(height: 2),
           FittedBox(
-            child: Text(money(s.net), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular)),
+            fit: BoxFit.scaleDown,
+            child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+              Text(money(s.net), style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular)),
+              const SizedBox(width: 5),
+              const Text('Sh', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: C.muted)),
+            ]),
           ),
+          const SizedBox(height: 3),
+          // Kiasi kwa maneno ya Kiswahili: 128,000 -> "Laki 1 na elfu 28"
+          Text(amountInWords(s.net), style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.muted)),
           const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Divider(height: 1, color: C.line)),
           IntrinsicHeight(
             child: Row(children: [
-              Expanded(child: _Mini('Mauzo', money(s.sales))),
+              Expanded(child: _Mini('Mauzo', _sh(s.sales))),
               const VerticalDivider(width: 1, color: C.line),
-              Expanded(child: _Mini('Mtaji', money(s.capital))),
+              Expanded(child: _Mini('Mtaji', _sh(s.capital))),
               const VerticalDivider(width: 1, color: C.line),
-              Expanded(child: _Mini('Gharama', money(s.expenses))),
+              Expanded(child: _Mini('Gharama', _sh(s.expenses))),
             ]),
           ),
         ]),
@@ -488,8 +500,7 @@ class _BarChart extends StatelessWidget {
                     width: double.infinity,
                     constraints: const BoxConstraints(maxWidth: 34),
                     decoration: BoxDecoration(
-                      color: isBest ? C.blue : const Color(0xFF7DB7DB),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                      color: isBest ? C.blue : const Color(0xFF6FAFD6),
                     ),
                   ),
           ),
@@ -552,37 +563,26 @@ class _PdfCard extends StatelessWidget {
       );
 }
 
-/// Pakua PDF (mstari) · Shiriki (bluu iliyojaa) — urefu 40
-class _PdfButton extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  final bool filled;
+/// Kitufe cha mraba (46×46) cha pakua/shiriki — sawa na cha ukurasa wa Risiti.
+class _ReportAction extends StatelessWidget {
+  final String icon;
   final bool busy;
-  final VoidCallback onTap;
-  const _PdfButton(this.label, this.icon, {this.filled = false, this.busy = false, required this.onTap});
+  final VoidCallback? onTap;
+  const _ReportAction(this.icon, {this.busy = false, this.onTap});
+
   @override
-  Widget build(BuildContext context) {
-    final fg = filled ? Colors.white : C.blue;
-    return InkWell(
-      onTap: busy ? null : onTap,
-      borderRadius: BorderRadius.circular(9),
-      child: Container(
-        height: 40,
-        decoration: BoxDecoration(
-          color: filled ? C.blue : Colors.white,
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: C.blue, width: 1.2),
+  Widget build(BuildContext context) => InkWell(
+        onTap: busy ? null : onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: C.blue, width: 1.2),
+          ),
+          child: Center(child: busy ? const DotsLoader(color: C.blue, size: 5) : AppIcon(icon, size: 22, color: C.blue)),
         ),
-        child: Center(
-          child: busy
-              ? DotsLoader(color: fg, size: 5)
-              : Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(icon, size: 16, color: fg),
-                  const SizedBox(width: 6),
-                  Text(label, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: fg)),
-                ]),
-        ),
-      ),
-    );
-  }
+      );
 }

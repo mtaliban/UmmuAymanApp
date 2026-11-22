@@ -57,6 +57,9 @@ String reportFileName(Report r) {
 Future<Uint8List> reportPdfBytes(Report r, Shop shop) async {
   final doc = pw.Document(theme: await _interTheme());
   final s = r.summary;
+  // Bidhaa 5 zilizouzika zaidi na 5 zenye mauzo ya chini (zisizouzika hazijumuishwi).
+  final top5 = [for (final p in r.top) if (p.qty > 0) p].take(5).toList();
+  final low5 = [for (final p in r.low) if (p.qty > 0) p].take(5).toList();
 
   pw.Widget sec(String t) => pw.Padding(
         padding: const pw.EdgeInsets.only(top: 16, bottom: 4),
@@ -146,17 +149,14 @@ Future<Uint8List> reportPdfBytes(Report r, Shop shop) async {
           [for (final b in r.bars) [b.label, b.net == null ? '—' : money(b.net!)]],
           blueCol: 1,
         ),
-        if (r.top.isNotEmpty) ...[
+        // Bidhaa 5 za juu na 5 za chini zenye mauzo; zisizouzika hazionyeshwi.
+        if (top5.isNotEmpty) ...[
           sec('ZILIZOUZIKA ZAIDI'),
-          simpleTable(const ['BIDHAA', 'IDADI', 'FAIDA'], [for (final p in r.top) [p.name, '${p.qty}', money(p.profit)]], blueCol: 2),
+          simpleTable(const ['BIDHAA', 'IDADI', 'FAIDA'], [for (final p in top5) [p.name, '${p.qty}', money(p.profit)]], blueCol: 2),
         ],
-        if (r.low.isNotEmpty) ...[
+        if (low5.isNotEmpty) ...[
           sec('ZILIZOUZWA KIDOGO'),
-          simpleTable(const ['BIDHAA', 'IDADI', 'FAIDA'], [for (final p in r.low) [p.name, '${p.qty}', money(p.profit)]], blueCol: 2),
-        ],
-        if (r.unsold.isNotEmpty) ...[
-          sec('HAZIJAUZIKA KABISA'),
-          simpleTable(const ['BIDHAA', 'ZIPO', 'MTAJI'], [for (final u in r.unsold) [u.name, '${u.qty}', money(u.capital)]]),
+          simpleTable(const ['BIDHAA', 'IDADI', 'FAIDA'], [for (final p in low5) [p.name, '${p.qty}', money(p.profit)]], blueCol: 2),
         ],
       ],
     ],
