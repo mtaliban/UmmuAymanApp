@@ -259,18 +259,33 @@ class _NewProductDialogState extends State<NewProductDialog> {
                 style: const TextStyle(fontSize: 11.5, color: C.muted, height: 1.4)),
           ),
         const SizedBox(height: 12),
-        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-          if (!_has) ...[
-            Expanded(flex: 48, child: DialogField(label: 'Idadi', controller: _qty, focus: _fQty, number: true, hint: '0', align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fBuy.requestFocus())),
+        // Mstari wa kwanza: Idadi · Buying. Mstari wa pili: Selling · Hifadhi.
+        if (!_has) ...[
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Expanded(
+              child: DialogField(
+                  label: 'Idadi', controller: _qty, focus: _fQty, number: true, hint: '0', align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fBuy.requestFocus()),
+            ),
             const SizedBox(width: 8),
-            Expanded(flex: 80, child: DialogField(label: 'Buying', controller: _buy, focus: _fBuy, money: true, hint: '0', align: TextAlign.right, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fSell.requestFocus())),
-            const SizedBox(width: 8),
-            Expanded(flex: 80, child: DialogField(label: 'Selling', controller: _sell, focus: _fSell, money: true, hint: '0', align: TextAlign.right, onChanged: (_) => setState(() {}), onSubmitted: (_) => _save())),
+            Expanded(
+              child: DialogField(
+                  label: 'Buying', controller: _buy, focus: _fBuy, money: true, hint: '0', align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fSell.requestFocus()),
+            ),
+          ]),
+          const SizedBox(height: 10),
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Expanded(
+              child: DialogField(
+                  label: 'Selling', controller: _sell, focus: _fSell, money: true, hint: '0', align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _save()),
+            ),
             const SizedBox(width: 10),
-          ],
-          const Spacer(),
-          PrimaryButton('Hifadhi', onTap: _canSave ? _save : null, busy: _busy),
-        ]),
+            PrimaryButton('Hifadhi', onTap: _canSave ? _save : null, busy: _busy),
+          ]),
+        ] else
+          Align(
+            alignment: Alignment.centerRight,
+            child: PrimaryButton('Hifadhi', onTap: _canSave ? _save : null, busy: _busy),
+          ),
         if (_error != null) ErrorText(_error!),
       ]),
     );
