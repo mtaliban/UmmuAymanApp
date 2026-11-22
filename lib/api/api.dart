@@ -65,7 +65,7 @@ abstract class Api {
 
   // Risiti
   Future<TodayReceipts> receipts(DateTime date); // C0
-  Future<Receipt> createReceipt({required String name, required String phone, required List<ReceiptItem> items}); // C1
+  Future<Receipt> createReceipt({required String name, required String phone, String location, required List<ReceiptItem> items}); // C1
   Future<Receipt> receipt(String id); // C2
   Future<ReceiptHistory> receiptHistory({String q = '', String? before}); // C3
   Future<void> cancelReceipt(String id);
@@ -268,9 +268,9 @@ class HttpApi extends Api {
       TodayReceipts.fromJson(_m(await _send('GET', '/receipts', query: {'date': iso(date)})));
 
   @override
-  Future<Receipt> createReceipt({required String name, required String phone, required List<ReceiptItem> items}) async => Receipt.fromJson(_m(await _send('POST', '/receipts', body: {
+  Future<Receipt> createReceipt({required String name, required String phone, String location = '', required List<ReceiptItem> items}) async => Receipt.fromJson(_m(await _send('POST', '/receipts', body: {
         'date': todayIso(),
-        'customer': {'name': name.trim(), 'phone': phone.replaceAll(RegExp(r'\D'), '')},
+        'customer': {'name': name.trim(), 'phone': phone.replaceAll(RegExp(r'\D'), ''), 'location': location.trim()},
         'items': items.map((e) => e.toJson()).toList(),
       })));
 

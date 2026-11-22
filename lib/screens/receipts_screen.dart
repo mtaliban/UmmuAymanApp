@@ -43,6 +43,7 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
 
   final _name = TextEditingController();
   final _phone = TextEditingController();
+  final _loc = TextEditingController();
   final _q = TextEditingController();
   final _qty = TextEditingController();
   final _price = TextEditingController();
@@ -51,6 +52,7 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
 
   final _nameF = FocusNode();
   final _phoneF = FocusNode();
+  final _locF = FocusNode();
   final _qF = FocusNode();
   final _qtyF = FocusNode();
 
@@ -66,10 +68,10 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
   @override
   void dispose() {
     _scroll.dispose();
-    for (final c in [_name, _phone, _q, _qty, _price, _disc, _buy]) {
+    for (final c in [_name, _phone, _loc, _q, _qty, _price, _disc, _buy]) {
       c.dispose();
     }
-    for (final f in [_nameF, _phoneF, _qF, _qtyF]) {
+    for (final f in [_nameF, _phoneF, _locF, _qF, _qtyF]) {
       f.dispose();
     }
     super.dispose();
@@ -179,7 +181,8 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
       _error = null;
     });
     try {
-      final r = await Api.i.createReceipt(name: _name.text.trim(), phone: _phone.text.trim(), items: _items);
+      final r = await Api.i.createReceipt(
+          name: _name.text.trim(), phone: _phone.text.trim(), location: _loc.text.trim(), items: _items);
       if (!mounted) return;
       _reset();
       setState(() {
@@ -205,7 +208,7 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
       _sel = null;
       _error = null;
     });
-    for (final c in [_name, _phone, _q, _qty, _price, _disc, _buy]) {
+    for (final c in [_name, _phone, _loc, _q, _qty, _price, _disc, _buy]) {
       c.clear();
     }
     FocusManager.instance.primaryFocus?.unfocus();
@@ -254,7 +257,7 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
               ? ErrorView(_loadError!, onRetry: _load)
               : Stack(children: [
                   if (_open)
-                    ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 16, 16, 420), children: _draftView())
+                    ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 16, 16, 470), children: _draftView())
                   else if (rows.isEmpty)
                     const Center(child: _NoReceipts())
                   else
@@ -350,9 +353,18 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
             const SizedBox(width: 8),
             Expanded(
               flex: 10,
-              child: DialogField(label: 'Simu', controller: _phone, focus: _phoneF, number: true, hint: '07…', onChanged: (_) => setState(() {}), onSubmitted: (_) => _qF.requestFocus()),
+              child: DialogField(label: 'Simu', controller: _phone, focus: _phoneF, number: true, hint: '07…', onChanged: (_) => setState(() {}), onSubmitted: (_) => _locF.requestFocus()),
             ),
           ]),
+          const SizedBox(height: 10),
+          DialogField(
+            label: 'Mahali',
+            controller: _loc,
+            focus: _locF,
+            hint: 'Mf. Kariakoo, Dar es Salaam',
+            onChanged: (_) => setState(() {}),
+            onSubmitted: (_) => _qF.requestFocus(),
+          ),
           const SizedBox(height: 10),
           _BidhaaField(
             controller: _q,
@@ -740,6 +752,11 @@ class ReceiptBody extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 2),
                     child: Text(phoneFmt(r.customerPhone), style: sub),
                   ),
+                if (r.customerLocation.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(r.customerLocation, style: sub, maxLines: 2, overflow: TextOverflow.ellipsis),
+                  ),
               ]),
             ),
             const SizedBox(width: 12),
@@ -1045,6 +1062,7 @@ String _waText(Receipt r, Shop? shop) {
   final b = StringBuffer('*${(shop?.name.isNotEmpty ?? false) ? shop!.name : 'UMMU AYMAN OUTFITS'}*\n');
   b.writeln('Risiti Na. ${r.number} · ${dateShort(r.createdAt)}, ${hhmm(r.createdAt)}');
   if (r.customerName.isNotEmpty) b.writeln('Mteja: ${titleCase(r.customerName)}');
+  if (r.customerLocation.isNotEmpty) b.writeln('Mahali: ${r.customerLocation}');
   b.writeln();
   for (final i in r.items) {
     b.writeln('${i.name} — ${money(i.amount)}');

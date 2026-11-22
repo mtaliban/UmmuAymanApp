@@ -96,7 +96,7 @@ class MockApi extends Api {
     return ReceiptItem(variantId: v.id, name: v.name, qty: qty, price: price, discount: disc, buying: v.buying);
   }
 
-  Receipt _makeReceipt(String name, String phone, List<ReceiptItem> items, DateTime at) {
+  Receipt _makeReceipt(String name, String phone, List<ReceiptItem> items, DateTime at, [String location = '']) {
     for (final it in items) {
       final v = _v(it.variantId);
       if (v.qty < it.qty) throw ApiException('${v.name}: zipo ${v.qty} tu');
@@ -105,7 +105,7 @@ class MockApi extends Api {
       _v(it.variantId).qty -= it.qty;
     }
     _receiptNo++;
-    final r = Receipt(id: 'r$_receiptNo', number: _receiptNo.toString().padLeft(4, '0'), createdAt: at, customerName: name, customerPhone: phone, items: items);
+    final r = Receipt(id: 'r$_receiptNo', number: _receiptNo.toString().padLeft(4, '0'), createdAt: at, customerName: name, customerPhone: phone, customerLocation: location, items: items);
     _receipts.add(r);
     return r;
   }
@@ -507,7 +507,7 @@ class MockApi extends Api {
   }
 
   @override
-  Future<Receipt> createReceipt({required String name, required String phone, required List<ReceiptItem> items}) async {
+  Future<Receipt> createReceipt({required String name, required String phone, String location = '', required List<ReceiptItem> items}) async {
     if (items.isEmpty) throw ApiException('Weka bidhaa angalau moja');
     final fixed = items
         .map((it) => ReceiptItem(
@@ -519,7 +519,7 @@ class MockApi extends Api {
               buying: it.variantId.isEmpty ? it.buying : _v(it.variantId).buying,
             ))
         .toList();
-    return _d(_makeReceipt(name.trim(), phone.trim(), fixed, DateTime.now()));
+    return _d(_makeReceipt(name.trim(), phone.trim(), fixed, DateTime.now(), location.trim()));
   }
 
   @override

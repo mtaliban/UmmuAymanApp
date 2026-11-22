@@ -286,6 +286,7 @@ class Receipt {
   final DateTime createdAt;
   final String customerName;
   final String customerPhone;
+  final String customerLocation; // mahali pa mteja (hiari)
   final List<ReceiptItem> items;
   final Shop? shop; // inatumwa na C2 (jina/simu/email ya duka)
   final int? _gross, _discount, _paid; // values za server (C1/C2), ikiwepo
@@ -295,6 +296,7 @@ class Receipt {
     required this.createdAt,
     required this.customerName,
     required this.customerPhone,
+    this.customerLocation = '',
     required this.items,
     this.shop,
     int? gross,
@@ -319,6 +321,7 @@ class Receipt {
           DateTime.now(),
       customerName: _s(c['name']),
       customerPhone: _s(c['phone']),
+      customerLocation: _s(c['location']),
       items: _l(j['items'], ReceiptItem.fromJson),
       shop: j['shop'] is Map ? Shop.fromJson(Map<String, dynamic>.from(j['shop'] as Map)) : null,
       gross: j['gross'] == null ? null : _i(j['gross']),

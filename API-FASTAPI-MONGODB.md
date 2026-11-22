@@ -178,7 +178,7 @@ Index: `(shop_id, date)`. **Manunuzi ya kipindi** = Σ `change * buying` kwa `re
   "date": "2026-11-17",
   "created_at": ISODate,
   "status": "paid" | "cancelled",
-  "customer": { "name": "Said Hamad", "phone": "0712 445 900" },
+  "customer": { "name": "Said Hamad", "phone": "0712 445 900", "location": "Kariakoo, Dar es Salaam" },
   "items": [
     { "variant_id": ObjectId, "product_id": ObjectId, "name": "Alfurqan Kanzu",
       "qty": 2, "price": 65000, "discount": 5000, "buying": 50000 }
@@ -187,6 +187,7 @@ Index: `(shop_id, date)`. **Manunuzi ya kipindi** = Σ `change * buying` kwa `re
 }
 ```
 `discount` ni **kwa kila kimoja**. `buying` ni nakala (snapshot) ya buying wakati wa kuuza.
+`customer.location` ni **hiari** (string, trim, ≤ 120 herufi) — mahali/mtaa alipo mteja; hifadhi jinsi ilivyo na uirudishe kwenye #19/#21. Kama haipo, weka `""` (usiiache `null`).
 Indexes: `(shop_id, date)`, `(shop_id, number)` unique.
 
 ### 3.6 `daily_sheets` (Mauzo ya leo — mstari mmoja kwa siku)
@@ -432,7 +433,7 @@ Majina 10 yaliyotumika zaidi siku 60 zilizopita (aggregation `$unwind expenses �
 **19. `GET /receipts?date=2026-11-17`** → risiti `paid` za siku hiyo, **mpya kwanza**:
 ```json
 [ { "id": "…", "number": "0005", "date": "2026-11-17", "created_at": "2026-11-17T21:12:00+03:00",
-    "customer": { "name": "Said Hamad", "phone": "0712 445 900" },
+    "customer": { "name": "Said Hamad", "phone": "0712 445 900", "location": "Kariakoo, Dar es Salaam" },
     "items": [ { "variant_id": "…", "name": "Alfurqan Kanzu", "qty": 2, "price": 65000, "discount": 5000, "buying": 50000 },
                { "variant_id": "…", "name": "Kofia nyeusi", "qty": 1, "price": 22000, "discount": 0, "buying": 15000 } ],
     "totals": { "qty": 3, "gross": 152000, "discount": 10000, "paid": 142000, "capital": 115000, "profit": 27000 } } ]
@@ -440,11 +441,14 @@ Majina 10 yaliyotumika zaidi siku 60 zilizopita (aggregation `$unwind expenses �
 
 **20. `POST /receipts`**
 ```json
-{ "customer": { "name": "Said Hamad", "phone": "0712 445 900" },
+{ "customer": { "name": "Said Hamad", "phone": "0712 445 900", "location": "Kariakoo, Dar es Salaam" },
   "items": [ { "variant_id": "…", "qty": 2, "price": 65000, "discount": 5000 },
              { "variant_id": "…", "qty": 1, "price": 22000, "discount": 0 } ] }
 ```
 - `customer.name` si tupu → `"Andika jina la mteja"`. `phone` hiari.
+- `customer.location` **hiari** (string): `location = (customer.get("location") or "").strip()[:120]`;
+  hifadhi kwenye document na uirudishe kwenye jibu la #19/#21 kama ilivyo. Usiweke sharti la lazima —
+  risiti za zamani (bila location) zinaendelea kufanya kazi na zitarudisha `""`.
 - `items ≥ 1`; `qty > 0`; `price > 0`; `0 ≤ discount ≤ price` (`"Punguzo ni kubwa kuliko bei"`).
 - Stock haitoshi → `400 "<jina>: zipo N tu"` na **hakuna** kinachobadilika.
 - Namba: `shops.find_one_and_update({_id}, {$inc:{receipt_seq:1}}, return_document=AFTER)` → `str(seq).zfill(4)`.
@@ -605,6 +609,7 @@ scheduler.add_job(weekly_report, CronTrigger(day_of_week="sun", hour=21, minute=
 14. `GET /reports/day/{d}` → `items` + `summary` sawa na mstari wa siku hiyo kwenye ripoti ya wiki.
 15. `DELETE /variants/{id}` aina ya mwisho → bidhaa imefutwa.
 16. Stock haiwezi kuwa hasi kwenye njia yoyote.
+17. `POST /receipts` na `customer.location: "Kariakoo, Dar"` → `GET /receipts/{id}` inarudisha `customer.location` ile ile; bila location → `""` (si `null`, hakuna `422`).
 
 ---
 

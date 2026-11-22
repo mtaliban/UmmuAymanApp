@@ -38,7 +38,14 @@ Future<Uint8List> receiptPdf(Receipt r, Shop shop) async {
       pw.SizedBox(height: 10),
       pw.Divider(thickness: 1.2),
       pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        pw.Expanded(child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [_t('Mteja', c: _grey), _t(r.customerName, b: true), if (r.customerPhone.isNotEmpty) _t(r.customerPhone)])),
+        pw.Expanded(
+          child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+            _t('Mteja', c: _grey),
+            _t(r.customerName, b: true),
+            if (r.customerPhone.isNotEmpty) _t(r.customerPhone),
+            if (r.customerLocation.isNotEmpty) _t(r.customerLocation, size: 9, c: _grey),
+          ]),
+        ),
         pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [_t('Na. ${r.number}', c: _grey), _t(dateShort(r.createdAt))]),
       ]),
       pw.SizedBox(height: 12),
