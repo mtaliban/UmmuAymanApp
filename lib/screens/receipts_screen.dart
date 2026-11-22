@@ -406,7 +406,7 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
               const SizedBox(width: 8),
               Expanded(
                 flex: 5,
-                child: DialogField(label: 'Bei', controller: _price, money: true, align: TextAlign.right, onChanged: (_) => setState(() {})),
+                child: DialogField(label: 'Bei', controller: _price, money: true, align: TextAlign.center, onChanged: (_) => setState(() {})),
               ),
             ]),
             const SizedBox(height: 10),
@@ -414,8 +414,8 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
               Expanded(
                 flex: 5,
                 child: _newName
-                    ? DialogField(label: 'Buying', controller: _buy, money: true, align: TextAlign.right, onChanged: (_) => setState(() {}))
-                    : DialogField(label: 'Punguzo', controller: _disc, money: true, align: TextAlign.right, onChanged: (_) => setState(() {})),
+                    ? DialogField(label: 'Buying', controller: _buy, money: true, align: TextAlign.center, onChanged: (_) => setState(() {}))
+                    : DialogField(label: 'Punguzo', controller: _disc, money: true, align: TextAlign.center, onChanged: (_) => setState(() {})),
               ),
               const SizedBox(width: 10),
               _NextBtn(onTap: _canNext ? _next : null),
