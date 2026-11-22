@@ -725,25 +725,18 @@ class ReceiptBody extends StatelessWidget {
             decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.text, width: 1.5))),
             child: Row(children: [const Expanded(child: Text('BIDHAA', style: th)), const Text('KIASI', style: th)]),
           ),
+          // Kila bidhaa: jina na kiasi tu — hakuna "3 × 15,000" wala maelezo ya punguzo.
           for (final it in r.items)
             Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              padding: const EdgeInsets.symmetric(vertical: 13),
               decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.softLine))),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Row(children: [
-                  Expanded(
-                    child: Text(it.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(money(it.amount), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, fontFeatures: tabular)),
-                ]),
-                const SizedBox(height: 3),
-                Text(
-                  '${it.qty} × ${money(it.price)}${it.discount > 0 ? ' · punguzo ${money(it.discount)} kila moja' : ''}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: sub,
+              child: Row(children: [
+                Expanded(
+                  child: Text(it.name,
+                      maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600)),
                 ),
+                const SizedBox(width: 10),
+                Text(money(it.amount), style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, fontFeatures: tabular)),
               ]),
             ),
           if (r.discountTotal > 0) ...[
@@ -1025,7 +1018,7 @@ String _waText(Receipt r, Shop? shop) {
   if (r.customerName.isNotEmpty) b.writeln('Mteja: ${titleCase(r.customerName)}');
   b.writeln();
   for (final i in r.items) {
-    b.writeln('${i.name} ${i.qty} × ${money(i.price - i.discount)} = ${money(i.amount)}');
+    b.writeln('${i.name} — ${money(i.amount)}');
   }
   b
     ..writeln()

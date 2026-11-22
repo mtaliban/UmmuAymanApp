@@ -57,12 +57,7 @@ Future<Uint8List> receiptPdf(Receipt r, Shop shop) async {
           padding: const pw.EdgeInsets.symmetric(vertical: 6),
           decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300, width: .5))),
           child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-            pw.Expanded(
-                flex: 10,
-                child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                  _t(it.name, b: true),
-                  if (it.discount > 0) _t('punguzo ${money(it.discount)} kila moja', c: _grey, size: 8),
-                ])),
+            pw.Expanded(flex: 10, child: _t(it.name, b: true)),
             pw.Expanded(flex: 3, child: _t('${it.qty}', a: pw.TextAlign.center)),
             pw.Expanded(flex: 5, child: _t(money(it.price - it.discount), a: pw.TextAlign.right)),
             pw.Expanded(flex: 5, child: _t(money(it.amount), b: true, a: pw.TextAlign.right)),
