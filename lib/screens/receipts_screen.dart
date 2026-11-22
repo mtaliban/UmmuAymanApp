@@ -234,18 +234,17 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
       backgroundColor: Colors.white,
       appBar: pageBar(
         'Risiti',
-        subtitle: dateShort(_day),
-        flatBack: widget.initialDay != null,
-        drop: widget.initialDay == null,
+        subtitle: dateLong(_day),
+        drop: true,
+        center: true,
         action: Row(mainAxisSize: MainAxisSize.min, children: [
-          HeaderButton('Historia',
-              color: C.text2,
+          HeaderIconButton(AppIcons.history,
               onTap: () async {
                 await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReceiptHistoryScreen()));
                 if (mounted) _load();
               }),
-          const SizedBox(width: 8),
-          HeaderButton('+ Risiti mpya', onTap: _open ? null : _openNew),
+          const SizedBox(width: 12),
+          HeaderButton('+ Risiti', height: 42, borderWidth: 1.5, padding: 16, weight: FontWeight.w600, onTap: _open ? null : _openNew),
         ]),
       ),
       body: _loading

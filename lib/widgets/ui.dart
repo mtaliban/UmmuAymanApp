@@ -27,7 +27,8 @@ PreferredSizeWidget pageBar(String title,
         bool boxBack = false,
         bool flatBack = false,
         bool light = false,
-        bool drop = false}) =>
+        bool drop = false,
+        bool center = false}) =>
     _PageHeader(
         title: title,
         subtitle: subtitle,
@@ -36,7 +37,8 @@ PreferredSizeWidget pageBar(String title,
         boxBack: boxBack,
         flatBack: flatBack,
         light: light,
-        drop: drop);
+        drop: drop,
+        center: center);
 
 class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -49,6 +51,9 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
 
   /// true = maudhui ya kichwa yanashuka 44px chini ya eneo salama (Stock, Abaya).
   final bool drop;
+
+  /// true = jina na vitufe vimekatikati kwa wima (Risiti).
+  final bool center;
   const _PageHeader(
       {required this.title,
       this.subtitle,
@@ -57,7 +62,8 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
       this.boxBack = false,
       this.flatBack = false,
       this.light = false,
-      this.drop = false});
+      this.drop = false,
+      this.center = false});
 
   bool get _stacked => back && boxBack;
 
@@ -153,7 +159,7 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
         height: (drop ? kHeaderFlatHeight : kHeaderHeight) + 1,
         padding: EdgeInsets.fromLTRB(back ? 6 : 18, drop ? 44 : 0, 16, drop ? 16 : kHeaderBottomGap),
         decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.cardLine))),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+        child: Row(crossAxisAlignment: center ? CrossAxisAlignment.center : CrossAxisAlignment.end, children: [
           if (back)
             IconButton(
               onPressed: () => Navigator.of(context).maybePop(),
@@ -305,7 +311,7 @@ class SmallButton extends StatelessWidget {
       );
 }
 
-/// Kitufe cha juu kulia chenye MAANDISHI ("+ Bidhaa", "+ Aina"):
+/// Kitufe cha juu kulia chenye MAANDISHI ("+ Bidhaa", "+ Aina", "+ Risiti"):
 /// mpaka mwembamba wa accent 1px, radius 10, urefu 40, padding 0 14, 15/w500.
 class HeaderButton extends StatelessWidget {
   final String label;
@@ -313,20 +319,55 @@ class HeaderButton extends StatelessWidget {
 
   /// Rangi ya maandishi na mpaka (kitufe cha pili kwenye kichwa: kijivu).
   final Color color;
-  const HeaderButton(this.label, {super.key, this.onTap, this.color = C.blue});
+  final double height;
+  final double borderWidth;
+  final double padding;
+  final double fontSize;
+  final FontWeight weight;
+  const HeaderButton(this.label,
+      {super.key,
+      this.onTap,
+      this.color = C.blue,
+      this.height = 40,
+      this.borderWidth = 1,
+      this.padding = 14,
+      this.fontSize = 15,
+      this.weight = FontWeight.w500});
   @override
   Widget build(BuildContext context) => InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          height: 40,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          height: height,
+          padding: EdgeInsets.symmetric(horizontal: padding),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color, width: 1),
+            border: Border.all(color: color, width: borderWidth),
           ),
-          child: Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: color)),
+          child: Text(label, style: TextStyle(fontSize: fontSize, fontWeight: weight, color: color)),
+        ),
+      );
+}
+
+/// Kitufe cha ikoni kwenye kichwa: MRABA 42, radius 10, mpaka mwembamba.
+class HeaderIconButton extends StatelessWidget {
+  final String svg;
+  final VoidCallback? onTap;
+  final Color color;
+  const HeaderIconButton(this.svg, {super.key, this.onTap, this.color = C.text});
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: C.cardLine),
+          ),
+          child: Center(child: AppIcon(svg, size: 21, color: color)),
         ),
       );
 }
