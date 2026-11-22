@@ -142,15 +142,17 @@ class _HomeState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _body(HomeData h) {
-    final s = h.summary;
     final day = h.day!;
+    final qty = h.top.fold<int>(0, (a, t) => a + t.qty);
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 120), children: [
       SectionTitle(dayLabel(day), padding: const EdgeInsets.fromLTRB(2, 0, 2, 10)),
-      _Summary(s),
-      SectionTitle('Bidhaa zilizouzwa', trailing: '${h.top.length} bidhaa', padding: const EdgeInsets.fromLTRB(2, 20, 2, 8)),
-      for (final (i, t) in h.top.indexed) _TopCard(rank: i + 1, row: t),
-      SectionTitle(dayLabel(day, lead: 'HESABU YA'), padding: const EdgeInsets.fromLTRB(2, 14, 2, 8)),
-      _DayTable(s),
+      _Summary(h.summary),
+      const SizedBox(height: 24),
+      _SalesTable(rows: h.top, qty: qty),
+      const SizedBox(height: 26),
+      _ExpenseTable(rows: h.expenses, total: h.summary.expenses),
+      const SizedBox(height: 26),
+      _ProfitTable(h.summary),
     ]);
   }
 }
@@ -249,117 +251,214 @@ class _Summary extends StatelessWidget {
       );
 }
 
-/// Jedwali la hesabu ya siku: MAELEZO | SHILINGI
-/// Mauzo -> Mtaji -> Faida -> Gharama -> FAIDA HALISI
-class _DayTable extends StatelessWidget {
-  final Summary s;
-  const _DayTable(this.s);
+/// Kichwa kidogo cha jedwali: jina kushoto (herufi kubwa, kijivu),
+/// maelezo upande wa kulia — kama kwenye muundo.
+class _TableHead extends StatelessWidget {
+  final String left;
+  final String? right;
+  const _TableHead(this.left, {this.right});
+
+  static const _title = TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.muted, letterSpacing: .9);
+  static const _col = TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: C.muted, letterSpacing: .4);
+  static const _amount = TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: C.muted, letterSpacing: .4);
 
   @override
-  Widget build(BuildContext context) {
-    final rows = <(String, int, bool)>[
-      ('Mauzo', s.sales, false),
-      ('Mtaji', s.capital, false),
-      ('Faida', s.productProfit, true),
-      ('Gharama', s.expenses, false),
-      ('FAIDA HALISI', s.net, true),
-    ];
-    Widget cell(Widget child, {bool right = false}) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          child: Align(alignment: right ? Alignment.centerRight : Alignment.centerLeft, child: child),
-        );
-    const head = TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: .5, color: C.text2);
-    return Table(
-      border: TableBorder.all(color: const Color(0xFF9CA3AF), width: 1),
-      columnWidths: const {0: FlexColumnWidth(1.3), 1: FlexColumnWidth(1)},
-      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-      children: [
-        TableRow(decoration: const BoxDecoration(color: C.head), children: [
-          cell(const Text('MAELEZO', style: head)),
-          cell(const Text('SHILINGI', style: head), right: true),
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(children: [
+          Expanded(child: Text(left.toUpperCase(), style: _title)),
+          if (right != null) Text(right!, style: const TextStyle(fontSize: 12.5, color: C.muted)),
         ]),
-        for (final (i, r) in rows.indexed)
-          TableRow(children: [
-            cell(Text(r.$1,
-                style: TextStyle(
-                  fontSize: i == rows.length - 1 ? 13.5 : 14,
-                  fontWeight: i == rows.length - 1 ? FontWeight.w800 : FontWeight.w600,
-                  color: C.text,
-                ))),
-            cell(
-              Text(money(r.$2),
-                  style: TextStyle(
-                    fontSize: i == rows.length - 1 ? 15 : 14,
-                    fontWeight: FontWeight.w800,
-                    color: r.$3 ? C.blue : C.text,
-                    fontFeatures: tabular,
-                  )),
-              right: true,
+      );
+}
+
+/// Fremu na safu za jedwali (kona za mraba, mistari myembamba).
+class _Tbl {
+  static Widget frame(List<Widget> rows) => Container(
+        decoration: BoxDecoration(border: Border.all(color: C.cardLine)),
+        child: Column(children: rows),
+      );
+
+  /// Safu yenye nafasi sawa kwa kila safu wima (flex) na mistari wima kati.
+  static Widget row(List<Widget> cells, List<int> flex,
+      {Color? bg, Border? border, double vpad = 12}) {
+    return Container(
+      decoration: BoxDecoration(color: bg, border: border),
+      child: IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          for (var i = 0; i < cells.length; i++)
+            Expanded(
+              flex: flex[i],
+              child: Container(
+                padding: EdgeInsets.fromLTRB(i == 0 ? 10 : 5, vpad, i == cells.length - 1 ? 10 : 5, vpad),
+                alignment: i == 0 ? Alignment.centerLeft : Alignment.centerRight,
+                decoration: i == 0 ? null : const BoxDecoration(border: Border(left: BorderSide(color: C.line))),
+                child: cells[i],
+              ),
             ),
-          ]),
-      ],
+        ]),
+      ),
+    );
+  }
+
+  /// Safu ya safu mbili: jina kushoto, kiasi kulia (upana 104).
+  static Widget pair(Widget label, String amount, TextStyle amountStyle,
+      {Color? bg, Border? border, double vpad = 13}) {
+    return Container(
+      decoration: BoxDecoration(color: bg, border: border),
+      child: IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(12, vpad, 6, vpad),
+              child: Align(alignment: Alignment.centerLeft, child: label),
+            ),
+          ),
+          Container(
+            width: 104,
+            padding: EdgeInsets.fromLTRB(4, vpad, 10, vpad),
+            alignment: Alignment.centerRight,
+            decoration: const BoxDecoration(border: Border(left: BorderSide(color: C.line))),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(amount, maxLines: 1, style: amountStyle),
+            ),
+          ),
+        ]),
+      ),
     );
   }
 }
 
-/// Kadi ya bidhaa ya siku: namba · jina · IDADI · SELLING · MAUZO · FAIDA
-/// Safu zina upana 62 : 100 : 112 : 100 na nafasi 12 kati yake; namba ndefu
-/// zinapungua kwa FittedBox (hazigusani).
-class _TopCard extends StatelessWidget {
-  final int rank;
-  final TopItem row;
-  const _TopCard({required this.rank, required this.row});
+/// MAUZO YA BIDHAA: BIDHAA · IDADI · SELLING · MAUZO · FAIDA + jumla.
+class _SalesTable extends StatelessWidget {
+  final List<TopItem> rows;
+  final int qty;
+  const _SalesTable({required this.rows, required this.qty});
+
+  static const _flex = [150, 58, 82, 100, 104];
+  static const _cell = TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: C.text, fontFeatures: tabular, height: 1.25);
+
+  /// Kichwa cha safu wima: mstari mmoja, kinapungua badala ya kuvunjika.
+  static Widget _h(String v, {bool right = false}) => FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: right ? Alignment.centerRight : Alignment.centerLeft,
+        child: Text(v, maxLines: 1, softWrap: false, style: _TableHead._col),
+      );
+
+  static Widget _n(String v, {Color color = C.text, bool bold = false}) => FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerRight,
+        child: Text(v, maxLines: 1, style: _cell.copyWith(color: color, fontWeight: bold ? FontWeight.w700 : FontWeight.w500)),
+      );
 
   @override
   Widget build(BuildContext context) {
-    const flex = [62, 100, 112, 100];
-    final cols = [
-      ('IDADI', '${row.qty}'),
-      ('SELLING', money(row.selling)),
-      ('MAUZO', money(row.sales)),
-      ('FAIDA', money(row.profit)),
-    ];
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.cardLine)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          SizedBox(width: 22, child: Text('$rank', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.faint))),
-          Expanded(
-              child: Text(row.name,
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700))),
-        ]),
-        const SizedBox(height: 7),
-        Padding(
-          padding: const EdgeInsets.only(left: 22),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            for (var i = 0; i < 4; i++) ...[
-              if (i > 0) const SizedBox(width: 12),
+    final sales = rows.fold<int>(0, (a, r) => a + r.sales);
+    final profit = rows.fold<int>(0, (a, r) => a + r.profit);
+    const bottom = Border(bottom: BorderSide(color: C.line));
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _TableHead('Mauzo ya bidhaa', right: '${rows.length} bidhaa · vipande $qty'),
+      const Padding(
+        padding: EdgeInsets.only(bottom: 10),
+        child: Text('Bei ni ya kipande kimoja (wastani).', style: TextStyle(fontSize: 12.5, color: C.muted)),
+      ),
+      _Tbl.frame([
+        _Tbl.row([
+          _h('BIDHAA'),
+          _h('IDADI'),
+          _h('SELLING'),
+          _h('MAUZO'),
+          _h('FAIDA', right: true),
+        ], _flex, bg: C.head, border: bottom, vpad: 10),
+        for (final (i, r) in rows.indexed)
+          _Tbl.row([
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              SizedBox(width: 18, child: Text('${i + 1}.', style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.25))),
               Expanded(
-                flex: flex[i],
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(cols[i].$1, style: const TextStyle(fontSize: 11, color: C.muted)),
-                  const SizedBox(height: 2),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(cols[i].$2,
-                        maxLines: 1,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: i == 3 ? FontWeight.w800 : FontWeight.w600,
-                          color: i == 3 ? C.blue : C.text,
-                          fontFeatures: tabular,
-                        )),
-                  ),
-                ]),
+                child: Text(r.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: _cell.copyWith(fontWeight: FontWeight.w600)),
               ),
-            ],
-          ]),
+            ]),
+            _n('${r.qty}'),
+            _n(money(r.selling)),
+            _n(money(r.sales)),
+            _n(money(r.profit), color: r.profit < 0 ? C.red : C.blue, bold: true),
+          ], _flex, border: bottom),
+        _Tbl.row([
+          const Text('Jumla ya bidhaa', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+          _n('$qty', bold: true),
+          const SizedBox.shrink(),
+          _n(money(sales), bold: true),
+          _n(money(profit), bold: true),
+        ], _flex, bg: C.soft, border: const Border(top: BorderSide(color: C.cardLine, width: 1.5)), vpad: 13),
+      ]),
+    ]);
+  }
+}
+
+/// GHARAMA: jina · kiasi, pamoja na jumla ya gharama.
+class _ExpenseTable extends StatelessWidget {
+  final List<Expense> rows;
+  final int total;
+  const _ExpenseTable({required this.rows, required this.total});
+
+  static const _cell = TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text, height: 1.25);
+  static const _amount = TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text, fontFeatures: tabular);
+
+  @override
+  Widget build(BuildContext context) {
+    const bottom = Border(bottom: BorderSide(color: C.line));
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const _TableHead('Gharama'),
+      _Tbl.frame([
+        _Tbl.pair(const Text('GHARAMA', style: _TableHead._col), 'KIASI (SH)', _TableHead._amount,
+            bg: C.head, border: bottom, vpad: 10),
+        for (final (i, e) in rows.indexed)
+          _Tbl.pair(
+            Row(children: [
+              SizedBox(width: 20, child: Text('${i + 1}.', style: const TextStyle(fontSize: 13, color: C.muted))),
+              Expanded(child: Text(e.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: _cell)),
+            ]),
+            money(e.amount),
+            _amount,
+            border: bottom,
+          ),
+        _Tbl.pair(const Text('Jumla ya gharama', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+            money(total), const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, fontFeatures: tabular),
+            bg: C.soft, border: const Border(top: BorderSide(color: C.cardLine, width: 1.5)), vpad: 14),
+      ]),
+    ]);
+  }
+}
+
+/// HESABU YA FAIDA: faida ya bidhaa − gharama = FAIDA HALISI (bluu).
+class _ProfitTable extends StatelessWidget {
+  final Summary s;
+  const _ProfitTable(this.s);
+
+  static const _cell = TextStyle(fontSize: 13, color: C.text);
+  static const _amount = TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text, fontFeatures: tabular);
+
+  @override
+  Widget build(BuildContext context) {
+    const bottom = Border(bottom: BorderSide(color: C.line));
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      const _TableHead('Hesabu ya faida'),
+      _Tbl.frame([
+        _Tbl.pair(const Text('MAELEZO', style: _TableHead._col), 'KIASI (SH)', _TableHead._amount,
+            bg: C.head, border: bottom, vpad: 10),
+        _Tbl.pair(const Text('Faida ya bidhaa', style: _cell), money(s.productProfit), _amount, border: bottom),
+        _Tbl.pair(const Text('Toa: Jumla ya gharama', style: _cell), money(s.expenses), _amount, border: bottom),
+        _Tbl.pair(
+          const Text('FAIDA HALISI', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800)),
+          money(s.net),
+          const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular),
+          bg: C.blue2,
+          vpad: 15,
         ),
       ]),
-    );
+    ]);
   }
 }
 
