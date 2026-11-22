@@ -111,26 +111,41 @@ class _ProductScreenState extends State<ProductScreen> {
 
   Widget _body(StockProduct p) {
     final empty = p.hasVariants && p.variants.isEmpty;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      children: [
-        _ThreeStat(qty: p.qty, capital: p.capital, profit: p.profitIfSold),
-        SectionTitle(p.hasVariants ? 'Aina' : 'Taarifa',
-            trailing: p.hasVariants ? '${p.variants.length}' : null, padding: const EdgeInsets.fromLTRB(2, 18, 2, 10)),
-        // Fomu inakaa juu ya orodha ili ionekane papo hapo na menyu ya chini ibaki.
-        if (_adding) ...[
-          _NewVariantCard(p: p, onSaved: _variantAdded, onClose: () => setState(() => _adding = false)),
-          const SizedBox(height: 8),
+    final kb = MediaQuery.of(context).viewInsets.bottom;
+    return Stack(children: [
+      ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        children: [
+          _ThreeStat(qty: p.qty, capital: p.capital, profit: p.profitIfSold),
+          SectionTitle(p.hasVariants ? 'Aina' : 'Taarifa',
+              trailing: p.hasVariants ? '${p.variants.length}' : null, padding: const EdgeInsets.fromLTRB(2, 18, 2, 10)),
+          // S07: bidhaa yenye aina lakini bado tupu
+          if (empty && !_adding) const _NoVariants(),
+          for (final (i, v) in p.variants.indexed) ...[
+            _VariantCard(v, rank: i + 1, highlight: v.id == _hl || v.id == _selected, onTap: () => _edit(v)),
+            const SizedBox(height: 8),
+          ],
+          // Fomu ikiwa wazi, orodha ipate nafasi ya kutosha chini yake.
+          SizedBox(height: _adding ? 330 : 120),
         ],
-        // S07: bidhaa yenye aina lakini bado tupu
-        if (empty && !_adding) const _NoVariants(),
-        for (final (i, v) in p.variants.indexed) ...[
-          _VariantCard(v, rank: i + 1, highlight: v.id == _hl || v.id == _selected, onTap: () => _edit(v)),
-          const SizedBox(height: 8),
-        ],
-        const SizedBox(height: 120),
-      ],
-    );
+      ),
+      // Fomu inakaa chini juu ya menyu, sawa na Mauzo — hivyo ulichoongeza
+      // kinaonekana kikiongezeka kwenye orodha badala ya kufichwa.
+      if (_adding)
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 180),
+          left: 12,
+          right: 12,
+          bottom: kb + 10,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: const [BoxShadow(color: Color(0x2E111827), blurRadius: 24, offset: Offset(0, 8))],
+            ),
+            child: _NewVariantCard(p: p, onSaved: _variantAdded, onClose: () => setState(() => _adding = false)),
+          ),
+        ),
+    ]);
   }
 }
 
@@ -295,9 +310,9 @@ class _EditVariantDialogState extends State<_EditVariantDialog> {
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           DialogField(label: 'Ongeza idadi', controller: _add, focus: _fAdd, number: true, hint: '0', width: 84, align: TextAlign.center, autofocus: true, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fBuy.requestFocus()),
           const SizedBox(width: 8),
-          DialogField(label: 'Buying', controller: _buy, focus: _fBuy, money: true, width: 86, align: TextAlign.right, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fSell.requestFocus()),
+          DialogField(label: 'Buying', controller: _buy, focus: _fBuy, money: true, width: 86, align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fSell.requestFocus()),
           const SizedBox(width: 8),
-          DialogField(label: 'Selling', controller: _sell, focus: _fSell, money: true, width: 86, align: TextAlign.right, onChanged: (_) => setState(() {}), onSubmitted: (_) => _save()),
+          DialogField(label: 'Selling', controller: _sell, focus: _fSell, money: true, width: 86, align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _save()),
         ]),
         const SizedBox(height: 10),
         Row(children: [
@@ -425,7 +440,7 @@ class _NewVariantCardState extends State<_NewVariantCard> {
           const SizedBox(width: 8),
           Expanded(
             flex: 4,
-            child: DialogField(label: 'Buying', controller: _buy, focus: _fBuy, money: true, hint: '0', align: TextAlign.right, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fSell.requestFocus()),
+            child: DialogField(label: 'Buying', controller: _buy, focus: _fBuy, money: true, hint: '0', align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fSell.requestFocus()),
           ),
         ]),
         const SizedBox(height: 10),
@@ -433,7 +448,7 @@ class _NewVariantCardState extends State<_NewVariantCard> {
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Expanded(
             flex: 4,
-            child: DialogField(label: 'Selling', controller: _sell, focus: _fSell, money: true, hint: '0', align: TextAlign.right, onChanged: (_) => setState(() {}), onSubmitted: (_) => _save()),
+            child: DialogField(label: 'Selling', controller: _sell, focus: _fSell, money: true, hint: '0', align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _save()),
           ),
           const SizedBox(width: 10),
           PrimaryButton('Hifadhi', onTap: _canSave ? _save : null, busy: _busy),
