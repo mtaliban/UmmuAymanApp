@@ -111,7 +111,6 @@ class _ProductScreenState extends State<ProductScreen> {
 
   Widget _body(StockProduct p) {
     final empty = p.hasVariants && p.variants.isEmpty;
-    final kb = MediaQuery.of(context).viewInsets.bottom;
     return Stack(children: [
       ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -131,12 +130,14 @@ class _ProductScreenState extends State<ProductScreen> {
       ),
       // Fomu inakaa chini juu ya menyu, sawa na Mauzo — hivyo ulichoongeza
       // kinaonekana kikiongezeka kwenye orodha badala ya kufichwa.
+      // Scaffold inapunguza ukurasa kwa urefu wa keyboard, hivyo "bottom: 10"
+      // inatosha — fomu haipandi mara mbili na sehemu zake zote zinaonekana.
       if (_adding)
         AnimatedPositioned(
           duration: const Duration(milliseconds: 180),
           left: 12,
           right: 12,
-          bottom: kb + 10,
+          bottom: 10,
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),

@@ -305,13 +305,14 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
   }
 
   Widget _window() {
-    final kb = MediaQuery.of(context).viewInsets.bottom;
     final showFields = _sel != null || _newName;
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 180),
       left: 12,
       right: 12,
-      bottom: kb + 10,
+      // Ukurasa unapunguzwa na Scaffold kwa urefu wa keyboard — fomu ikae
+      // chini juu ya keyboard bila kupanda mara mbili.
+      bottom: 10,
       child: Container(
         key: _winKey,
         decoration: BoxDecoration(

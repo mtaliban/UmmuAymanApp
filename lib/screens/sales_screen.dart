@@ -543,7 +543,6 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
 
   // ------------------------------------------------------------ dirisha (M02–M11)
   Widget _window() {
-    final kb = MediaQuery.of(context).viewInsets.bottom;
     final editing = _editLine != null || _editExp != null;
     final expMode = _editExp != null || (!editing && _tab == _Tab.gharama);
     // Hakuna menyu: + inafungua fomu ya Bidhaa moja kwa moja, bila chaguo la
@@ -552,11 +551,14 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
         ? const Text('Rekebisha', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700))
         : const SizedBox.shrink();
 
+    // Scaffold yenyewe inapunguza ukurasa kwa urefu wa keyboard, hivyo
+    // "bottom: 10" inatosha: fomu inakaa chini juu ya keyboard, sehemu zake
+    // zote zinaonekana, na orodha iliyopo nyuma inasogea chini.
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 180),
       left: 12,
       right: 12,
-      bottom: kb + 10,
+      bottom: 10,
       child: Container(
         key: _winKey,
         decoration: BoxDecoration(
