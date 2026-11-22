@@ -541,9 +541,11 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
     final kb = MediaQuery.of(context).viewInsets.bottom;
     final editing = _editLine != null || _editExp != null;
     final expMode = _editExp != null || (!editing && _tab == _Tab.gharama);
+    // Hakuna tab za "Bidhaa | Gharama" kwenye dirisha: aina huchaguliwa
+    // kwenye kitufe cha + kabla dirisha kufunguka.
     final header = editing
         ? const Text('Rekebisha', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700))
-        : _tabs();
+        : const SizedBox.shrink();
 
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 180),
@@ -569,23 +571,18 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
               _WinField(controller: _eName, focus: _eF, onChanged: (_) => setState(() {}), onSubmitted: (_) => _next()),
             ),
             const SizedBox(height: 10),
-            Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Expanded(
-                child: _labelled(
-                  'Kiasi',
-                  _WinField(
-                    controller: _eAmt,
-                    focus: _eAmtF,
-                    number: true,
-                    align: TextAlign.right,
-                    onChanged: (_) => setState(() {}),
-                    onSubmitted: (_) => _next(),
-                  ),
-                ),
+            _labelled(
+              'Kiasi',
+              _WinField(
+                controller: _eAmt,
+                focus: _eAmtF,
+                number: true,
+                align: TextAlign.center,
+                onChanged: (_) => setState(() {}),
+                onSubmitted: (_) => _next(),
               ),
-              const SizedBox(width: 8),
-              _NextBtn(label: editing ? 'Hifadhi' : 'Next', onTap: _canNext ? _next : null),
-            ]),
+            ),
+            _nextRow(editing),
           ] else
             _bidhaaForm(editing),
           if (_error != null)
@@ -660,7 +657,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
               _WinField(
                 controller: _price,
                 number: true,
-                align: TextAlign.right,
+                align: TextAlign.center,
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -671,30 +668,21 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
               flex: 4,
               child: _labelled(
                 'Buying',
-                _WinField(controller: _buy, number: true, align: TextAlign.right, onChanged: (_) => setState(() {})),
+                _WinField(controller: _buy, number: true, align: TextAlign.center, onChanged: (_) => setState(() {})),
               ),
             ),
           ],
         ]),
         _nextRow(editing),
       ] else
-        Align(
-          alignment: Alignment.center,
-          child: Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: _NextBtn(onTap: null),
-          ),
-        ),
+        _nextRow(editing),
     ]);
   }
 
-  /// Next/Hifadhi chini ya kisanduku, katikati ya dirisha.
-  Widget _nextRow(bool editing) => Align(
-        alignment: Alignment.center,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 10),
-          child: _NextBtn(label: editing ? 'Hifadhi' : 'Next', onTap: _canNext ? _next : null),
-        ),
+  /// Next/Hifadhi chini ya fields, upana wote wa dirisha.
+  Widget _nextRow(bool editing) => Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: _NextBtn(label: editing ? 'Hifadhi' : 'Next', wide: true, onTap: _canNext ? _next : null),
       );
 
   Variant? _stockOf(SaleLine? l) {
@@ -727,29 +715,6 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
       TextSpan(text: n.substring(k)),
     ]));
   }
-
-  Widget _tabs() => Row(children: [
-        for (final (i, label) in const ['Bidhaa', 'Gharama'].indexed)
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () {
-              setState(() {
-                _tab = _Tab.values[i];
-                _error = null;
-              });
-              _focusSoon(i == 0 ? _qF : _eF);
-            },
-            child: Container(
-              margin: const EdgeInsets.only(right: 18),
-              padding: const EdgeInsets.only(bottom: 3),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: _tab.index == i ? C.blue : Colors.transparent, width: 2)),
-              ),
-              child: Text(label,
-                  style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: _tab.index == i ? C.blue : C.faint)),
-            ),
-          ),
-      ]);
 
   Widget _closeX() => InkWell(
         onTap: _close,
@@ -1077,8 +1042,9 @@ class _AddMenu extends StatelessWidget {
 
 class _NextBtn extends StatelessWidget {
   final String label;
+  final bool wide;
   final VoidCallback? onTap;
-  const _NextBtn({this.label = 'Next', this.onTap});
+  const _NextBtn({this.label = 'Next', this.wide = false, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1090,9 +1056,13 @@ class _NextBtn extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         child: Container(
           height: 34,
-          padding: const EdgeInsets.fromLTRB(14, 0, 10, 0),
+          width: wide ? double.infinity : null,
+          padding: EdgeInsets.fromLTRB(wide ? 12 : 14, 0, wide ? 8 : 10, 0),
           decoration: BoxDecoration(color: C.blue, borderRadius: BorderRadius.circular(8)),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
+          child: Row(
+            mainAxisSize: wide ? MainAxisSize.max : MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
             Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
             const SizedBox(width: 2),
             const Icon(Icons.chevron_right_rounded, size: 18, color: Colors.white),
