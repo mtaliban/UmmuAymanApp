@@ -26,6 +26,7 @@ class _StockScreenState extends State<StockScreen> {
   final _q = TextEditingController();
   String? _newId;
   int? _newRow;
+  bool _adding = false;
   final _listKey = GlobalKey();
   final _gridKey = GlobalKey();
   final _sc = ScrollController();
@@ -65,10 +66,13 @@ class _StockScreenState extends State<StockScreen> {
         _sc.animateTo(target, duration: const Duration(milliseconds: 340), curve: Curves.easeOutCubic);
       });
 
-  Future<void> _new() async {
-    final p = await showEntryDialog<StockProduct>(context, builder: (_) => const NewProductDialog());
-    if (p == null || !mounted) return;
-    setState(() => _newId = p.id);
+  void _new() => setState(() => _adding = true);
+
+  Future<void> _saved(StockProduct p) async {
+    setState(() {
+      _adding = false;
+      _newId = p.id;
+    });
     _reload();
     _scrollToNew();
     if (p.hasVariants) {
@@ -103,10 +107,36 @@ class _StockScreenState extends State<StockScreen> {
                 ? ErrorView(s.error!, onRetry: _reload)
                 : list == null
                     ? const Loading()
-                    : _body(list),
+                    : _content(list),
           );
         },
       );
+
+  /// Ukurasa + fomu ya "Bidhaa mpya" iliyoshikamana na chini (kama Mauzo):
+  /// orodha inabaki juu, fomu haizibi kadi zilizopo.
+  Widget _content(StockList list) => LayoutBuilder(builder: (context, cons) {
+        final maxForm = (cons.maxHeight - 24).clamp(140.0, 640.0);
+        return Stack(children: [
+          _body(list),
+          if (_adding)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 180),
+              left: 12,
+              right: 12,
+              // Scaffold inapunguza ukurasa kwa urefu wa keyboard, hivyo
+              // "bottom: 10" inatosha: fomu inakaa chini juu ya kibodi.
+              bottom: 10,
+              child: Container(
+                constraints: BoxConstraints(maxHeight: maxForm),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: const [BoxShadow(color: Color(0x2E111827), blurRadius: 24, offset: Offset(0, 8))],
+                ),
+                child: _NewProductCard(onSaved: _saved, onClose: () => setState(() => _adding = false)),
+              ),
+            ),
+        ]);
+      });
 
   Widget _body(StockList list) {
     final q = _q.text.trim().toLowerCase();
@@ -122,7 +152,8 @@ class _StockScreenState extends State<StockScreen> {
     final idx = _newId == null ? -1 : shown.indexWhere((p) => p.id == _newId);
     _newRow = idx < 0 ? null : idx ~/ 2;
 
-    return ListView(key: _listKey, controller: _sc, padding: const EdgeInsets.fromLTRB(16, 16, 16, 140), children: [
+    // Fomu ikiwa wazi, orodha ipate nafasi ya kutosha chini yake.
+    return ListView(key: _listKey, controller: _sc, padding: EdgeInsets.fromLTRB(16, 16, 16, _adding ? 320 : 140), children: [
       _SearchField(controller: _q, onChanged: () => setState(() {})),
       if (!searching) ...[
         const SizedBox(height: 12),
@@ -233,14 +264,17 @@ class _TwoStat extends StatelessWidget {
       );
 }
 
-/// Dirisha: Bidhaa mpya (K2 · S06 / S10)
-class NewProductDialog extends StatefulWidget {
-  const NewProductDialog({super.key});
+/// K2 · S06 / S10: fomu ya bidhaa mpya ndani ya ukurasa (menyu ya chini
+/// inabaki) — sawa na fomu za Mauzo, orodha inaonekana juu yake.
+class _NewProductCard extends StatefulWidget {
+  final ValueChanged<StockProduct> onSaved;
+  final VoidCallback onClose;
+  const _NewProductCard({required this.onSaved, required this.onClose});
   @override
-  State<NewProductDialog> createState() => _NewProductDialogState();
+  State<_NewProductCard> createState() => _NewProductCardState();
 }
 
-class _NewProductDialogState extends State<NewProductDialog> {
+class _NewProductCardState extends State<_NewProductCard> {
   final _name = TextEditingController(), _qty = TextEditingController(), _buy = TextEditingController(), _sell = TextEditingController();
   final _fName = FocusNode(), _fQty = FocusNode(), _fBuy = FocusNode(), _fSell = FocusNode();
   bool _has = true, _busy = false;
@@ -282,7 +316,10 @@ class _NewProductDialogState extends State<NewProductDialog> {
         buying: parseMoney(_buy.text),
         selling: parseMoney(_sell.text),
       );
-      if (mounted) Navigator.pop(context, p);
+      if (mounted) {
+        FocusScope.of(context).unfocus();
+        widget.onSaved(p);
+      }
     } catch (e) {
       if (mounted) setState(() => _error = '$e');
     } finally {
@@ -292,10 +329,30 @@ class _NewProductDialogState extends State<NewProductDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
+    return Box(
+      radius: 12,
+      border: C.cardLine,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const EntryHeader('Bidhaa mpya'),
+      // Kadi haizidi nafasi iliyopo; ikiwa ndogo, inajisogeza yenyewe.
+      child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          const Expanded(
+            child: Text('Bidhaa mpya',
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: C.text)),
+          ),
+          const SizedBox(width: 10),
+          InkWell(
+            onTap: widget.onClose,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(color: C.soft, borderRadius: BorderRadius.circular(8), border: Border.all(color: C.line)),
+              child: const Icon(Icons.close_rounded, size: 16, color: C.text),
+            ),
+          ),
+        ]),
         const SizedBox(height: 14),
         DialogField(
           controller: _name,
@@ -346,7 +403,7 @@ class _NewProductDialogState extends State<NewProductDialog> {
             child: PrimaryButton('Hifadhi', onTap: _canSave ? _save : null, busy: _busy),
           ),
         if (_error != null) ErrorText(_error!),
-      ]),
+      ])),
     );
   }
 }
