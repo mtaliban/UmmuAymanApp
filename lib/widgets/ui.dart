@@ -987,6 +987,23 @@ class MiniStat extends StatelessWidget {
       ]);
 }
 
+/// Kisanduku cha fomu kionekane juu ya kibodi.
+/// Uiite kwenye listener ya FocusNode; fomu inajisogeza yenyewe hadi
+/// kisanduku kilichogusiwa (pamoja na kitufe cha Hifadhi) kionekane.
+void keepFieldInView(FocusNode node, {double alignment = .35}) {
+  if (!node.hasFocus) return;
+  void run() {
+    final c = node.context;
+    if (c == null || !c.mounted) return;
+    Scrollable.ensureVisible(c,
+        alignment: alignment, duration: const Duration(milliseconds: 220), curve: Curves.easeOutCubic);
+  }
+
+  WidgetsBinding.instance.addPostFrameCallback((_) => run());
+  // Kibodi huchukua muda kupanda; tunasogeza tena baada ya kupanda.
+  Future.delayed(const Duration(milliseconds: 320), run);
+}
+
 /// Kisanduku kidogo cha dirisha: lebo juu (11.5), kisanduku cha urefu 38, radius 8
 class DialogField extends StatelessWidget {
   final String? label;

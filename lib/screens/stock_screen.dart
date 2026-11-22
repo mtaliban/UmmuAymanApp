@@ -200,6 +200,26 @@ class _NewProductDialogState extends State<NewProductDialog> {
   bool _has = true, _busy = false;
   String? _error;
 
+  @override
+  void initState() {
+    super.initState();
+    // Kila kisanduku kikiguswa, fomu inajisogeza hadi kionekane juu ya kibodi.
+    for (final f in [_fName, _fQty, _fBuy, _fSell]) {
+      f.addListener(() => keepFieldInView(f));
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in [_name, _qty, _buy, _sell]) {
+      c.dispose();
+    }
+    for (final f in [_fName, _fQty, _fBuy, _fSell]) {
+      f.dispose();
+    }
+    super.dispose();
+  }
+
   bool get _canSave => !_busy && _name.text.trim().isNotEmpty && (_has || (_qty.text.isNotEmpty && _buy.text.isNotEmpty && parseMoney(_sell.text) > 0));
 
   Future<void> _save() async {
@@ -226,7 +246,6 @@ class _NewProductDialogState extends State<NewProductDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final example = _name.text.trim().isEmpty ? 'Mtandio' : _name.text.trim();
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
       child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -252,12 +271,6 @@ class _NewProductDialogState extends State<NewProductDialog> {
           const SizedBox(width: 6),
           Expanded(child: _ChoiceBtn('Haina aina', selected: !_has, onTap: () => setState(() => _has = false))),
         ]),
-        if (_has)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text('Mf. $example → ya hariri, ya pamba… Aina utaziongeza ndani.',
-                style: const TextStyle(fontSize: 11.5, color: C.muted, height: 1.4)),
-          ),
         const SizedBox(height: 12),
         // Mstari wa kwanza: Idadi · Buying. Mstari wa pili: Selling · Hifadhi.
         if (!_has) ...[

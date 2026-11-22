@@ -111,42 +111,47 @@ class _ProductScreenState extends State<ProductScreen> {
 
   Widget _body(StockProduct p) {
     final empty = p.hasVariants && p.variants.isEmpty;
-    return Stack(children: [
-      ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-        children: [
-          _ThreeStat(qty: p.qty, capital: p.capital, profit: p.profitIfSold),
-          SectionTitle(p.hasVariants ? 'Aina' : 'Taarifa',
-              trailing: p.hasVariants ? '${p.variants.length}' : null, padding: const EdgeInsets.fromLTRB(2, 18, 2, 10)),
-          // S07: bidhaa yenye aina lakini bado tupu
-          if (empty && !_adding) const _NoVariants(),
-          for (final (i, v) in p.variants.indexed) ...[
-            _VariantCard(v, rank: i + 1, highlight: v.id == _hl || v.id == _selected, onTap: () => _edit(v)),
-            const SizedBox(height: 8),
+    return LayoutBuilder(builder: (context, cons) {
+      // Fomu ina urefu wa nafasi iliyobaki (ukiachia kibodi), hivyo haikatwi.
+      final maxForm = (cons.maxHeight - 24).clamp(140.0, 640.0);
+      return Stack(children: [
+        ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          children: [
+            _ThreeStat(qty: p.qty, capital: p.capital, profit: p.profitIfSold),
+            SectionTitle(p.hasVariants ? 'Aina' : 'Taarifa',
+                trailing: p.hasVariants ? '${p.variants.length}' : null, padding: const EdgeInsets.fromLTRB(2, 18, 2, 10)),
+            // S07: bidhaa yenye aina lakini bado tupu
+            if (empty && !_adding) const _NoVariants(),
+            for (final (i, v) in p.variants.indexed) ...[
+              _VariantCard(v, rank: i + 1, highlight: v.id == _hl || v.id == _selected, onTap: () => _edit(v)),
+              const SizedBox(height: 8),
+            ],
+            // Fomu ikiwa wazi, orodha ipate nafasi ya kutosha chini yake.
+            SizedBox(height: _adding ? 330 : 120),
           ],
-          // Fomu ikiwa wazi, orodha ipate nafasi ya kutosha chini yake.
-          SizedBox(height: _adding ? 330 : 120),
-        ],
-      ),
-      // Fomu inakaa chini juu ya menyu, sawa na Mauzo — hivyo ulichoongeza
-      // kinaonekana kikiongezeka kwenye orodha badala ya kufichwa.
-      // Scaffold inapunguza ukurasa kwa urefu wa keyboard, hivyo "bottom: 10"
-      // inatosha — fomu haipandi mara mbili na sehemu zake zote zinaonekana.
-      if (_adding)
-        AnimatedPositioned(
-          duration: const Duration(milliseconds: 180),
-          left: 12,
-          right: 12,
-          bottom: 10,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: const [BoxShadow(color: Color(0x2E111827), blurRadius: 24, offset: Offset(0, 8))],
-            ),
-            child: _NewVariantCard(p: p, onSaved: _variantAdded, onClose: () => setState(() => _adding = false)),
-          ),
         ),
-    ]);
+        // Fomu inakaa chini juu ya menyu, sawa na Mauzo — hivyo ulichoongeza
+        // kinaonekana kikiongezeka kwenye orodha badala ya kufichwa.
+        // Scaffold inapunguza ukurasa kwa urefu wa keyboard, hivyo "bottom: 10"
+        // inatosha — fomu haipandi mara mbili na sehemu zake zote zinaonekana.
+        if (_adding)
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 180),
+            left: 12,
+            right: 12,
+            bottom: 10,
+            child: Container(
+              constraints: BoxConstraints(maxHeight: maxForm),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: const [BoxShadow(color: Color(0x2E111827), blurRadius: 24, offset: Offset(0, 8))],
+              ),
+              child: _NewVariantCard(p: p, onSaved: _variantAdded, onClose: () => setState(() => _adding = false)),
+            ),
+          ),
+      ]);
+    });
   }
 }
 
@@ -266,6 +271,15 @@ class _EditVariantDialogState extends State<_EditVariantDialog> {
   bool _busy = false;
   String? _error;
 
+  @override
+  void initState() {
+    super.initState();
+    // Kisanduku kikiguswa, dirisha linajisogeza hadi kionekane juu ya kibodi.
+    for (final f in [_fAdd, _fBuy, _fSell]) {
+      f.addListener(() => keepFieldInView(f));
+    }
+  }
+
   /// Hifadhi inawaka tu ikiwa kuna kilichobadilika (idadi ≠ 0 au bei mpya).
   bool get _changed {
     if (_busy) return false;
@@ -367,6 +381,15 @@ class _NewVariantCardState extends State<_NewVariantCard> {
   bool _busy = false;
   String? _error;
 
+  @override
+  void initState() {
+    super.initState();
+    // Kisanduku kikiguswa, kadi inajisogeza hadi kionekane juu ya kibodi.
+    for (final f in [_fName, _fQty, _fBuy, _fSell]) {
+      f.addListener(() => keepFieldInView(f));
+    }
+  }
+
   bool get _canSave => !_busy && _name.text.trim().isNotEmpty && _qty.text.isNotEmpty && _buy.text.isNotEmpty && parseMoney(_sell.text) > 0;
 
   @override
@@ -403,7 +426,9 @@ class _NewVariantCardState extends State<_NewVariantCard> {
       radius: 12,
       border: C.cardLine,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      // Kadi haizidi nafasi iliyopo; ikiwa ndogo, inajisogeza yenyewe.
+      child: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Row(children: [
           Expanded(
             child: Text('Aina mpya ya ${widget.p.name}',
@@ -455,7 +480,7 @@ class _NewVariantCardState extends State<_NewVariantCard> {
           PrimaryButton('Hifadhi', onTap: _canSave ? _save : null, busy: _busy),
         ]),
         if (_error != null) ErrorText(_error!),
-      ]),
+      ])),
     );
   }
 }
