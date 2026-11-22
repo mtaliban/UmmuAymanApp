@@ -180,8 +180,8 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
       return _eName.text.trim().isNotEmpty && parseMoney(_eAmt.text) > 0;
     }
     final q = parseMoney(_qty.text), p = parseMoney(_price.text);
-    if (_editLine != null) return q > 0 && p > 0 && (_editLine!.fromStock || _buy.text.trim().isNotEmpty);
-    if (_sel != null) return q > 0 && p > 0;
+    if (_editLine != null) return q > 0 && p > 0 && _buy.text.trim().isNotEmpty;
+    if (_sel != null) return q > 0 && p > 0 && _buy.text.trim().isNotEmpty;
     if (_newName) return q > 0 && p > 0 && _buy.text.trim().isNotEmpty;
     return false;
   }
@@ -302,6 +302,8 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
       _sel = v;
       _q.text = v.name;
       _price.text = money(v.selling);
+      // Buying inajijaza kutoka stock, lakini mtu anaweza kuibadilisha.
+      _buy.text = money(v.buying);
     });
     _qtyF.requestFocus();
   }
@@ -317,7 +319,8 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
             l.id,
             qty: parseMoney(_qty.text),
             selling: parseMoney(_price.text),
-            buying: l.fromStock ? null : parseMoney(_buy.text),
+            // Buying iliyobadilishwa tu inatumwa; ile ile ya stock = null.
+            buying: parseMoney(_buy.text) == l.buying ? null : parseMoney(_buy.text),
           ));
       if (ok) _close();
       return;
@@ -353,7 +356,8 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
           name: _sel?.name ?? _q.text.trim(),
           qty: parseMoney(_qty.text),
           selling: parseMoney(_price.text),
-          buying: _sel == null ? parseMoney(_buy.text) : null,
+          // Bidhaa mpya: buying ya kuandikwa. Ya stock: tuma tu ikiwa imebadilishwa.
+          buying: (_sel == null || parseMoney(_buy.text) != _sel!.buying) ? parseMoney(_buy.text) : null,
         ));
     if (!ok) return;
     setState(() {
@@ -644,7 +648,6 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
         _qty.text.isNotEmpty ||
         _price.text.isNotEmpty ||
         _buy.text.isNotEmpty;
-    final showBuying = _newName || (_editLine != null && !_editLine!.fromStock);
     return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
       _WinField(
         controller: _q,
@@ -683,16 +686,15 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
         const SizedBox(height: 10),
         Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           Expanded(
-            // Idadi ni namba ndogo; Selling/Buying zipate nafasi zaidi.
-            flex: showBuying ? 2 : 3,
+            flex: 3,
             child: _labelled('Idadi',
                 _WinField(controller: _qty, focus: _qtyF, number: true, align: TextAlign.center, onChanged: (_) => setState(() {}))),
           ),
           const SizedBox(width: 8),
           Expanded(
-            flex: showBuying ? 4 : 5,
+            flex: 5,
             child: _labelled(
-              showBuying ? 'Selling' : 'Bei',
+              'Selling',
               _WinField(
                 controller: _price,
                 number: true,
@@ -701,22 +703,28 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
               ),
             ),
           ),
-          if (showBuying) ...[
-            const SizedBox(width: 8),
-            Expanded(
-              flex: 4,
-              child: _labelled(
-                'Buying',
-                _WinField(controller: _buy, number: true, align: TextAlign.center, onChanged: (_) => setState(() {})),
-              ),
-            ),
-          ],
         ]),
-        _nextRow(editing),
+        _buyingRow(editing),
       ] else
         _nextRow(editing),
     ]);
   }
+
+  /// Mstari wa tatu: Buying (kutoka stock, inaweza kubadilishwa) · Next.
+  Widget _buyingRow(bool editing) => Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Expanded(
+            flex: 5,
+            child: _labelled(
+              'Buying',
+              _WinField(controller: _buy, number: true, align: TextAlign.center, onChanged: (_) => setState(() {})),
+            ),
+          ),
+          const SizedBox(width: 10),
+          _NextBtn(label: editing ? 'Hifadhi' : 'Next', onTap: _canNext ? _next : null),
+        ]),
+      );
 
   /// Next/Hifadhi chini ya fields, upana wote wa dirisha.
   Widget _nextRow(bool editing) => Padding(

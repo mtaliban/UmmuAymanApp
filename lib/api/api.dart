@@ -226,9 +226,14 @@ class HttpApi extends Api {
 
   @override
   Future<DailySheet> addLine(String date, {String? variantId, required String name, required int qty, required int selling, int? buying}) async =>
-      DailySheet.fromJson(_m(await _send('POST', '/daily/$date/lines', body: variantId != null
-          ? {'variant_id': variantId, 'qty': qty, 'selling': selling}
-          : {'variant_id': null, 'name': name, 'qty': qty, 'selling': selling, 'buying': buying})));
+      DailySheet.fromJson(_m(await _send('POST', '/daily/$date/lines', body: {
+        'variant_id': variantId,
+        if (variantId == null) 'name': name,
+        'qty': qty,
+        'selling': selling,
+        // Ikiwa null, server ichukue buying ya stock.
+        if (buying != null) 'buying': buying,
+      })));
 
   @override
   Future<DailySheet> updateLine(String date, String id, {int? qty, int? selling, int? buying}) async =>

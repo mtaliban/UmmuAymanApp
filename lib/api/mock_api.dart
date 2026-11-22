@@ -359,7 +359,7 @@ class MockApi extends Api {
     if (variantId != null) {
       final v = _v(variantId);
       nm = v.name;
-      by = v.buying;
+      by = buying ?? v.buying;
       // Stock inapungua lakini haishuki chini ya 0 — haizuii mauzo.
       v.qty -= min(qty, max(0, v.qty));
     } else if (nm.isEmpty) {
@@ -380,7 +380,7 @@ class MockApi extends Api {
       name: l.name,
       qty: qty ?? l.qty,
       selling: selling ?? l.selling,
-      buying: (!l.fromStock && buying != null) ? buying : l.buying,
+      buying: buying ?? l.buying,
       stockSelling: l.stockSelling,
     );
     return daySheet(date);

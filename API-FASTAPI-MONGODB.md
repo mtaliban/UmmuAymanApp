@@ -206,6 +206,7 @@ Indexes: `(shop_id, date)`, `(shop_id, number)` unique.
 }
 ```
 Index: `(shop_id, date)` unique.
+`lines[].buying` ni **snapshot**: inaweza kutofautiana na `variants.buying` kama muuzaji alibadilisha buying wakati wa kuuza (app inaruhusu — angalia 6.5, mstari wa `buying`).
 **`lines` hazina mauzo ya risiti** — hayo yanasomwa kutoka `receipts` (ili yasihesabiwe mara mbili).
 
 ### 3.7 `notifications_log` (hiari)
@@ -423,6 +424,18 @@ Kanuni:
 - Kila mstari mpya: chukua nakala ya `name`, `product_id`, `buying` (ya sasa), `stock_selling` (= selling ya stock). Kwa mstari uliokuwepo awali (aina ile ile), tumia `buying` ya zamani.
 - Upsert `(shop_id, date)`, `saved_at = now`.
 - Baada ya kuhifadhi: kagua `stock_out` / `stock_low` (sehemu 9).
+
+**Mistari ya daftari — `POST /daily/{date}/lines` (S2) na `PATCH /daily/{date}/lines/{id}` (S3)**
+```json
+{ "variant_id": "…", "qty": 2, "selling": 22000, "buying": 18000 }
+```
+- `variant_id: null` → lazima iwe na `name` (bidhaa isiyo stock) na `buying` (> 0).
+- `buying` kikiwepo **pamoja na `variant_id`** → hifadhi hicho kama snapshot ya mstari huo
+  (mf. muuzaji alibadilisha buying kwa mauzo hayo); `stock_selling`/`selling` hazibadiliki na
+  `variants.buying` ya stock **haibadiliki**. Bila `buying` → chukua `variants.buying` ya sasa.
+- `PATCH` ile ile: `buying` ikiwepo hubadilisha buying ya mstari huo (hata kama una `variant_id`).
+- Faida ya mstari = `qty × (selling − buying)`, hivyo hesabu za Mauzo/Nyumbani/Ripoti zinabadilika papo hapo.
+- Bidhaa isiyojulikana / siku iliyofungwa → kama #17.
 - 200 → muundo wa #16.
 
 **18. `GET /expenses/names`** → `["Usafirishaji","Bando","Chakula","Umeme","Kodi ya fremu"]`
@@ -610,6 +623,7 @@ scheduler.add_job(weekly_report, CronTrigger(day_of_week="sun", hour=21, minute=
 15. `DELETE /variants/{id}` aina ya mwisho → bidhaa imefutwa.
 16. Stock haiwezi kuwa hasi kwenye njia yoyote.
 17. `POST /receipts` na `customer.location: "Kariakoo, Dar"` → `GET /receipts/{id}` inarudisha `customer.location` ile ile; bila location → `""` (si `null`, hakuna `422`).
+18. `POST /daily/{leo}/lines` na `variant_id` + `buying: 18000` (stock buying ni 15000) → mstari una `buying 18000`; `GET /stock` buying ya aina hiyo **haijabadilika**; faida = `qty × (selling − 18000)`. `PATCH` `{buying: 16000}` → inabadilika tena.
 
 ---
 
