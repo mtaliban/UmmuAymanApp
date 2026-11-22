@@ -69,10 +69,9 @@ class _ProductScreenState extends State<ProductScreen> {
   void _variantAdded(StockProduct np) {
     final old = _p?.variants ?? const <StockVariant>[];
     final added = np.variants.where((v) => !old.any((x) => x.id == v.id)).toList();
-    setState(() {
-      _p = np;
-      _adding = false;
-    });
+    // Fomu inabaki wazi (kama Mauzo) ili uongeze aina nyingine mfululizo;
+    // inafungwa tu kwa ✕.
+    setState(() => _p = np);
     if (added.isNotEmpty) _mark(added.first.id);
   }
 
@@ -412,7 +411,13 @@ class _NewVariantCardState extends State<_NewVariantCard> {
     try {
       final np = await Api.i.addStockVariant(widget.p.id,
           name: _name.text.trim(), qty: parseMoney(_qty.text), buying: parseMoney(_buy.text), selling: parseMoney(_sell.text));
-      if (mounted) widget.onSaved(np);
+      if (!mounted) return;
+      widget.onSaved(np);
+      // Fomu inabaki wazi kwa aina inayofuata (inafunbugwa kwa ✕ pekee).
+      for (final c in [_name, _qty, _buy, _sell]) {
+        c.clear();
+      }
+      _fName.requestFocus();
     } catch (e) {
       if (mounted) setState(() => _error = '$e');
     } finally {

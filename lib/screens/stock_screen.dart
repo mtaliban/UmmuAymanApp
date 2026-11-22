@@ -23,6 +23,7 @@ const double _tileH = 106, _tileGap = 10;
 
 class _StockScreenState extends State<StockScreen> {
   late Future<StockList> _f = Api.i.stock();
+  StockList? _last; // orodha ya mwisho — inabaki wakati tunapakia upya
   final _q = TextEditingController();
   String? _newId;
   int? _newRow;
@@ -68,18 +69,15 @@ class _StockScreenState extends State<StockScreen> {
 
   void _new() => setState(() => _adding = true);
 
-  Future<void> _saved(StockProduct p) async {
+  /// Bidhaa mpya inaongezwa kwenye orodha pale pale — hakuna kwenda ukurasa
+  /// mwingine (aina zinaongezwa ukiigusa kadi yake).
+  void _saved(StockProduct p) {
     setState(() {
-      _adding = false;
+      // Fomu inabaki wazi (kama Mauzo) — inafungwa kwa ✕ pekee.
       _newId = p.id;
     });
     _reload();
     _scrollToNew();
-    if (p.hasVariants) {
-      // S07: fungua bidhaa mpya ili kuongeza aina
-      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductScreen(productId: p.id, initial: p)));
-      _reload();
-    }
     Future.delayed(const Duration(seconds: 3), () {
       if (mounted) setState(() => _newId = null);
     });
@@ -94,7 +92,10 @@ class _StockScreenState extends State<StockScreen> {
   Widget build(BuildContext context) => FutureBuilder<StockList>(
         future: _f,
         builder: (c, s) {
-          final list = s.connectionState == ConnectionState.done ? s.data : null;
+          // Wakati wa kupakia upya (baada ya kuongeza), orodha ya mwisho
+          // inabaki ili fomu isifutwe na kurudi juu.
+          final list = s.data ?? _last;
+          if (s.data != null) _last = s.data;
           return Scaffold(
             appBar: pageBar(
               'Stock',
@@ -112,26 +113,17 @@ class _StockScreenState extends State<StockScreen> {
         },
       );
 
-  /// Ukurasa + fomu ya "Bidhaa mpya" iliyoshikamana na chini (kama Mauzo):
-  /// orodha inabaki juu, fomu haizibi kadi zilizopo.
+  /// Ukurasa + fomu ya "Bidhaa mpya" iliyokaa CHINI kama sehemu ya ukurasa
+  /// (haielea juu ya orodha): orodha inasogea juu yake, fomu haizibi kadi.
   Widget _content(StockList list) => LayoutBuilder(builder: (context, cons) {
-        final maxForm = (cons.maxHeight - 24).clamp(140.0, 640.0);
-        return Stack(children: [
-          _body(list),
+        final maxForm = (cons.maxHeight * .72).clamp(180.0, 640.0);
+        return Column(children: [
+          Expanded(child: _body(list)),
           if (_adding)
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 180),
-              left: 12,
-              right: 12,
-              // Scaffold inapunguza ukurasa kwa urefu wa keyboard, hivyo
-              // "bottom: 10" inatosha: fomu inakaa chini juu ya kibodi.
-              bottom: 10,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
               child: Container(
                 constraints: BoxConstraints(maxHeight: maxForm),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: const [BoxShadow(color: Color(0x2E111827), blurRadius: 24, offset: Offset(0, 8))],
-                ),
                 child: _NewProductCard(onSaved: _saved, onClose: () => setState(() => _adding = false)),
               ),
             ),
@@ -153,7 +145,7 @@ class _StockScreenState extends State<StockScreen> {
     _newRow = idx < 0 ? null : idx ~/ 2;
 
     // Fomu ikiwa wazi, orodha ipate nafasi ya kutosha chini yake.
-    return ListView(key: _listKey, controller: _sc, padding: EdgeInsets.fromLTRB(16, 16, 16, _adding ? 320 : 140), children: [
+    return ListView(key: _listKey, controller: _sc, padding: EdgeInsets.fromLTRB(16, 16, 16, _adding ? 24 : 140), children: [
       _SearchField(controller: _q, onChanged: () => setState(() {})),
       if (!searching) ...[
         const SizedBox(height: 12),
@@ -316,10 +308,13 @@ class _NewProductCardState extends State<_NewProductCard> {
         buying: parseMoney(_buy.text),
         selling: parseMoney(_sell.text),
       );
-      if (mounted) {
-        FocusScope.of(context).unfocus();
-        widget.onSaved(p);
+      if (!mounted) return;
+      widget.onSaved(p);
+      // Fomu inabaki wazi kwa bidhaa inayofuata; inafungwa kwa ✕ pekee.
+      for (final c in [_name, _qty, _buy, _sell]) {
+        c.clear();
       }
+      _fName.requestFocus();
     } catch (e) {
       if (mounted) setState(() => _error = '$e');
     } finally {
