@@ -55,7 +55,8 @@ class _StockScreenState extends State<StockScreen> {
               'Stock',
               subtitle: list == null ? null : 'Bidhaa ${list.products} · aina ${list.variants}',
               drop: true,
-              action: SquareIconButton(Icons.add_rounded, onTap: _new),
+              // Kitufe chenye maandishi: "+ Bidhaa" (outline ya accent, 40 juu).
+              action: HeaderButton('+ Bidhaa', onTap: _new),
             ),
             body: s.hasError
                 ? ErrorView(s.error!, onRetry: _reload)
@@ -77,7 +78,7 @@ class _StockScreenState extends State<StockScreen> {
           }).toList()
         : list.items;
 
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 140), children: [
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 140), children: [
       _SearchField(controller: _q, onChanged: () => setState(() {})),
       if (!searching) ...[
         const SizedBox(height: 12),
@@ -94,7 +95,7 @@ class _StockScreenState extends State<StockScreen> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: shown.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 8, crossAxisSpacing: 8, childAspectRatio: 1.55),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, mainAxisExtent: 106),
           itemBuilder: (_, i) => _tile(shown[i]),
         ),
     ]);
@@ -103,49 +104,52 @@ class _StockScreenState extends State<StockScreen> {
   Widget _tile(StockItem p) {
     final hl = p.id == _newId;
     return Box(
-      radius: 12,
-      color: hl ? C.blue3 : Colors.white,
+      radius: 14,
+      color: hl ? C.blue3 : null,
       border: hl ? C.blue : C.cardLine,
-      padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       onTap: () => _open(p),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Expanded(child: Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700))),
-          if (p.hasVariants) Text('aina ${p.variants}', style: const TextStyle(fontSize: 11.5, color: C.muted)),
+          Expanded(
+            child: Text(p.name,
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: C.text)),
+          ),
+          if (p.hasVariants) Text('aina ${p.variants}', style: const TextStyle(fontSize: 11, color: C.muted)),
         ]),
         const SizedBox(height: 6),
-        Text('${p.qty}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, fontFeatures: tabular)),
-        Text('mtaji ${money(p.capital)}', style: const TextStyle(fontSize: 11.5, color: C.muted)),
+        Text('${p.qty}', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w500, color: C.text, fontFeatures: tabular)),
+        Text('mtaji ${money(p.capital)}', style: const TextStyle(fontSize: 12, color: C.muted)),
       ]),
     );
   }
 }
 
-/// Kisanduku cha kutafuta: 38 juu, radius 7, icon ya kioo
+/// Kisanduku cha kutafuta: 44 juu, radius 12, icon ya kioo
 class _SearchField extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onChanged;
   const _SearchField({required this.controller, required this.onChanged});
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 38,
+        height: 44,
         child: TextField(
           controller: controller,
           onChanged: (_) => onChanged(),
           textInputAction: TextInputAction.search,
-          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
+          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: C.text),
           decoration: InputDecoration(
             isDense: true,
-            hintText: 'Tafuta bidhaa…',
+            hintText: 'Tafuta bidhaa...',
             hintStyle: const TextStyle(fontSize: 13.5, color: C.faint, fontWeight: FontWeight.w400),
             prefixIcon: const Icon(Icons.search_rounded, size: 18, color: C.muted),
-            prefixIconConstraints: const BoxConstraints(minWidth: 34, minHeight: 18),
-            contentPadding: const EdgeInsets.fromLTRB(0, 11, 12, 11),
+            prefixIconConstraints: const BoxConstraints(minWidth: 38, minHeight: 18),
+            contentPadding: const EdgeInsets.fromLTRB(0, 13, 12, 13),
             filled: true,
             fillColor: Colors.white,
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: const BorderSide(color: C.cardLine, width: 1.2)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: const BorderSide(color: C.blue, width: 1.5)),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(7), borderSide: const BorderSide(color: C.cardLine, width: 1.2)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.cardLine, width: 1)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.blue, width: 1.5)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.cardLine, width: 1)),
           ),
         ),
       );
@@ -157,7 +161,7 @@ class _TwoStat extends StatelessWidget {
   const _TwoStat({required this.a, required this.b});
   @override
   Widget build(BuildContext context) => Box(
-        radius: 16,
+        radius: 14,
         border: C.cardLine,
         child: IntrinsicHeight(
           child: Row(children: [
@@ -171,11 +175,13 @@ class _TwoStat extends StatelessWidget {
   Widget _cell((String, String) x, bool blue) => Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(x.$1, style: const TextStyle(fontSize: 11.5, color: C.muted, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 2),
+          Text(x.$1, style: const TextStyle(fontSize: 11, color: C.muted, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 3),
           FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
             child: Text(x.$2,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: blue ? C.blue : C.text, fontFeatures: tabular)),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: blue ? C.blue : C.text, fontFeatures: tabular)),
           ),
         ]),
       );

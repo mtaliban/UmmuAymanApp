@@ -103,7 +103,7 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
   Widget _flatBar(BuildContext context) => Container(
         height: kHeaderFlatHeight + 1,
         padding: const EdgeInsets.fromLTRB(16, 44, 16, 16),
-        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB)))),
+        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.cardLine))),
         child: Row(children: [
           InkWell(
             onTap: () => Navigator.of(context).maybePop(),
@@ -115,7 +115,7 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
               child: const Center(child: AppIcon(AppIcons.chevronLeft, size: 24, color: C.text)),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(title,
@@ -129,7 +129,7 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
                 ),
             ]),
           ),
-          if (action != null) ...[const SizedBox(width: 12), action!],
+          if (action != null) ...[const SizedBox(width: 14), action!],
         ]),
       );
 
@@ -145,9 +145,11 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
       );
 
   Widget _inlineBar(BuildContext context) => Container(
-        height: kHeaderHeight + (drop ? 44 : 0) + 1,
-        padding: EdgeInsets.fromLTRB(back ? 6 : 18, drop ? 44 : 0, 16, kHeaderBottomGap),
-        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB)))),
+        // drop: 44 juu (chini ya saa/betri) + 16 chini ya maneno kabla ya mstari.
+        // Urefu ni ule ule wa kichwa cha Historia (110) ili maudhui yaanze sawa.
+        height: (drop ? kHeaderFlatHeight : kHeaderHeight) + 1,
+        padding: EdgeInsets.fromLTRB(back ? 6 : 18, drop ? 44 : 0, 16, drop ? 16 : kHeaderBottomGap),
+        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: C.cardLine))),
         child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           if (back)
             IconButton(
@@ -163,16 +165,19 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: light ? 20 : 22,
+                    fontSize: light ? 20 : (drop ? 24 : 22),
                     height: 1.15,
-                    fontWeight: light ? FontWeight.w500 : FontWeight.w800,
+                    fontWeight: light || drop ? FontWeight.w500 : FontWeight.w800,
                     color: C.text,
                   )),
               if (subtitle != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
                   child: Text(subtitle!,
-                      style: TextStyle(fontSize: light ? 12 : 12.5, fontWeight: light ? FontWeight.w400 : FontWeight.w600, color: C.muted)),
+                      style: TextStyle(
+                          fontSize: light ? 12 : (drop ? 13 : 12.5),
+                          fontWeight: light ? FontWeight.w400 : (drop ? FontWeight.w500 : FontWeight.w600),
+                          color: C.muted)),
                 ),
             ]),
           ),
@@ -295,22 +300,25 @@ class SmallButton extends StatelessWidget {
       );
 }
 
-/// Kitufe cha ikoni cha MRABA 40 (radius 10) — Stock "+" na Abaya "+".
-/// Kimejaa accent, ikoni nyeupe.
-class SquareIconButton extends StatelessWidget {
-  final IconData icon;
+/// Kitufe cha juu kulia chenye MAANDISHI ("+ Bidhaa", "+ Aina"):
+/// mpaka mwembamba wa accent 1px, radius 10, urefu 40, padding 0 14, 15/w500.
+class HeaderButton extends StatelessWidget {
+  final String label;
   final VoidCallback? onTap;
-  final double size;
-  const SquareIconButton(this.icon, {super.key, this.onTap, this.size = 40});
+  const HeaderButton(this.label, {super.key, this.onTap});
   @override
   Widget build(BuildContext context) => InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(color: C.blue, borderRadius: BorderRadius.circular(10)),
-          child: Center(child: Icon(icon, size: 20, color: Colors.white)),
+          height: 40,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: C.blue, width: 1),
+          ),
+          child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: C.blue)),
         ),
       );
 }
