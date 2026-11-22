@@ -468,7 +468,12 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
               ? ErrorView(_loadError!, onRetry: _load)
               : Stack(children: [
                   if (!_hasLines && !_hasExp && !_open)
-                    Center(child: _NoSales(_isToday))
+                    Center(
+                      child: _NoSales(
+                        _isToday,
+                        onExpense: _isToday && !_saved ? () => _openAdd(_Tab.gharama) : null,
+                      ),
+                    )
                   else
                     ListView(
                       controller: _scroll,
@@ -476,8 +481,10 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                       children: [
                         ..._cards(d!),
                         if (_hasLines) _SumCard(key: _totKey, qty: d.qty, sales: d.totals.sales, profit: d.totals.productProfit),
-                        if (_hasExp) ...[
-                          const SectionTitle('Gharama'),
+                        // Gharama: kichwa chake pekee (na kitufe cha kuongeza),
+                        // hakuna dirisha la chaguo kati ya Bidhaa na Gharama.
+                        if (_hasExp || (_isToday && !_saved && !_open)) _expenseHead(),
+                        if (_hasExp)
                           _ExpenseList(
                             items: d.expenses,
                             total: d.totals.expenses,
@@ -485,7 +492,6 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                             highlight: {_newExpId, _editExp?.id},
                             onTap: _filled ? _openEditExp : null,
                           ),
-                        ],
                         if (!_open && (_hasLines || _hasExp)) ...[
                           SectionTitle(_isToday ? 'Hesabu ya leo' : 'Hesabu ya siku'),
                           _StatementCard(
@@ -504,6 +510,20 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                 ]),
     );
   }
+
+  /// Kichwa cha GHARAMA: jina kushoto, kitufe cha kuongeza gharama kulia.
+  Widget _expenseHead() => Padding(
+        padding: const EdgeInsets.fromLTRB(2, 24, 2, 8),
+        child: Row(children: [
+          const Expanded(
+            child: Text('GHARAMA',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: .44, color: C.text)),
+          ),
+          if (_isToday && !_saved && !_open)
+            SmallButton('+ Gharama',
+                color: C.text2, borderColor: C.faint, height: 28, onTap: _busy ? null : () => _openAdd(_Tab.gharama)),
+        ]),
+      );
 
   /// Upau wa vitendo: unakaa juu ya menyu ya chini, upande wa kulia.
   /// Siku ya historia: Pakua na Shiriki tu (hakuna Hifadhi).
@@ -526,8 +546,8 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
     final kb = MediaQuery.of(context).viewInsets.bottom;
     final editing = _editLine != null || _editExp != null;
     final expMode = _editExp != null || (!editing && _tab == _Tab.gharama);
-    // Hakuna menyu: + inafungua fomu ya Bidhaa, na kitufe cha "+ Gharama"
-    // kilicho wazi kwenye kichwa cha fomu kinabadilisha kwenda fomu ya gharama.
+    // Hakuna menyu: + inafungua fomu ya Bidhaa moja kwa moja, bila chaguo la
+    // kati. Gharama inafunguliwa kwa kitufe chake kwenye sehemu ya GHARAMA.
     final header = editing
         ? const Text('Rekebisha', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700))
         : const SizedBox.shrink();
@@ -549,9 +569,6 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: header),
-            // Kitufe cha wazi: kutoka fomu ya Bidhaa kwenda ya Gharama.
-            if (!editing && !expMode)
-              SmallButton('+ Gharama', color: C.text2, borderColor: C.faint, height: 30, onTap: () => _openAdd(_Tab.gharama)),
             _closeX(),
           ]),
           const SizedBox(height: 12),
@@ -724,7 +741,8 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
 /// M01 — hakuna mauzo leo
 class _NoSales extends StatelessWidget {
   final bool today;
-  const _NoSales(this.today);
+  final VoidCallback? onExpense;
+  const _NoSales(this.today, {this.onExpense});
   @override
   Widget build(BuildContext context) => Column(mainAxisSize: MainAxisSize.min, children: [
         Container(
@@ -735,6 +753,10 @@ class _NoSales extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(today ? 'Hakuna mauzo leo' : 'Hakuna mauzo', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+        if (onExpense != null) ...[
+          const SizedBox(height: 14),
+          SmallButton('+ Gharama', color: C.text2, borderColor: C.faint, height: 30, onTap: onExpense),
+        ],
       ]);
 }
 
