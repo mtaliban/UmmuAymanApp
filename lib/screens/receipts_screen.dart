@@ -684,20 +684,34 @@ class ReceiptBody extends StatelessWidget {
     final shopName = (shop?.name.isNotEmpty ?? false) ? shop!.name : 'UMMU AYMAN OUTFITS';
     final contact = [if (shop != null && shop!.phone.isNotEmpty) shop!.phone, if (shop != null && shop!.email.isNotEmpty) shop!.email].join(' · ');
 
-    return Stack(children: [
-      // Nembo: kona ya juu kushoto ya kadi (34 juu, upana auto).
-      Positioned(left: 12, top: 14, child: Image.asset('assets/brand/logo_mark.png', height: 34)),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(18, 22, 18, 16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(shopName,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: C.blue)),
-          if (contact.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(contact, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: sub),
-          ],
+    return Padding(
+      // Nembo pembeni kushoto (kubwa kidogo), jina la duka na namba
+      // zinajipanga kando yake; zikikosa nafasi zinapungua kwa upole.
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(children: [
+          Image.asset('assets/brand/logo_mark.png', height: 46),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(shopName,
+                    maxLines: 1,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: C.blue)),
+              ),
+              if (contact.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(contact, maxLines: 1, style: sub),
+                ),
+              ],
+            ]),
+          ),
+        ]),
           const Padding(padding: EdgeInsets.symmetric(vertical: 14), child: DottedLine()),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(
@@ -759,9 +773,8 @@ class ReceiptBody extends StatelessWidget {
           const DottedLine(),
           const SizedBox(height: 12),
           const Text('Asante kwa kununua nasi', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: C.muted)),
-        ]),
-      ),
-    ]);
+      ]),
+    );
   }
 }
 
