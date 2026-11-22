@@ -8,6 +8,7 @@ import '../theme.dart';
 import '../utils/format.dart';
 import '../utils/home_bus.dart';
 import '../widgets/app_icons.dart';
+import '../widgets/sale_card.dart';
 import '../widgets/table.dart';
 import '../widgets/ui.dart';
 import 'pin_screen.dart';
@@ -149,7 +150,7 @@ class _HomeState extends State<HomeScreen> with WidgetsBindingObserver {
       SectionTitle(dayLabel(day), padding: const EdgeInsets.fromLTRB(2, 0, 2, 10)),
       _Summary(h.summary),
       const SizedBox(height: 24),
-      _SalesTable(rows: h.top, qty: qty),
+      _ProductCards(rows: h.top, qty: qty),
       const SizedBox(height: 26),
       ExpenseTable(rows: h.expenses, total: h.summary.expenses),
       const SizedBox(height: 26),
@@ -294,70 +295,33 @@ class _Stat extends StatelessWidget {
       );
 }
 
-/// MAUZO YA BIDHAA: BIDHAA · IDADI · SELLING · MAUZO · FAIDA + jumla.
-class _SalesTable extends StatelessWidget {
+/// MAUZO YA BIDHAA: kadi kama zile za Mauzo — namba yenye duara hafifu,
+/// jina, kisha IDADI · SELLING · BUYING · FAIDA.
+class _ProductCards extends StatelessWidget {
   final List<TopItem> rows;
   final int qty;
-  const _SalesTable({required this.rows, required this.qty});
-
-  static const _flex = [150, 58, 82, 100, 104];
-  static const _cell = TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500, color: C.text, fontFeatures: tabular, height: 1.25);
-
-  /// Kichwa cha safu wima: mstari mmoja, kinapungua badala ya kuvunjika.
-  static Widget _h(String v, {bool right = false}) => FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: right ? Alignment.centerRight : Alignment.centerLeft,
-        child: Text(v, maxLines: 1, softWrap: false, style: TblHead.col),
-      );
-
-  static Widget _n(String v, {Color color = C.text, bool bold = false}) => FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.centerRight,
-        child: Text(v, maxLines: 1, style: _cell.copyWith(color: color, fontWeight: bold ? FontWeight.w700 : FontWeight.w500)),
-      );
+  const _ProductCards({required this.rows, required this.qty});
 
   @override
-  Widget build(BuildContext context) {
-    final sales = rows.fold<int>(0, (a, r) => a + r.sales);
-    final profit = rows.fold<int>(0, (a, r) => a + r.profit);
-    const bottom = Border(bottom: BorderSide(color: C.line));
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      TblHead('Mauzo ya bidhaa', right: '${rows.length} bidhaa · vipande $qty'),
-      const Padding(
-        padding: EdgeInsets.only(bottom: 10),
-        child: Text('Bei ni ya kipande kimoja (wastani).', style: TextStyle(fontSize: 12.5, color: C.muted)),
-      ),
-      Tbl.frame([
-        Tbl.row([
-          _h('BIDHAA'),
-          _h('IDADI'),
-          _h('SELLING'),
-          _h('MAUZO'),
-          _h('FAIDA', right: true),
-        ], _flex, bg: C.head, border: bottom, vpad: 10),
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        TblHead('Mauzo ya bidhaa', right: '${rows.length} bidhaa · vipande $qty'),
+        const Padding(
+          padding: EdgeInsets.only(bottom: 10),
+          child: Text('Bei ni ya kipande kimoja (wastani).', style: TextStyle(fontSize: 12.5, color: C.muted)),
+        ),
         for (final (i, r) in rows.indexed)
-          Tbl.row([
-            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              SizedBox(width: 18, child: Text('${i + 1}.', style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.25))),
-              Expanded(
-                child: Text(r.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: _cell.copyWith(fontWeight: FontWeight.w600)),
-              ),
-            ]),
-            _n('${r.qty}'),
-            _n(money(r.selling)),
-            _n(money(r.sales)),
-            _n(money(r.profit), color: r.profit < 0 ? C.red : C.blue, bold: true),
-          ], _flex, border: bottom),
-        Tbl.row([
-          const Text('Jumla ya bidhaa', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
-          _n('$qty', bold: true),
-          const SizedBox.shrink(),
-          _n(money(sales), bold: true),
-          _n(money(profit), bold: true),
-        ], _flex, bg: C.soft, border: const Border(top: BorderSide(color: C.cardLine, width: 1.5)), vpad: 13),
-      ]),
-    ]);
-  }
+          SaleCard(
+            rank: i + 1,
+            title: r.name,
+            profit: r.profit,
+            cols: [
+              ('IDADI', '${r.qty}'),
+              ('SELLING', money(r.selling)),
+              ('BUYING', money(r.qty == 0 ? 0 : (r.capital / r.qty).round())),
+              ('FAIDA', money(r.profit)),
+            ],
+          ),
+      ]);
 }
 
 /// HESABU YA FAIDA: faida ya bidhaa − gharama = FAIDA HALISI (bluu).

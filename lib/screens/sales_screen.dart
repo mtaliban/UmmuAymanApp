@@ -10,6 +10,7 @@ import '../utils/format.dart';
 import '../utils/home_bus.dart';
 import '../widgets/app_icons.dart';
 import '../widgets/app_nav.dart';
+import '../widgets/sale_card.dart';
 import '../widgets/table.dart';
 import '../widgets/ui.dart';
 import 'history_screen.dart';
@@ -420,7 +421,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
     final out = <Widget>[];
     var n = 0;
     for (final l in d.receiptLines) {
-      out.add(_InfoCard(
+      out.add(SaleCard(
         rank: _isToday ? ++n : null,
         title: l.name,
         tag: 'Risiti ${l.receiptNo}',
@@ -431,7 +432,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
       ));
     }
     for (final l in d.lines) {
-      out.add(_InfoCard(
+      out.add(SaleCard(
         rank: _isToday ? ++n : null,
         title: l.name,
         profit: l.profit,
@@ -783,84 +784,6 @@ class _NoSales extends StatelessWidget {
         const SizedBox(height: 16),
         Text(today ? 'Hakuna mauzo leo' : 'Hakuna mauzo', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
       ]);
-}
-
-/// Kadi ya bidhaa: namba · jina · IDADI · SELLING · BUYING · FAIDA
-class _InfoCard extends StatelessWidget {
-  final int? rank;
-  final String title;
-  final String? tag;
-  final List<(String, String)> cols;
-  final Color? bg;
-  final bool highlight;
-  final int? profit;
-  final VoidCallback? onTap;
-  const _InfoCard({required this.title, required this.cols, this.rank, this.tag, this.bg, this.highlight = false, this.profit, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Box(
-        radius: 12,
-        onTap: onTap,
-        color: highlight ? C.blue3 : bg,
-        border: highlight ? C.blue : C.cardLine,
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            if (rank != null)
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-                  decoration: BoxDecoration(color: C.line, borderRadius: BorderRadius.circular(6)),
-                  child: Text('$rank', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.text2, fontFeatures: tabular)),
-                ),
-              ),
-            Expanded(
-              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-            ),
-            if (tag != null)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(color: C.blue2, borderRadius: BorderRadius.circular(6)),
-                child: Text(tag!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.blue)),
-              ),
-          ]),
-          const SizedBox(height: 9),
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            for (var i = 0; i < cols.length; i++) ...[
-              if (i > 0) const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(cols[i].$1,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: .4, color: C.muted)),
-                  const SizedBox(height: 3),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      cols[i].$2,
-                      maxLines: 1,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: i != cols.length - 1 ? C.text : ((profit ?? 0) < 0 ? C.red : C.blue),
-                        fontFeatures: tabular,
-                      ),
-                    ),
-                  ),
-                ]),
-              ),
-            ],
-          ]),
-        ]),
-      ),
-    );
-  }
 }
 
 /// Muhtasari: kadi moja yenye seli tatu sawa IDADI · MAUZO · FAIDA
