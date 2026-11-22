@@ -1048,6 +1048,10 @@ class DialogField extends StatelessWidget {
           focusNode: focus,
           autofocus: autofocus,
           textAlign: align,
+          // Kisanduku cha fedha (kulia) hupanga maandishi RTL ili mshale uanze
+          // upande wa kulia hata kisanduku kikiwa kitupu; namba zinaonekana
+          // sawa sawa (40,000) kwa sababu zinabaki LTR.
+          textDirection: align == TextAlign.right ? TextDirection.rtl : TextDirection.ltr,
           textInputAction: TextInputAction.next,
           keyboardType: number || money ? TextInputType.number : TextInputType.text,
           textCapitalization: number || money ? TextCapitalization.none : TextCapitalization.sentences,
