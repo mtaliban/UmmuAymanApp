@@ -18,18 +18,59 @@ class StockScreen extends StatefulWidget {
   State<StockScreen> createState() => _StockScreenState();
 }
 
+/// Ukubwa wa kadi moja kwenye gridi (unatumika pia kusogeza hadi kadi mpya).
+const double _tileH = 106, _tileGap = 10;
+
 class _StockScreenState extends State<StockScreen> {
   late Future<StockList> _f = Api.i.stock();
   final _q = TextEditingController();
   String? _newId;
+  int? _newRow;
+  final _listKey = GlobalKey();
+  final _gridKey = GlobalKey();
+  final _sc = ScrollController();
 
-  void _reload() => setState(() => _f = Api.i.stock());
+  @override
+  void dispose() {
+    _q.dispose();
+    _sc.dispose();
+    super.dispose();
+  }
+
+  void _reload() {
+    setState(() {
+      _f = Api.i.stock();
+    });
+  }
+
+  /// Sogeza ukurasa hadi kadi ya bidhaa mpya ionekane mara moja.
+  /// Kadi iliyo nje ya skrini haijengwi, kwa hiyo tunatumia nafasi ya gridi
+  /// (mstari wa kadi) badala ya kuitafuta kwa key.
+  void _scrollToNew([int tries = 12]) => WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final grid = _gridKey.currentContext?.findRenderObject() as RenderBox?;
+        final list = _listKey.currentContext?.findRenderObject() as RenderBox?;
+        final row = _newRow;
+        // Wakati orodha mpya inapakia, ukurasa huwa bado "Loading" — subiri fremu chache.
+        if (grid == null || list == null || row == null || !_sc.hasClients) {
+          if (tries > 0) _scrollToNew(tries - 1);
+          return;
+        }
+        final gridTop = grid.localToGlobal(Offset.zero).dy - list.localToGlobal(Offset.zero).dy;
+        final cardTop = gridTop + row * (_tileH + _tileGap);
+        final view = _sc.position.viewportDimension;
+        // Kadi ikiwa tayari inaonekana kikamilifu, hatusogezi ukurasa.
+        if (cardTop >= 0 && cardTop + _tileH <= view) return;
+        final target = (_sc.offset + cardTop - 12).clamp(0.0, _sc.position.maxScrollExtent);
+        _sc.animateTo(target, duration: const Duration(milliseconds: 340), curve: Curves.easeOutCubic);
+      });
 
   Future<void> _new() async {
     final p = await showEntryDialog<StockProduct>(context, builder: (_) => const NewProductDialog());
     if (p == null || !mounted) return;
     setState(() => _newId = p.id);
     _reload();
+    _scrollToNew();
     if (p.hasVariants) {
       // S07: fungua bidhaa mpya ili kuongeza aina
       await Navigator.of(context).push(MaterialPageRoute(builder: (_) => ProductScreen(productId: p.id, initial: p)));
@@ -77,8 +118,11 @@ class _StockScreenState extends State<StockScreen> {
             return words.every((w) => n.any((x) => x.startsWith(w)));
           }).toList()
         : list.items;
+    // Mstari wa kadi mpya (kwa ajili ya kusogeza ukurasa hadi ionekane).
+    final idx = _newId == null ? -1 : shown.indexWhere((p) => p.id == _newId);
+    _newRow = idx < 0 ? null : idx ~/ 2;
 
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 140), children: [
+    return ListView(key: _listKey, controller: _sc, padding: const EdgeInsets.fromLTRB(16, 16, 16, 140), children: [
       _SearchField(controller: _q, onChanged: () => setState(() {})),
       if (!searching) ...[
         const SizedBox(height: 12),
@@ -92,10 +136,12 @@ class _StockScreenState extends State<StockScreen> {
         )
       else
         GridView.builder(
+          key: _gridKey,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: shown.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, mainAxisSpacing: 10, crossAxisSpacing: 10, mainAxisExtent: 106),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2, mainAxisSpacing: _tileGap, crossAxisSpacing: _tileGap, mainAxisExtent: _tileH),
           itemBuilder: (_, i) => _tile(shown[i]),
         ),
     ]);
