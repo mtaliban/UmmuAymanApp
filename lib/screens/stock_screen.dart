@@ -54,7 +54,8 @@ class _StockScreenState extends State<StockScreen> {
             appBar: pageBar(
               'Stock',
               subtitle: list == null ? null : 'Bidhaa ${list.products} · aina ${list.variants}',
-              action: SmallButton('+ Bidhaa', height: 32, onTap: _new),
+              drop: true,
+              action: SquareIconButton(Icons.add_rounded, onTap: _new),
             ),
             body: s.hasError
                 ? ErrorView(s.error!, onRetry: _reload)

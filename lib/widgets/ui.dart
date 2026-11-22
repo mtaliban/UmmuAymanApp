@@ -21,8 +21,22 @@ const double kHeaderFlatHeight = 110; // kurudi 42 kando ya jina (Historia)
 const double kHeaderBottomGap = 10; // nafasi kati ya maneno na mstari
 
 PreferredSizeWidget pageBar(String title,
-        {String? subtitle, Widget? action, bool back = false, bool boxBack = false, bool flatBack = false, bool light = false}) =>
-    _PageHeader(title: title, subtitle: subtitle, action: action, back: back, boxBack: boxBack, flatBack: flatBack, light: light);
+        {String? subtitle,
+        Widget? action,
+        bool back = false,
+        bool boxBack = false,
+        bool flatBack = false,
+        bool light = false,
+        bool drop = false}) =>
+    _PageHeader(
+        title: title,
+        subtitle: subtitle,
+        action: action,
+        back: back,
+        boxBack: boxBack,
+        flatBack: flatBack,
+        light: light,
+        drop: drop);
 
 class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -32,14 +46,24 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
   final bool boxBack;
   final bool flatBack;
   final bool light;
+
+  /// true = maudhui ya kichwa yanashuka 44px chini ya eneo salama (Stock, Abaya).
+  final bool drop;
   const _PageHeader(
-      {required this.title, this.subtitle, this.action, this.back = false, this.boxBack = false, this.flatBack = false, this.light = false});
+      {required this.title,
+      this.subtitle,
+      this.action,
+      this.back = false,
+      this.boxBack = false,
+      this.flatBack = false,
+      this.light = false,
+      this.drop = false});
 
   bool get _stacked => back && boxBack;
 
   @override
-  Size get preferredSize =>
-      Size.fromHeight((flatBack ? kHeaderFlatHeight : (_stacked ? kHeaderBackHeight : kHeaderHeight)) + 1);
+  Size get preferredSize => Size.fromHeight(
+      (flatBack ? kHeaderFlatHeight : (_stacked ? kHeaderBackHeight : kHeaderHeight)) + (drop && !flatBack ? 44 : 0) + 1);
 
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
@@ -121,8 +145,8 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
       );
 
   Widget _inlineBar(BuildContext context) => Container(
-        height: kHeaderHeight + 1,
-        padding: EdgeInsets.fromLTRB(back ? 6 : 18, 0, 16, kHeaderBottomGap),
+        height: kHeaderHeight + (drop ? 44 : 0) + 1,
+        padding: EdgeInsets.fromLTRB(back ? 6 : 18, drop ? 44 : 0, 16, kHeaderBottomGap),
         decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE5E7EB)))),
         child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
           if (back)
@@ -267,6 +291,26 @@ class SmallButton extends StatelessWidget {
                   if (icon != null) ...[icon!, const SizedBox(width: 6)],
                   Text(label, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: filled ? Colors.white : color)),
                 ]),
+        ),
+      );
+}
+
+/// Kitufe cha ikoni cha MRABA 40 (radius 10) — Stock "+" na Abaya "+".
+/// Kimejaa accent, ikoni nyeupe.
+class SquareIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final double size;
+  const SquareIconButton(this.icon, {super.key, this.onTap, this.size = 40});
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(color: C.blue, borderRadius: BorderRadius.circular(10)),
+          child: Center(child: Icon(icon, size: 20, color: Colors.white)),
         ),
       );
 }

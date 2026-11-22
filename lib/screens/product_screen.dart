@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/app_icons.dart';
+import '../widgets/app_nav.dart';
 import '../widgets/ui.dart';
 
 /// UKURASA WA BIDHAA (K1 · S04, S05, S07–S09, S12, S13)
@@ -84,10 +85,11 @@ class _ProductScreenState extends State<ProductScreen> {
       appBar: pageBar(
         p?.name ?? '',
         subtitle: p == null ? null : (p.hasVariants ? 'aina ${p.variants.length}' : 'haina aina'),
-        back: true,
-        boxBack: true,
-        action: (p?.hasVariants ?? false) ? SmallButton('+ Aina', height: 32, onTap: _addType) : null,
+        // Kurudi mraba 42 kando ya jina 24, kila kitu kimeshuka 44px.
+        flatBack: true,
+        action: (p?.hasVariants ?? false) ? SquareIconButton(Icons.add_rounded, onTap: _addType) : null,
       ),
+      bottomNavigationBar: const AppNav(index: 2),
       body: _error != null
           ? ErrorView(_error!, onRetry: _load)
           : p == null
@@ -116,8 +118,8 @@ class _ProductScreenState extends State<ProductScreen> {
       _ThreeStat(qty: p.qty, capital: p.capital, profit: p.profitIfSold),
       SectionTitle(p.hasVariants ? 'Aina' : 'Taarifa',
           trailing: p.hasVariants ? '${p.variants.length}' : null, padding: const EdgeInsets.fromLTRB(2, 18, 2, 10)),
-      for (final v in p.variants) ...[
-        _VariantCard(v, highlight: v.id == _hl || v.id == _selected, onTap: () => _edit(v)),
+      for (final (i, v) in p.variants.indexed) ...[
+        _VariantCard(v, rank: i + 1, highlight: v.id == _hl || v.id == _selected, onTap: () => _edit(v)),
         const SizedBox(height: 8),
       ],
       const SizedBox(height: 120),
@@ -160,9 +162,10 @@ class _ThreeStat extends StatelessWidget {
 /// Kadi ya aina: safu 62 : 100 : 100 : 100, nafasi 12, namba ndani ya FittedBox
 class _VariantCard extends StatelessWidget {
   final StockVariant v;
+  final int rank;
   final bool highlight;
   final VoidCallback onTap;
-  const _VariantCard(this.v, {required this.highlight, required this.onTap});
+  const _VariantCard(this.v, {required this.rank, required this.highlight, required this.onTap});
 
   Widget _cell(String label, String value, {bool blue = false, bool bold = false}) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,7 +194,18 @@ class _VariantCard extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
         onTap: onTap,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(v.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+          Row(children: [
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+              decoration: BoxDecoration(color: C.line, borderRadius: BorderRadius.circular(6)),
+              child: Text('$rank',
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.text2, fontFeatures: tabular)),
+            ),
+            Expanded(
+              child: Text(v.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
+            ),
+          ]),
           const SizedBox(height: 8),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(flex: 62, child: _cell('ZIPO', '${v.qty}')),
