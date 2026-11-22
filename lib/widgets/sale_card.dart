@@ -70,7 +70,7 @@ class SaleCard extends StatelessWidget {
                   Text(cols[i].$1,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: .4, color: C.muted)),
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: .4, color: C.muted)),
                   const SizedBox(height: 3),
                   FittedBox(
                     fit: BoxFit.scaleDown,
@@ -80,7 +80,7 @@ class SaleCard extends StatelessWidget {
                       maxLines: 1,
                       style: TextStyle(
                         fontSize: 14,
-                        fontWeight: FontWeight.w500,
+                        fontWeight: FontWeight.w700,
                         color: i != cols.length - 1 ? C.text : ((profit ?? 0) < 0 ? C.red : C.blue),
                         fontFeatures: tabular,
                       ),

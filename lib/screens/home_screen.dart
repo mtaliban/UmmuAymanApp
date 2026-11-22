@@ -145,12 +145,11 @@ class _HomeState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _body(HomeData h) {
     final day = h.day!;
-    final qty = h.top.fold<int>(0, (a, t) => a + t.qty);
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 120), children: [
       SectionTitle(dayLabel(day), padding: const EdgeInsets.fromLTRB(2, 0, 2, 10)),
       _Summary(h.summary),
       const SizedBox(height: 24),
-      _ProductCards(rows: h.top, qty: qty),
+      _ProductCards(rows: h.top),
       const SizedBox(height: 26),
       ExpenseTable(rows: h.expenses, total: h.summary.expenses),
       const SizedBox(height: 26),
@@ -228,7 +227,7 @@ class _Summary extends StatelessWidget {
               const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                 Icon(Icons.trending_up_rounded, size: 16, color: C.blue),
                 SizedBox(width: 6),
-                Text('Faida halisi', style: TextStyle(fontSize: 12, color: C.muted)),
+                Text('Faida halisi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.muted)),
               ]),
               const SizedBox(height: 4),
               FittedBox(
@@ -240,7 +239,7 @@ class _Summary extends StatelessWidget {
                   children: [
                     Text(money(s.net),
                         style: const TextStyle(
-                            fontSize: 36, fontWeight: FontWeight.w500, color: C.blue, letterSpacing: -.5, height: 1.1, fontFeatures: tabular)),
+                            fontSize: 36, fontWeight: FontWeight.w700, color: C.blue, letterSpacing: -.5, height: 1.1, fontFeatures: tabular)),
                     const SizedBox(width: 6),
                     const Text('Shilingi', style: TextStyle(fontSize: 13, color: C.muted)),
                   ],
@@ -280,13 +279,13 @@ class _Stat extends StatelessWidget {
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               Icon(icon, size: 14, color: C.muted),
               const SizedBox(width: 4),
-              Text(label, style: const TextStyle(fontSize: 11, color: C.muted)),
+              Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: C.muted)),
             ]),
             const SizedBox(height: 8),
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(money(value),
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: C.text, fontFeatures: tabular)),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: C.text, fontFeatures: tabular)),
             ),
             const SizedBox(height: 2),
             const Text('Sh', style: TextStyle(fontSize: 11, color: C.faint)),
@@ -299,16 +298,12 @@ class _Stat extends StatelessWidget {
 /// jina, kisha IDADI · SELLING · BUYING · FAIDA.
 class _ProductCards extends StatelessWidget {
   final List<TopItem> rows;
-  final int qty;
-  const _ProductCards({required this.rows, required this.qty});
+  const _ProductCards({required this.rows});
 
   @override
   Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        TblHead('Mauzo ya bidhaa', right: '${rows.length} bidhaa · vipande $qty'),
-        const Padding(
-          padding: EdgeInsets.only(bottom: 10),
-          child: Text('Bei ni ya kipande kimoja (wastani).', style: TextStyle(fontSize: 12.5, color: C.muted)),
-        ),
+        const TblHead('Mauzo ya bidhaa'),
+        const SizedBox(height: 8),
         for (final (i, r) in rows.indexed)
           SaleCard(
             rank: i + 1,
