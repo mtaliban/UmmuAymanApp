@@ -19,6 +19,24 @@ String moneyBar(num v) {
   return '${(v / 1000).round()}k';
 }
 
+/// 128000 -> "Laki 1 na elfu 28"
+/// 1238000 -> "Milioni 1, laki 2 na elfu 38"
+String amountInWords(int n) {
+  if (n == 0) return 'Sifuri';
+  if (n < 0) return 'Hasi ${amountInWords(-n)}';
+  final m = n ~/ 1000000;
+  final r = n % 1000000;
+  final laki = r ~/ 100000;
+  final elfu = (r % 100000) ~/ 1000;
+  final parts = <String>[];
+  if (m > 0) parts.add('Milioni $m');
+  if (laki > 0) parts.add('${parts.isEmpty ? 'Laki' : 'laki'} $laki');
+  if (elfu > 0) parts.add('${parts.isEmpty ? 'Elfu' : 'elfu'} $elfu');
+  if (parts.isEmpty) return money(n);
+  if (parts.length == 1) return parts.first;
+  return '${parts.sublist(0, parts.length - 1).join(', ')} na ${parts.last}';
+}
+
 int parseMoney(String s) => int.tryParse(s.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
 
 const daysSw = ['Jumatatu', 'Jumanne', 'Jumatano', 'Alhamisi', 'Ijumaa', 'Jumamosi', 'Jumapili'];

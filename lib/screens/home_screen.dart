@@ -205,49 +205,91 @@ class _Offline extends StatelessWidget {
       );
 }
 
-/// Faida halisi kubwa + Mauzo · Mtaji · Gharama
+/// Kadi ya faida: namba kubwa ya FAIDA HALISI pamoja na maneno yake,
+/// kisha safu tatu — Mauzo · Mtaji · Gharama (kila moja na ikoni na "Sh").
 class _Summary extends StatelessWidget {
   final Summary s;
   const _Summary(this.s);
+
   @override
-  Widget build(BuildContext context) => Box(
-        radius: 18,
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Faida halisi', style: TextStyle(fontSize: 12.5, color: C.muted, fontWeight: FontWeight.w600)),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
-              Text(money(s.net), style: const TextStyle(fontSize: 34, height: 1.2, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular)),
-              const SizedBox(width: 7),
-              const Text('Shilingi', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.muted)),
-            ]),
-          ),
-          const SizedBox(height: 12),
-          const Divider(height: 1, color: C.line),
-          const SizedBox(height: 10),
-          Row(children: [
-            for (final (i, x) in [('Mauzo', s.sales), ('Mtaji', s.capital), ('Gharama', s.expenses)].indexed)
-              Expanded(
-                child: Container(
-                  padding: EdgeInsets.only(left: i == 0 ? 0 : 12),
-                  decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: C.line))),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(x.$1, style: const TextStyle(fontSize: 11.5, color: C.muted)),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Text(money(x.$2), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFeatures: tabular)),
-                        const Text(' Sh', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.muted)),
-                      ]),
-                    ),
-                  ]),
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: C.cardLine, width: .8),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
+            child: Column(children: [
+              const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.trending_up_rounded, size: 16, color: C.blue),
+                SizedBox(width: 6),
+                Text('Faida halisi', style: TextStyle(fontSize: 12, color: C.muted)),
+              ]),
+              const SizedBox(height: 4),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(money(s.net),
+                        style: const TextStyle(
+                            fontSize: 36, fontWeight: FontWeight.w500, color: C.blue, letterSpacing: -.5, height: 1.1, fontFeatures: tabular)),
+                    const SizedBox(width: 6),
+                    const Text('Shilingi', style: TextStyle(fontSize: 13, color: C.muted)),
+                  ],
                 ),
               ),
-          ]),
+              const SizedBox(height: 6),
+              Text(amountInWords(s.net),
+                  textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: C.text)),
+            ]),
+          ),
+          const Divider(height: .8, thickness: .8, color: C.line),
+          IntrinsicHeight(
+            child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              _Stat(icon: Icons.shopping_cart_outlined, label: 'Mauzo', value: s.sales),
+              const VerticalDivider(width: .8, thickness: .8, color: C.line),
+              _Stat(icon: Icons.account_balance_wallet_outlined, label: 'Mtaji', value: s.capital),
+              const VerticalDivider(width: .8, thickness: .8, color: C.line),
+              _Stat(icon: Icons.receipt_long_outlined, label: 'Gharama', value: s.expenses),
+            ]),
+          ),
         ]),
+      );
+}
+
+/// Safu moja ya kadi: ikoni · jina, namba (inapungua ikiwa ndefu), "Sh".
+class _Stat extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int value;
+  const _Stat({required this.icon, required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
+          child: Column(children: [
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+              Icon(icon, size: 14, color: C.muted),
+              const SizedBox(width: 4),
+              Text(label, style: const TextStyle(fontSize: 11, color: C.muted)),
+            ]),
+            const SizedBox(height: 8),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(money(value),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: C.text, fontFeatures: tabular)),
+            ),
+            const SizedBox(height: 2),
+            const Text('Sh', style: TextStyle(fontSize: 11, color: C.faint)),
+          ]),
+        ),
       );
 }
 
