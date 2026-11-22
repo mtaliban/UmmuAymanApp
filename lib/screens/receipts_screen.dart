@@ -382,19 +382,34 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
               ]),
             ),
           const SizedBox(height: 10),
-          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            if (showFields) ...[
-              DialogField(label: 'Idadi', controller: _qty, focus: _qtyF, number: true, width: 48, align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _next()),
+          // Mistari miwili kama fomu za Mauzo/Stock: Idadi · Bei, kisha
+          // Punguzo · Next — visanduku vipate nafasi, visijibane.
+          if (showFields) ...[
+            Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Expanded(
+                flex: 3,
+                child: DialogField(
+                    label: 'Idadi', controller: _qty, focus: _qtyF, number: true, align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _next()),
+              ),
               const SizedBox(width: 8),
-              DialogField(label: 'Bei', controller: _price, money: true, width: 80, align: TextAlign.right, onChanged: (_) => setState(() {})),
-              const SizedBox(width: 8),
-              _newName
-                  ? DialogField(label: 'Buying', controller: _buy, money: true, width: 72, align: TextAlign.right, onChanged: (_) => setState(() {}))
-                  : DialogField(label: 'Punguzo', controller: _disc, money: true, width: 72, align: TextAlign.right, onChanged: (_) => setState(() {})),
-            ],
-            const Spacer(),
-            _NextBtn(onTap: _canNext ? _next : null),
-          ]),
+              Expanded(
+                flex: 5,
+                child: DialogField(label: 'Bei', controller: _price, money: true, align: TextAlign.right, onChanged: (_) => setState(() {})),
+              ),
+            ]),
+            const SizedBox(height: 10),
+            Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Expanded(
+                flex: 5,
+                child: _newName
+                    ? DialogField(label: 'Buying', controller: _buy, money: true, align: TextAlign.right, onChanged: (_) => setState(() {}))
+                    : DialogField(label: 'Punguzo', controller: _disc, money: true, align: TextAlign.right, onChanged: (_) => setState(() {})),
+              ),
+              const SizedBox(width: 10),
+              _NextBtn(onTap: _canNext ? _next : null),
+            ]),
+          ] else
+            Align(alignment: Alignment.centerRight, child: _NextBtn(onTap: _canNext ? _next : null)),
           if (_error != null) ErrorText(_error!),
         ]),
       ),
