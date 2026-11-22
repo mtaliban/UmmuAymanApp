@@ -199,24 +199,9 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
     _keepAbove(target: tab == _Tab.gharama ? _expKey : null);
   }
 
-  /// Kitufe kimoja cha +: kinatoa chaguo la "Bidhaa" au "Gharama".
-  Future<void> _pickAdd() async {
-    if (_saved) return;
-    final r = await showGeneralDialog<_Tab>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'funga',
-      barrierColor: const Color(0x1A0B1220),
-      transitionDuration: const Duration(milliseconds: 120),
-      pageBuilder: (ctx, a1, a2) => _AddMenu(
-        top: MediaQuery.of(ctx).padding.top + 58,
-        onPick: (t) => Navigator.of(ctx).pop(t),
-      ),
-      transitionBuilder: (ctx, a, b, child) => FadeTransition(opacity: a, child: child),
-    );
-    if (!mounted || r == null) return;
-    _openAdd(r);
-  }
+  /// Kitufe cha +: fomu inafunguka moja kwa moja (Bidhaa). Gharama ipo kwenye
+  /// kiungo kidogo ndani ya fomu.
+  void _addProduct() => _openAdd(_Tab.bidhaa);
 
   /// Focus baada ya dirisha kujengwa (requestFocus kabla haijulikani haifanyi kazi).
   void _focusSoon(FocusNode f) => WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -473,7 +458,7 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                 if (_saved)
                   SmallButton('Hariri', color: C.text2, borderColor: C.faint, height: 34, onTap: _busy ? null : _reopen)
                 else
-                  _IconBtn(icon: Icons.add_rounded, filled: true, onTap: _busy ? null : _pickAdd),
+                  _IconBtn(icon: Icons.add_rounded, filled: true, onTap: _busy ? null : _addProduct),
               ]),
       ),
       bottomNavigationBar: _isToday ? null : const AppNav(index: 1),
@@ -541,8 +526,8 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
     final kb = MediaQuery.of(context).viewInsets.bottom;
     final editing = _editLine != null || _editExp != null;
     final expMode = _editExp != null || (!editing && _tab == _Tab.gharama);
-    // Hakuna tab za "Bidhaa | Gharama" kwenye dirisha: aina huchaguliwa
-    // kwenye kitufe cha + kabla dirisha kufunguka.
+    // Hakuna menyu: + inafungua fomu ya Bidhaa. Gharama inapatikana kwa kiungo
+    // kidogo kwenye kichwa cha fomu.
     final header = editing
         ? const Text('Rekebisha', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700))
         : const SizedBox.shrink();
@@ -562,7 +547,20 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
         ),
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [Expanded(child: header), _closeX()]),
+          Row(children: [
+            Expanded(child: header),
+            // Kiungo kidogo: kutoka fomu ya Bidhaa kwenda ya Gharama.
+            if (!editing && !expMode)
+              InkWell(
+                onTap: () => _openAdd(_Tab.gharama),
+                borderRadius: BorderRadius.circular(6),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Text('Gharama', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.blue)),
+                ),
+              ),
+            _closeX(),
+          ]),
           const SizedBox(height: 12),
           if (expMode) ...[
             // Jina la gharama peke yake mstari wa kwanza; Kiasi na Next mstari wa pili.
@@ -1001,44 +999,6 @@ class _IconBtn extends StatelessWidget {
   }
 }
 
-/// Chaguo mbili za kitufe cha +: Bidhaa au Gharama.
-class _AddMenu extends StatelessWidget {
-  final double top;
-  final ValueChanged<_Tab> onPick;
-  const _AddMenu({required this.top, required this.onPick});
-
-  @override
-  Widget build(BuildContext context) => Align(
-        alignment: Alignment.topRight,
-        child: Padding(
-          padding: EdgeInsets.only(top: top, right: 16),
-          child: Material(
-            color: Colors.white,
-            elevation: 10,
-            shadowColor: const Color(0x33000000),
-            borderRadius: BorderRadius.circular(10),
-            clipBehavior: Clip.antiAlias,
-            child: Container(
-              width: 152,
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), border: Border.all(color: C.cardLine)),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                _row('Bidhaa', _Tab.bidhaa),
-                const Divider(height: 1, thickness: 1, color: C.line),
-                _row('Gharama', _Tab.gharama),
-              ]),
-            ),
-          ),
-        ),
-      );
-
-  Widget _row(String label, _Tab tab) => InkWell(
-        onTap: () => onPick(tab),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-          child: Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: C.text)),
-        ),
-      );
-}
 
 class _NextBtn extends StatelessWidget {
   final String label;
