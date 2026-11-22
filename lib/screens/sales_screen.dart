@@ -10,6 +10,7 @@ import '../utils/format.dart';
 import '../utils/home_bus.dart';
 import '../widgets/app_icons.dart';
 import '../widgets/app_nav.dart';
+import '../widgets/table.dart';
 import '../widgets/ui.dart';
 import 'history_screen.dart';
 import 'pin_screen.dart';
@@ -494,15 +495,18 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                       children: [
                         ..._cards(d!),
                         if (_hasLines) _SumCard(key: _totKey, qty: d.qty, sales: d.totals.sales, profit: d.totals.productProfit),
-                        // Gharama zilizoandikwa, chini ya kichwa chake.
-                        if (_hasExp) _expenseHead(),
+                        // Gharama zilizoandikwa: jedwali lile lile la Nyumbani —
+                        // mstari ukigusa unafungua fomu ya kuirekebisha.
                         if (_hasExp)
-                          _ExpenseList(
-                            items: d.expenses,
-                            total: d.totals.expenses,
-                            totalKey: _expKey,
-                            highlight: {_newExpId, _editExp?.id},
-                            onTap: _filled ? _openEditExp : null,
+                          Padding(
+                            padding: const EdgeInsets.only(top: 22),
+                            child: ExpenseTable(
+                              rows: d.expenses,
+                              total: d.totals.expenses,
+                              totalKey: _expKey,
+                              highlight: {_newExpId, _editExp?.id},
+                              onTap: _filled ? _openEditExp : null,
+                            ),
                           ),
                         if (!_open && (_hasLines || _hasExp)) ...[
                           SectionTitle(_isToday ? 'Hesabu ya leo' : 'Hesabu ya siku'),
@@ -522,14 +526,6 @@ class _SalesState extends State<SalesScreen> with WidgetsBindingObserver {
                 ]),
     );
   }
-
-  /// Kichwa cha GHARAMA kilichotengenezwa — gharama zinaongezwa kupitia
-  /// tabo ya “Gharama” ndani ya fomu ya kitufe cha +.
-  Widget _expenseHead() => const Padding(
-        padding: EdgeInsets.fromLTRB(2, 24, 2, 8),
-        child: Text('GHARAMA',
-            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: .44, color: C.text)),
-      );
 
   /// Upau wa vitendo: unakaa juu ya menyu ya chini, upande wa kulia.
   /// Siku ya historia: Pakua na Shiriki tu (hakuna Hifadhi).
@@ -902,55 +898,6 @@ class _SumCard extends StatelessWidget {
       ]),
     );
   }
-}
-
-/// GHARAMA: mistari mitupu (jina kushoto, kiasi kulia). Hakuna kadi.
-/// "Jumla ya gharama" inaonekana tu kama kuna gharama mbili au zaidi.
-class _ExpenseList extends StatelessWidget {
-  final List<Expense> items;
-  final int total;
-  final Key? totalKey;
-  final Set<String?> highlight;
-  final ValueChanged<Expense>? onTap;
-  const _ExpenseList({required this.items, required this.total, this.totalKey, this.highlight = const {}, this.onTap});
-
-  @override
-  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        for (final (i, e) in items.indexed) ...[
-          if (i > 0) const Divider(height: 1, thickness: 1, color: C.line),
-          InkWell(
-            onTap: onTap == null ? null : () => onTap!(e),
-            child: Container(
-              color: highlight.contains(e.id) ? C.blue3 : null,
-              padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 12),
-              child: Row(children: [
-                Expanded(
-                  child: Text(e.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: C.text)),
-                ),
-                const SizedBox(width: 10),
-                Text(money(e.amount),
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: C.text, fontFeatures: tabular)),
-              ]),
-            ),
-          ),
-        ],
-        if (items.length >= 2)
-          Container(
-            key: totalKey,
-            padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 13),
-            decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.text, width: 1.5))),
-            child: Row(children: [
-              const Expanded(
-                child: Text('Jumla ya gharama', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.text2)),
-              ),
-              Text(money(total),
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: C.text, fontFeatures: tabular)),
-            ]),
-          ),
-      ]);
 }
 
 /// HESABU: kadi yenye mistari — Mauzo · Mtaji · Faida ya bidhaa · Gharama · Faida halisi

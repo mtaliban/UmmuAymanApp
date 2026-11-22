@@ -8,6 +8,7 @@ import '../theme.dart';
 import '../utils/format.dart';
 import '../utils/home_bus.dart';
 import '../widgets/app_icons.dart';
+import '../widgets/table.dart';
 import '../widgets/ui.dart';
 import 'pin_screen.dart';
 
@@ -150,7 +151,7 @@ class _HomeState extends State<HomeScreen> with WidgetsBindingObserver {
       const SizedBox(height: 24),
       _SalesTable(rows: h.top, qty: qty),
       const SizedBox(height: 26),
-      _ExpenseTable(rows: h.expenses, total: h.summary.expenses),
+      ExpenseTable(rows: h.expenses, total: h.summary.expenses),
       const SizedBox(height: 26),
       _ProfitTable(h.summary),
     ]);
@@ -293,86 +294,6 @@ class _Stat extends StatelessWidget {
       );
 }
 
-/// Kichwa kidogo cha jedwali: jina kushoto (herufi kubwa, kijivu),
-/// maelezo upande wa kulia — kama kwenye muundo.
-class _TableHead extends StatelessWidget {
-  final String left;
-  final String? right;
-  const _TableHead(this.left, {this.right});
-
-  static const _title = TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.muted, letterSpacing: .9);
-  static const _col = TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: C.muted, letterSpacing: .4);
-  static const _amount = TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: C.muted, letterSpacing: .4);
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Row(children: [
-          Expanded(child: Text(left.toUpperCase(), style: _title)),
-          if (right != null) Text(right!, style: const TextStyle(fontSize: 12.5, color: C.muted)),
-        ]),
-      );
-}
-
-/// Fremu na safu za jedwali (kona za mraba, mistari myembamba).
-class _Tbl {
-  static Widget frame(List<Widget> rows) => Container(
-        decoration: BoxDecoration(border: Border.all(color: C.cardLine)),
-        child: Column(children: rows),
-      );
-
-  /// Safu yenye nafasi sawa kwa kila safu wima (flex) na mistari wima kati.
-  static Widget row(List<Widget> cells, List<int> flex,
-      {Color? bg, Border? border, double vpad = 12}) {
-    return Container(
-      decoration: BoxDecoration(color: bg, border: border),
-      child: IntrinsicHeight(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          for (var i = 0; i < cells.length; i++)
-            Expanded(
-              flex: flex[i],
-              child: Container(
-                padding: EdgeInsets.fromLTRB(i == 0 ? 10 : 5, vpad, i == cells.length - 1 ? 10 : 5, vpad),
-                alignment: i == 0 ? Alignment.centerLeft : Alignment.centerRight,
-                decoration: i == 0 ? null : const BoxDecoration(border: Border(left: BorderSide(color: C.line))),
-                child: cells[i],
-              ),
-            ),
-        ]),
-      ),
-    );
-  }
-
-  /// Safu ya safu mbili: jina kushoto, kiasi kulia (upana 104).
-  static Widget pair(Widget label, String amount, TextStyle amountStyle,
-      {Color? bg, Border? border, double vpad = 13}) {
-    return Container(
-      decoration: BoxDecoration(color: bg, border: border),
-      child: IntrinsicHeight(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(12, vpad, 6, vpad),
-              child: Align(alignment: Alignment.centerLeft, child: label),
-            ),
-          ),
-          Container(
-            width: 104,
-            padding: EdgeInsets.fromLTRB(4, vpad, 10, vpad),
-            alignment: Alignment.centerRight,
-            decoration: const BoxDecoration(border: Border(left: BorderSide(color: C.line))),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: Text(amount, maxLines: 1, style: amountStyle),
-            ),
-          ),
-        ]),
-      ),
-    );
-  }
-}
-
 /// MAUZO YA BIDHAA: BIDHAA · IDADI · SELLING · MAUZO · FAIDA + jumla.
 class _SalesTable extends StatelessWidget {
   final List<TopItem> rows;
@@ -386,7 +307,7 @@ class _SalesTable extends StatelessWidget {
   static Widget _h(String v, {bool right = false}) => FittedBox(
         fit: BoxFit.scaleDown,
         alignment: right ? Alignment.centerRight : Alignment.centerLeft,
-        child: Text(v, maxLines: 1, softWrap: false, style: _TableHead._col),
+        child: Text(v, maxLines: 1, softWrap: false, style: TblHead.col),
       );
 
   static Widget _n(String v, {Color color = C.text, bool bold = false}) => FittedBox(
@@ -401,13 +322,13 @@ class _SalesTable extends StatelessWidget {
     final profit = rows.fold<int>(0, (a, r) => a + r.profit);
     const bottom = Border(bottom: BorderSide(color: C.line));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _TableHead('Mauzo ya bidhaa', right: '${rows.length} bidhaa · vipande $qty'),
+      TblHead('Mauzo ya bidhaa', right: '${rows.length} bidhaa · vipande $qty'),
       const Padding(
         padding: EdgeInsets.only(bottom: 10),
         child: Text('Bei ni ya kipande kimoja (wastani).', style: TextStyle(fontSize: 12.5, color: C.muted)),
       ),
-      _Tbl.frame([
-        _Tbl.row([
+      Tbl.frame([
+        Tbl.row([
           _h('BIDHAA'),
           _h('IDADI'),
           _h('SELLING'),
@@ -415,7 +336,7 @@ class _SalesTable extends StatelessWidget {
           _h('FAIDA', right: true),
         ], _flex, bg: C.head, border: bottom, vpad: 10),
         for (final (i, r) in rows.indexed)
-          _Tbl.row([
+          Tbl.row([
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               SizedBox(width: 18, child: Text('${i + 1}.', style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.25))),
               Expanded(
@@ -427,48 +348,13 @@ class _SalesTable extends StatelessWidget {
             _n(money(r.sales)),
             _n(money(r.profit), color: r.profit < 0 ? C.red : C.blue, bold: true),
           ], _flex, border: bottom),
-        _Tbl.row([
+        Tbl.row([
           const Text('Jumla ya bidhaa', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
           _n('$qty', bold: true),
           const SizedBox.shrink(),
           _n(money(sales), bold: true),
           _n(money(profit), bold: true),
         ], _flex, bg: C.soft, border: const Border(top: BorderSide(color: C.cardLine, width: 1.5)), vpad: 13),
-      ]),
-    ]);
-  }
-}
-
-/// GHARAMA: jina · kiasi, pamoja na jumla ya gharama.
-class _ExpenseTable extends StatelessWidget {
-  final List<Expense> rows;
-  final int total;
-  const _ExpenseTable({required this.rows, required this.total});
-
-  static const _cell = TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text, height: 1.25);
-  static const _amount = TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text, fontFeatures: tabular);
-
-  @override
-  Widget build(BuildContext context) {
-    const bottom = Border(bottom: BorderSide(color: C.line));
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      const _TableHead('Gharama'),
-      _Tbl.frame([
-        _Tbl.pair(const Text('GHARAMA', style: _TableHead._col), 'KIASI (SH)', _TableHead._amount,
-            bg: C.head, border: bottom, vpad: 10),
-        for (final (i, e) in rows.indexed)
-          _Tbl.pair(
-            Row(children: [
-              SizedBox(width: 20, child: Text('${i + 1}.', style: const TextStyle(fontSize: 13, color: C.muted))),
-              Expanded(child: Text(e.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: _cell)),
-            ]),
-            money(e.amount),
-            _amount,
-            border: bottom,
-          ),
-        _Tbl.pair(const Text('Jumla ya gharama', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
-            money(total), const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, fontFeatures: tabular),
-            bg: C.soft, border: const Border(top: BorderSide(color: C.cardLine, width: 1.5)), vpad: 14),
       ]),
     ]);
   }
@@ -486,13 +372,13 @@ class _ProfitTable extends StatelessWidget {
   Widget build(BuildContext context) {
     const bottom = Border(bottom: BorderSide(color: C.line));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      const _TableHead('Hesabu ya faida'),
-      _Tbl.frame([
-        _Tbl.pair(const Text('MAELEZO', style: _TableHead._col), 'KIASI (SH)', _TableHead._amount,
+      const TblHead('Hesabu ya faida'),
+      Tbl.frame([
+        Tbl.pair(const Text('MAELEZO', style: TblHead.col), 'KIASI (SH)', TblHead.amount,
             bg: C.head, border: bottom, vpad: 10),
-        _Tbl.pair(const Text('Faida ya bidhaa', style: _cell), money(s.productProfit), _amount, border: bottom),
-        _Tbl.pair(const Text('Toa: Jumla ya gharama', style: _cell), money(s.expenses), _amount, border: bottom),
-        _Tbl.pair(
+        Tbl.pair(const Text('Faida ya bidhaa', style: _cell), money(s.productProfit), _amount, border: bottom),
+        Tbl.pair(const Text('Toa: Jumla ya gharama', style: _cell), money(s.expenses), _amount, border: bottom),
+        Tbl.pair(
           const Text('FAIDA HALISI', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800)),
           money(s.net),
           const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular),
