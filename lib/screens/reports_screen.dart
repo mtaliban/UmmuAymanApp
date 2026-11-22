@@ -107,8 +107,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: pageBar('Ripoti', subtitle: 'Siku · wiki · mwezi · mwaka'),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 14, 16, 120), children: [
+      appBar: pageBar('Ripoti', subtitle: 'Siku · wiki · mwezi · mwaka', drop: true),
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 120), children: [
         Segmented(items: _tabs, index: _tab, onChanged: _go),
         FutureBuilder<Report>(
           future: _f,
@@ -187,7 +187,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: pageBar(widget.title, subtitle: 'Ripoti ya ${_unit(widget.period)}', back: true, boxBack: true),
+      appBar: pageBar(widget.title, subtitle: 'Ripoti ya ${_unit(widget.period)}', flatBack: true),
       body: FutureBuilder<Report>(
         future: _f,
         builder: (c, s) {
@@ -195,7 +195,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
           final r = s.data;
           if (r == null || s.connectionState != ConnectionState.done) return const SizedBox.expand();
           return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 120),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
             children: [_Body(r: r, busy: _busy, onBarTap: r.isDay ? null : _openBar, onPdf: (share) => _pdf(r, share: share))],
           );
         },

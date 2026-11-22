@@ -125,7 +125,10 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
               if (subtitle != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
-                  child: Text(subtitle!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: C.muted)),
+                  child: Text(subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: C.muted)),
                 ),
             ]),
           ),
@@ -174,6 +177,8 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 2),
                   child: Text(subtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                           fontSize: light ? 12 : (drop ? 13 : 12.5),
                           fontWeight: light ? FontWeight.w400 : (drop ? FontWeight.w500 : FontWeight.w600),
@@ -305,7 +310,10 @@ class SmallButton extends StatelessWidget {
 class HeaderButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
-  const HeaderButton(this.label, {super.key, this.onTap});
+
+  /// Rangi ya maandishi na mpaka (kitufe cha pili kwenye kichwa: kijivu).
+  final Color color;
+  const HeaderButton(this.label, {super.key, this.onTap, this.color = C.blue});
   @override
   Widget build(BuildContext context) => InkWell(
         onTap: onTap,
@@ -316,9 +324,9 @@ class HeaderButton extends StatelessWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: C.blue, width: 1),
+            border: Border.all(color: color, width: 1),
           ),
-          child: Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: C.blue)),
+          child: Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: color)),
         ),
       );
 }

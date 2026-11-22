@@ -226,7 +226,6 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
   // ------------------------------------------------------------------ UI
   @override
   Widget build(BuildContext context) {
-    final isToday = _day == dayOnly(DateTime.now());
     final t = _today;
     final rows = t?.rows ?? const <ReceiptRow>[];
     final count = t?.count ?? rows.length;
@@ -235,21 +234,18 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
       backgroundColor: Colors.white,
       appBar: pageBar(
         'Risiti',
-        subtitle: isToday ? dateLong(DateTime.now()) : dateShortDay(_day),
-        back: widget.initialDay != null,
-        boxBack: widget.initialDay != null,
+        subtitle: dateShort(_day),
+        flatBack: widget.initialDay != null,
+        drop: widget.initialDay == null,
         action: Row(mainAxisSize: MainAxisSize.min, children: [
-          SmallButton('Historia',
+          HeaderButton('Historia',
               color: C.text2,
-              borderColor: C.field,
-              height: 32,
-              icon: const Icon(Icons.history_rounded, size: 14, color: C.text2),
               onTap: () async {
                 await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReceiptHistoryScreen()));
                 if (mounted) _load();
               }),
           const SizedBox(width: 8),
-          SmallButton('+ Risiti mpya', height: 32, onTap: _open ? null : _openNew),
+          HeaderButton('+ Risiti mpya', onTap: _open ? null : _openNew),
         ]),
       ),
       body: _loading
@@ -258,11 +254,11 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
               ? ErrorView(_loadError!, onRetry: _load)
               : Stack(children: [
                   if (_open)
-                    ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 14, 16, 420), children: _draftView())
+                    ListView(controller: _scroll, padding: const EdgeInsets.fromLTRB(16, 16, 16, 420), children: _draftView())
                   else if (rows.isEmpty)
                     const Center(child: _NoReceipts())
                   else
-                    ListView(padding: const EdgeInsets.fromLTRB(16, 6, 16, 120), children: [
+                    ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 120), children: [
                       SectionTitle(_day == dayOnly(DateTime.now()) ? 'Risiti za leo' : 'Risiti za ${dateShortDay(_day)}',
                           trailing: '$count', padding: const EdgeInsets.fromLTRB(2, 14, 2, 8)),
                       for (final r in rows)
@@ -639,8 +635,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       appBar: pageBar(
         r == null ? 'Risiti' : 'Risiti Na. ${r.number}',
         subtitle: r == null ? '' : '${titleCase(r.customerName.isEmpty ? 'Mteja' : r.customerName)} · ${hhmm(r.createdAt)}',
-        back: true,
-        boxBack: true,
+        flatBack: true,
       ),
       body: _err != null
           ? ErrorView(_err!, onRetry: _load)
@@ -885,12 +880,12 @@ class _ReceiptHistoryScreenState extends State<ReceiptHistoryScreen> {
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: Colors.white,
-        appBar: pageBar('Historia', subtitle: 'Risiti zote', back: true, boxBack: true),
+        appBar: pageBar('Historia', subtitle: 'Risiti zote', flatBack: true),
         body: _loading && _days.isEmpty
             ? const Loading()
             : ListView(
                 controller: _scroll,
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 60),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 60),
                 children: [
                   Container(
                     height: 42,
