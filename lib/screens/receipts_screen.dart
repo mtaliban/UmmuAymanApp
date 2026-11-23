@@ -233,7 +233,6 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
     final t = _today;
     final rows = t?.rows ?? const <ReceiptRow>[];
     final count = t?.count ?? rows.length;
-    final total = t?.total ?? rows.fold<int>(0, (a, r) => a + r.paid);
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: pageBar(
@@ -273,10 +272,6 @@ class ReceiptsScreenState extends State<ReceiptsScreen> {
                             if (mounted) _load();
                           },
                         ),
-                      _TotalLine(
-                        left: 'Jumla · risiti $count',
-                        right: money(total),
-                      ),
                     ]),
                   if (_open) _window(),
                 ]),
