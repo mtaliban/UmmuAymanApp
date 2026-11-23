@@ -127,14 +127,14 @@ class _HistoryState extends State<HistoryScreen> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(children: [
         Expanded(
-          child: Text(m.label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: .44, color: C.text)),
+          child: Text(m.label, style: Txt.section),
         ),
-        Text('siku ${m.days.length}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: C.muted)),
+        Text('siku ${m.days.length}', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.heading)),
         if (collapsible) ...[
           const SizedBox(width: 2),
           Transform.rotate(
             angle: shown ? 1.5708 : 0,
-            child: const AppIcon(AppIcons.chevronRight, size: 15, color: C.faint),
+            child: const AppIcon(AppIcons.chevronRight, size: 16, color: C.heading),
           ),
         ],
       ]),
@@ -159,25 +159,21 @@ class _MonthSummary extends StatelessWidget {
     final net = month.days.fold(0, (a, d) => a + d.net);
     final cells = [('SIKU', '${month.days.length}', false), ('MAUZO', money(sales), false), ('FAIDA HALISI', money(net), true)];
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.cardLine)),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.rule)),
       child: Row(children: [
         for (final (i, c) in cells.indexed)
           Expanded(
             child: Container(
               padding: EdgeInsets.fromLTRB(i == 0 ? 14 : 12, 12, 12, 12),
-              decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: C.line))),
+              decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: C.rule))),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(c.$1,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: .4, color: C.muted)),
+                Text(c.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: Txt.label),
                 const SizedBox(height: 4),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Text(c.$2,
-                      maxLines: 1,
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: c.$3 ? C.blue : C.text, fontFeatures: tabular)),
+                      maxLines: 1, style: Txt.stat.copyWith(color: c.$3 ? C.profit : C.ink)),
                 ),
               ]),
             ),
@@ -195,7 +191,7 @@ class _DayCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Box(
         radius: 12,
-        border: C.cardLine,
+        border: C.rule,
         onTap: onTap,
         child: Column(children: [
           Padding(
@@ -203,13 +199,13 @@ class _DayCard extends StatelessWidget {
             child: Row(children: [
               Expanded(
                 child: Text(day.label,
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: Txt.title),
               ),
               const SizedBox(width: 8),
-              const AppIcon(AppIcons.chevronRight, size: 18, color: C.faint),
+              const AppIcon(AppIcons.chevronRight, size: 18, color: C.heading),
             ]),
           ),
-          const Divider(height: 1, thickness: 1, color: C.line),
+          const Divider(height: 1, thickness: 1, color: C.rule),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 11, 12, 13),
             child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -232,17 +228,13 @@ class _Cell extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: .4, color: C.muted)),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: Txt.label),
           const SizedBox(height: 3),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(value,
-                maxLines: 1,
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: blue ? C.blue : C.text, fontFeatures: tabular)),
+                maxLines: 1, style: Txt.stat.copyWith(color: blue ? C.profit : C.ink)),
           ),
         ]),
       );
@@ -252,8 +244,8 @@ class _NoHistory extends StatelessWidget {
   const _NoHistory();
   @override
   Widget build(BuildContext context) => Column(mainAxisSize: MainAxisSize.min, children: [
-        const AppIcon(AppIcons.history, size: 28, color: C.muted),
+        const AppIcon(AppIcons.history, size: 28, color: C.label),
         const SizedBox(height: 12),
-        const Text('Hakuna historia', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: C.muted)),
+        const Text('Hakuna historia', style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600, color: C.label)),
       ]);
 }

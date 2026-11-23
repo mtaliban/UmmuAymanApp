@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../api/api.dart';
 import '../models/models.dart';
@@ -29,6 +30,13 @@ class _ProductScreenState extends State<ProductScreen> {
   String? _selected;
   bool _adding = false;
 
+  /// Scroll ya orodha pekee (fomu ni ya Stack, haiscroll nayo).
+  final _list = ScrollController();
+
+  /// Urefu HALISI wa fomu kwenye fremu (hupimwa, haukadiriwi) — orodha
+  /// inapata padding sawa nao ili kadi ya mwisho iscroll hadi juu ya fomu.
+  double _formH = 0;
+
   @override
   void initState() {
     super.initState();
@@ -47,6 +55,18 @@ class _ProductScreenState extends State<ProductScreen> {
     } catch (e) {
       if (mounted) setState(() => _error = e);
     }
+  }
+
+  @override
+  void dispose() {
+    _list.dispose();
+    super.dispose();
+  }
+
+  /// Fomu ilipimwa upya (kibodi, hitilafu, nafasi iliyobaki): sasisha padding.
+  void _measureForm(Size s) {
+    if (!mounted || (s.height - _formH).abs() < .5) return;
+    setState(() => _formH = s.height);
   }
 
   void _mark(String id) {
@@ -72,8 +92,26 @@ class _ProductScreenState extends State<ProductScreen> {
     // Fomu inabaki wazi (kama Mauzo) ili uongeze aina nyingine mfululizo;
     // inafungwa tu kwa ✕.
     setState(() => _p = np);
-    if (added.isNotEmpty) _mark(added.first.id);
+    if (added.isNotEmpty) {
+      _mark(added.first.id);
+      _scrollToNewVariant();
+    }
   }
+
+  /// Sogeza orodha hadi mwisho BAADA ya aina mpya kuwa kwenye fremu.
+  /// Padding ya chini ya orodha ni urefu wa fomu, kwa hiyo mwisho wa orodha
+  /// = kadi mpya ikiwa kikamilifu juu ya fomu.
+  void _scrollToNewVariant([int tries = 8]) => WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_list.hasClients) return;
+        final pos = _list.position;
+        // Fremu ya kwanza baada ya setState inaweza kuwa bado inapima ukubwa.
+        if (!pos.hasContentDimensions) {
+          if (tries > 0) _scrollToNewVariant(tries - 1);
+          return;
+        }
+        _list.animateTo(pos.maxScrollExtent,
+            duration: const Duration(milliseconds: 340), curve: Curves.easeOutCubic);
+      });
 
   Future<void> _edit(StockVariant v) async {
     final p = _p;
@@ -113,9 +151,14 @@ class _ProductScreenState extends State<ProductScreen> {
     return LayoutBuilder(builder: (context, cons) {
       // Fomu ina urefu wa nafasi iliyobaki (ukiachia kibodi), hivyo haikatwi.
       final maxForm = (cons.maxHeight - 24).clamp(140.0, 640.0);
+      // Nafasi chini ya orodha = urefu HALISI wa fomu + 10 (ukingo wake wa
+      // chini) + 12 (nafasi ya kupumua) ili kadi ya mwisho iscroll hadi juu
+      // ya fomu. Fomu ikiwa wazi, nafasi ya kawaida ya ukurasa inabaki.
+      final bottomPad = _adding ? _formH + 22 : 120.0;
       return Stack(children: [
         ListView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          controller: _list,
+          padding: EdgeInsets.fromLTRB(16, 16, 16, bottomPad),
           children: [
             _ThreeStat(qty: p.qty, capital: p.capital, profit: p.profitIfSold),
             SectionTitle(p.hasVariants ? 'Aina' : 'Taarifa',
@@ -126,8 +169,6 @@ class _ProductScreenState extends State<ProductScreen> {
               _VariantCard(v, rank: i + 1, highlight: v.id == _hl || v.id == _selected, onTap: () => _edit(v)),
               const SizedBox(height: 8),
             ],
-            // Fomu ikiwa wazi, orodha ipate nafasi ya kutosha chini yake.
-            SizedBox(height: _adding ? 330 : 120),
           ],
         ),
         // Fomu inakaa chini juu ya menyu, sawa na Mauzo — hivyo ulichoongeza
@@ -140,13 +181,16 @@ class _ProductScreenState extends State<ProductScreen> {
             left: 12,
             right: 12,
             bottom: 10,
-            child: Container(
-              constraints: BoxConstraints(maxHeight: maxForm),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: const [BoxShadow(color: Color(0x2E111827), blurRadius: 24, offset: Offset(0, 8))],
+            child: _MeasureSize(
+              onSize: _measureForm,
+              child: Container(
+                constraints: BoxConstraints(maxHeight: maxForm),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: const [BoxShadow(color: Color(0x2E111827), blurRadius: 24, offset: Offset(0, 8))],
+                ),
+                child: _NewVariantCard(p: p, onSaved: _variantAdded, onClose: () => setState(() => _adding = false)),
               ),
-              child: _NewVariantCard(p: p, onSaved: _variantAdded, onClose: () => setState(() => _adding = false)),
             ),
           ),
       ]);
@@ -159,30 +203,31 @@ class _ThreeStat extends StatelessWidget {
   final int qty, capital, profit;
   const _ThreeStat({required this.qty, required this.capital, required this.profit});
   @override
+  // Kadi inajipima kwa maudhui yake: hakuna nafasi tupu chini (label moja
+  // kwa mstari, namba 18 w700, padding 10 juu/chini).
   Widget build(BuildContext context) => Box(
         radius: 14,
-        border: C.cardLine,
+        border: C.rule,
         child: IntrinsicHeight(
           child: Row(children: [
             Expanded(child: _cell('Zipo', '$qty', false)),
-            const VerticalDivider(width: 1, color: C.line),
+            const VerticalDivider(width: 1, thickness: 1, color: C.rule),
             Expanded(child: _cell('Mtaji', money(capital), false)),
-            const VerticalDivider(width: 1, color: C.line),
+            const VerticalDivider(width: 1, thickness: 1, color: C.rule),
             Expanded(child: _cell('Faida ukiuza', money(profit), true)),
           ]),
         ),
       );
 
   Widget _cell(String label, String value, bool blue) => Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: C.muted, fontWeight: FontWeight.w500)),
+        padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: Txt.label),
           const SizedBox(height: 3),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(value,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: blue ? C.blue : C.text, fontFeatures: tabular)),
+            child: Text(value, maxLines: 1, style: Txt.stat.copyWith(color: blue ? C.profit : C.ink)),
           ),
         ]),
       );
@@ -198,23 +243,14 @@ class _VariantCard extends StatelessWidget {
 
   Widget _cell(String label, String value, {bool blue = false}) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: .4, color: C.muted)),
-          const SizedBox(height: 3),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: Txt.label),
+          const SizedBox(height: 4),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(value,
-                maxLines: 1,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: blue ? C.blue : C.text,
-                  fontFeatures: tabular,
-                )),
+            child: Text(value, maxLines: 1, style: Txt.stat.copyWith(color: blue ? C.profit : C.ink)),
           ),
         ],
       );
@@ -223,24 +259,24 @@ class _VariantCard extends StatelessWidget {
   Widget build(BuildContext context) => Box(
         radius: 12,
         color: highlight ? C.blue3 : null,
-        border: highlight ? C.blue : C.cardLine,
-        padding: const EdgeInsets.fromLTRB(14, 11, 14, 11),
+        border: highlight ? C.blue : C.rule,
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         onTap: onTap,
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Container(
-              margin: const EdgeInsets.only(right: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-              decoration: BoxDecoration(color: C.line, borderRadius: BorderRadius.circular(6)),
-              child: Text('$rank',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.text2, fontFeatures: tabular)),
+              width: 26,
+              height: 26,
+              margin: const EdgeInsets.only(right: 10),
+              alignment: Alignment.center,
+              decoration: const BoxDecoration(color: C.rankBg, shape: BoxShape.circle),
+              child: Text('$rank', style: Txt.badge),
             ),
             Expanded(
-              child: Text(v.name,
-                  maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: C.text)),
+              child: Text(v.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: Txt.item),
             ),
           ]),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(flex: 62, child: _cell('ZIPO', '${v.qty}')),
             const SizedBox(width: 12),
@@ -361,6 +397,35 @@ class _NoVariants extends StatelessWidget {
           const Text('Hakuna aina bado', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
         ]),
       );
+}
+
+/// Hupima urefu halisi wa mtoto wake baada ya layout na kuurudisha kwa
+/// `onSize`. Hutumika kupata urefu wa fomu badala ya namba ya kubahatisha.
+class _MeasureSize extends SingleChildRenderObjectWidget {
+  final ValueChanged<Size> onSize;
+  const _MeasureSize({required this.onSize, required super.child});
+
+  @override
+  _RenderMeasureSize createRenderObject(BuildContext context) => _RenderMeasureSize(onSize);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderMeasureSize renderObject) => renderObject.onSize = onSize;
+}
+
+class _RenderMeasureSize extends RenderProxyBox {
+  _RenderMeasureSize(this.onSize);
+  ValueChanged<Size> onSize;
+  Size? _last;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    final s = size;
+    // Tunaripoti tu ikibadilika — setState ya kila fremu ingesababisha mzunguko.
+    if (s == _last) return;
+    _last = s;
+    WidgetsBinding.instance.addPostFrameCallback((_) => onSize(s));
+  }
 }
 
 /// S08: Aina mpya ya {bidhaa} — fomu ndani ya ukurasa (menyu ya chini inabaki).

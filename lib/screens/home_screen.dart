@@ -184,10 +184,11 @@ class _NoSales extends StatelessWidget {
             child: const Center(child: AppIcon(AppIcons.house, size: 28, color: C.text)),
           ),
           const SizedBox(height: 16),
-          const Text('Bado hakuna mauzo', textAlign: TextAlign.center, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          const Text('Bado hakuna mauzo',
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 16.5, fontWeight: FontWeight.w700, color: C.ink)),
           const SizedBox(height: 6),
           const Text('Ukiandika mauzo kwenye ukurasa wa Mauzo,\nyataonekana hapa.',
-              textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: C.muted, height: 1.5)),
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: C.label, height: 1.5)),
         ]),
       );
 }
@@ -199,7 +200,7 @@ class _Offline extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Center(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('Hakuna mtandao', style: TextStyle(fontSize: 13, color: C.muted)),
+          const Text('Hakuna mtandao', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600, color: C.label)),
           const SizedBox(height: 12),
           SmallButton('Jaribu tena', onTap: onRetry),
         ]),
@@ -217,7 +218,7 @@ class _Summary extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: C.cardLine, width: .8),
+          border: Border.all(color: C.rule, width: .8),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(children: [
@@ -225,9 +226,9 @@ class _Summary extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
             child: Column(children: [
               const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.trending_up_rounded, size: 16, color: C.blue),
+                Icon(Icons.trending_up_rounded, size: 16, color: C.profit),
                 SizedBox(width: 6),
-                Text('Faida halisi', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: C.muted)),
+                Text('Faida halisi', style: Txt.label),
               ]),
               const SizedBox(height: 4),
               FittedBox(
@@ -237,17 +238,16 @@ class _Summary extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text(money(s.net),
-                        style: const TextStyle(
-                            fontSize: 36, fontWeight: FontWeight.w700, color: C.blue, letterSpacing: -.5, height: 1.1, fontFeatures: tabular)),
+                    Text(money(s.net), style: Txt.big),
                     const SizedBox(width: 6),
-                    const Text('Shilingi', style: TextStyle(fontSize: 13, color: C.muted)),
+                    const Text('Shilingi', style: Txt.label),
                   ],
                 ),
               ),
               const SizedBox(height: 6),
               Text(amountInWords(s.net),
-                  textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: C.text)),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: C.ink)),
             ]),
           ),
           const Divider(height: .8, thickness: .8, color: C.line),
@@ -277,18 +277,17 @@ class _Stat extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 14),
           child: Column(children: [
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Icon(icon, size: 14, color: C.muted),
+              Icon(icon, size: 14, color: C.label),
               const SizedBox(width: 4),
-              Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: C.muted)),
+              Text(label, style: Txt.label),
             ]),
             const SizedBox(height: 8),
             FittedBox(
               fit: BoxFit.scaleDown,
-              child: Text(money(value),
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: C.text, fontFeatures: tabular)),
+              child: Text(money(value), style: Txt.value),
             ),
             const SizedBox(height: 2),
-            const Text('Sh', style: TextStyle(fontSize: 11, color: C.faint)),
+            const Text('Sh', style: Txt.label),
           ]),
         ),
       );
@@ -324,24 +323,24 @@ class _ProfitTable extends StatelessWidget {
   final Summary s;
   const _ProfitTable(this.s);
 
-  static const _cell = TextStyle(fontSize: 13, color: C.text);
-  static const _amount = TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text, fontFeatures: tabular);
+  static const _cell = Txt.cell;
+  static const _amount = Txt.amount;
 
   @override
   Widget build(BuildContext context) {
-    const bottom = Border(bottom: BorderSide(color: C.line));
+    const bottom = Border(bottom: BorderSide(color: C.rule));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       const TblHead('Hesabu ya faida'),
       Tbl.frame([
         Tbl.pair(const Text('MAELEZO', style: TblHead.col), 'KIASI (SH)', TblHead.amount,
-            bg: C.head, border: bottom, vpad: 10),
+            bg: C.headBg, border: bottom, vpad: 10),
         Tbl.pair(const Text('Faida ya bidhaa', style: _cell), money(s.productProfit), _amount, border: bottom),
         Tbl.pair(const Text('Toa: Jumla ya gharama', style: _cell), money(s.expenses), _amount, border: bottom),
         Tbl.pair(
-          const Text('FAIDA HALISI', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800)),
+          const Text('FAIDA HALISI', style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: C.netInk)),
           money(s.net),
-          const TextStyle(fontSize: 19, fontWeight: FontWeight.w800, color: C.blue, fontFeatures: tabular),
-          bg: C.blue2,
+          const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: C.profit, fontFeatures: tabular),
+          bg: C.netBg,
           vpad: 15,
         ),
       ]),

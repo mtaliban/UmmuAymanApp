@@ -35,7 +35,7 @@ class SaleCard extends StatelessWidget {
         radius: 12,
         onTap: onTap,
         color: highlight ? C.blue3 : bg,
-        border: highlight ? C.blue : C.cardLine,
+        border: highlight ? C.blue : C.rule,
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -46,19 +46,18 @@ class SaleCard extends StatelessWidget {
                   width: 26,
                   height: 26,
                   alignment: Alignment.center,
-                  decoration: const BoxDecoration(color: C.line, shape: BoxShape.circle),
-                  child: Text('$rank',
-                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: C.faint, fontFeatures: tabular)),
+                  decoration: const BoxDecoration(color: C.rankBg, shape: BoxShape.circle),
+                  child: Text('$rank', style: Txt.rank),
                 ),
               ),
             Expanded(
-              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+              child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Txt.name),
             ),
             if (tag != null)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(color: C.blue2, borderRadius: BorderRadius.circular(6)),
-                child: Text(tag!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: C.blue)),
+                decoration: BoxDecoration(color: C.netBg, borderRadius: BorderRadius.circular(6)),
+                child: Text(tag!, style: Txt.chip),
               ),
           ]),
           const SizedBox(height: 9),
@@ -67,10 +66,7 @@ class SaleCard extends StatelessWidget {
               if (i > 0) const SizedBox(width: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(cols[i].$1,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: .4, color: C.muted)),
+                  Text(cols[i].$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: Txt.label),
                   const SizedBox(height: 3),
                   FittedBox(
                     fit: BoxFit.scaleDown,
@@ -78,11 +74,8 @@ class SaleCard extends StatelessWidget {
                     child: Text(
                       cols[i].$2,
                       maxLines: 1,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: i != cols.length - 1 ? C.text : ((profit ?? 0) < 0 ? C.red : C.blue),
-                        fontFeatures: tabular,
+                      style: Txt.value.copyWith(
+                        color: i != cols.length - 1 ? C.ink : ((profit ?? 0) < 0 ? C.loss : C.profit),
                       ),
                     ),
                   ),

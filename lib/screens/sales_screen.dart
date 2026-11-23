@@ -803,25 +803,20 @@ class _SumCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cells = [('IDADI', '$qty', false), ('MAUZO', money(sales), false), ('FAIDA', money(profit), true)];
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.cardLine)),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.rule)),
       child: Row(children: [
         for (final (i, c) in cells.indexed)
           Expanded(
             child: Container(
               padding: EdgeInsets.fromLTRB(i == 0 ? 14 : 12, 12, 12, 12),
-              decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: C.line))),
+              decoration: BoxDecoration(border: i == 0 ? null : const Border(left: BorderSide(color: C.rule))),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(c.$1,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: .4, color: C.muted)),
+                Text(c.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: Txt.label),
                 const SizedBox(height: 4),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
-                  child: Text(c.$2,
-                      maxLines: 1,
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500, color: c.$3 ? C.blue : C.text, fontFeatures: tabular)),
+                  child: Text(c.$2, maxLines: 1, style: Txt.stat.copyWith(color: c.$3 ? C.profit : C.ink)),
                 ),
               ]),
             ),
@@ -848,35 +843,35 @@ class _StatementCard extends StatelessWidget {
     ];
     final last = rows.length - 1;
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.cardLine)),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: C.rule)),
       clipBehavior: Clip.antiAlias,
       child: Column(children: [
         for (final (i, r) in rows.indexed)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: i == last ? C.blue3 : null,
+              color: i == last ? C.netBg : null,
               border: i == 0
                   ? null
-                  : Border(top: BorderSide(color: i == 2 ? C.text : (i == last ? C.blueLine : C.line), width: i == 2 ? 1.5 : 1)),
+                  : Border(top: BorderSide(color: i == 2 ? C.ink : C.rule, width: i == 2 ? 1.5 : 1)),
             ),
             child: Row(children: [
               Expanded(
                 child: Text(
                   r.$1,
                   style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: i == last || i == 2 ? FontWeight.w500 : FontWeight.w400,
-                    color: i == last ? C.blue : (i == 3 ? C.muted : C.text2),
+                    fontSize: 17,
+                    fontWeight: i == last || i == 2 ? FontWeight.w700 : FontWeight.w600,
+                    color: i == last ? C.netInk : C.ink,
                   ),
                 ),
               ),
               Text(
                 money(r.$2),
                 style: TextStyle(
-                  fontSize: i == last ? 18 : 14.5,
-                  fontWeight: FontWeight.w500,
-                  color: i == last ? C.blue : (i == 3 ? C.muted : C.text),
+                  fontSize: i == last ? 22 : 17,
+                  fontWeight: FontWeight.w700,
+                  color: i == last ? C.profit : C.ink,
                   fontFeatures: tabular,
                 ),
               ),
@@ -909,7 +904,7 @@ class _IconBtn extends StatelessWidget {
         decoration: BoxDecoration(
           color: filled ? C.blue : Colors.white,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: filled ? C.blue : C.cardLine),
+          border: Border.all(color: filled ? C.blue : C.faint),
         ),
         child: Center(
           child: svg != null

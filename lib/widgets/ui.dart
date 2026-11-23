@@ -117,7 +117,7 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
             child: Container(
               width: 42,
               height: 42,
-              decoration: BoxDecoration(border: Border.all(color: C.cardLine), borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(border: Border.all(color: C.faint), borderRadius: BorderRadius.circular(8)),
               child: const Center(child: AppIcon(AppIcons.chevronLeft, size: 24, color: C.text)),
             ),
           ),
@@ -134,7 +134,7 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
                   child: Text(subtitle!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: C.muted)),
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: C.label)),
                 ),
             ]),
           ),
@@ -148,7 +148,7 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
         child: Container(
           width: 40,
           height: 40,
-          decoration: BoxDecoration(border: Border.all(color: C.cardLine), borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(border: Border.all(color: C.faint), borderRadius: BorderRadius.circular(10)),
           child: const Center(child: AppIcon(AppIcons.arrowLeft, size: 20, color: C.text)),
         ),
       );
@@ -186,9 +186,9 @@ class _PageHeader extends StatelessWidget implements PreferredSizeWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                          fontSize: light ? 12 : (drop ? 13 : 12.5),
-                          fontWeight: light ? FontWeight.w400 : (drop ? FontWeight.w500 : FontWeight.w600),
-                          color: C.muted)),
+                          fontSize: light ? 12 : 13.5,
+                          fontWeight: light ? FontWeight.w400 : FontWeight.w500,
+                          color: light ? C.muted : C.label)),
                 ),
             ]),
           ),
@@ -202,17 +202,23 @@ class SectionTitle extends StatelessWidget {
   final String text;
   final String? trailing;
   final Color color;
+  final FontWeight weight;
   final EdgeInsets padding;
   const SectionTitle(this.text,
-      {super.key, this.trailing, this.color = C.text, this.padding = const EdgeInsets.fromLTRB(2, 24, 2, 8)});
+      {super.key,
+      this.trailing,
+      this.color = C.heading,
+      this.weight = FontWeight.w600,
+      this.padding = const EdgeInsets.fromLTRB(2, 24, 2, 8)});
   @override
   Widget build(BuildContext context) => Padding(
         padding: padding,
         child: Row(children: [
           Expanded(
               child: Text(text.toUpperCase(),
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: .04 * 11, color: color))),
-          if (trailing != null) Text(trailing!, style: const TextStyle(fontSize: 11, color: C.muted, fontWeight: FontWeight.w500)),
+                  style: Txt.section.copyWith(color: color, fontWeight: weight))),
+          if (trailing != null)
+            Text(trailing!, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.label)),
         ]),
       );
 }
@@ -312,7 +318,7 @@ class SmallButton extends StatelessWidget {
 }
 
 /// Kitufe cha juu kulia chenye MAANDISHI ("+ Bidhaa", "+ Aina", "+ Risiti"):
-/// mpaka mwembamba wa accent 1px, radius 10, urefu 40, padding 0 14, 15/w500.
+/// mpaka wa accent 1.5px, radius 10, urefu 40, padding 0 14, 16/w700.
 class HeaderButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
@@ -329,10 +335,10 @@ class HeaderButton extends StatelessWidget {
       this.onTap,
       this.color = C.blue,
       this.height = 40,
-      this.borderWidth = 1,
+      this.borderWidth = 1.5,
       this.padding = 14,
-      this.fontSize = 15,
-      this.weight = FontWeight.w500});
+      this.fontSize = 16,
+      this.weight = FontWeight.w700});
   @override
   Widget build(BuildContext context) => InkWell(
         onTap: onTap,
@@ -403,7 +409,7 @@ class Segmented extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(3),
-        decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(color: C.rankBg, borderRadius: BorderRadius.circular(12)),
         child: LayoutBuilder(builder: (c, b) {
           final w = b.maxWidth / items.length;
           return Stack(children: [
@@ -415,7 +421,7 @@ class Segmented extends StatelessWidget {
               bottom: 0,
               width: w,
               child: Container(
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 3, offset: Offset(0, 1))]),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(9), boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 3, offset: Offset(0, 1))]),
               ),
             ),
             Row(children: [
@@ -425,10 +431,10 @@ class Segmented extends StatelessWidget {
                     behavior: HitTestBehavior.opaque,
                     onTap: () => onChanged(i),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      padding: const EdgeInsets.symmetric(vertical: 11),
                       child: Text(items[i],
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: i == index ? C.blue : C.muted)),
+                          style: i == index ? Txt.tabOn : Txt.tab),
                     ),
                   ),
                 ),

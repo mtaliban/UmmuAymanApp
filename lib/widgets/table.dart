@@ -11,18 +11,18 @@ class TblHead extends StatelessWidget {
   final String? right;
   const TblHead(this.left, {super.key, this.right});
 
-  static const _title = TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.muted, letterSpacing: .9);
+  static const _title = Txt.section;
 
   /// Kichwa cha safu wima (GHARAMA, KIASI (SH) …).
-  static const col = TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: C.muted, letterSpacing: .4);
-  static const amount = TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: C.muted, letterSpacing: .4);
+  static const col = Txt.column;
+  static const amount = Txt.column;
 
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: Row(children: [
           Expanded(child: Text(left.toUpperCase(), style: _title)),
-          if (right != null) Text(right!, style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          if (right != null) Text(right!, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: C.label)),
         ]),
       );
 }
@@ -30,7 +30,7 @@ class TblHead extends StatelessWidget {
 /// Fremu na safu za jedwali (kona za mraba, mistari myembamba).
 class Tbl {
   static Widget frame(List<Widget> rows) => Container(
-        decoration: BoxDecoration(border: Border.all(color: C.cardLine)),
+        decoration: BoxDecoration(border: Border.all(color: C.rule)),
         child: Column(children: rows),
       );
 
@@ -47,7 +47,7 @@ class Tbl {
               child: Container(
                 padding: EdgeInsets.fromLTRB(i == 0 ? 10 : 5, vpad, i == cells.length - 1 ? 10 : 5, vpad),
                 alignment: i == 0 ? Alignment.centerLeft : Alignment.centerRight,
-                decoration: i == 0 ? null : const BoxDecoration(border: Border(left: BorderSide(color: C.line))),
+                decoration: i == 0 ? null : const BoxDecoration(border: Border(left: BorderSide(color: C.rule))),
                 child: cells[i],
               ),
             ),
@@ -110,25 +110,25 @@ class ExpenseTable extends StatelessWidget {
     this.onTap,
   });
 
-  static const _cell = TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text, height: 1.25);
-  static const _amount = TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: C.text, fontFeatures: tabular);
+  static const _cell = TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600, color: C.ink, height: 1.25);
+  static const _amount = Txt.amount;
 
   @override
   Widget build(BuildContext context) {
-    const bottom = Border(bottom: BorderSide(color: C.line));
+    const bottom = Border(bottom: BorderSide(color: C.rule));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       TblHead(title),
       Tbl.frame([
         Tbl.pair(const Text('GHARAMA', style: TblHead.col), 'KIASI (SH)', TblHead.amount,
-            bg: C.head, border: bottom, vpad: 10),
+            bg: C.headBg, border: bottom, vpad: 10),
         for (final (i, e) in rows.indexed) _row(e, i, bottom),
         Tbl.pair(
-            Text(totalLabel, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
+            Text(totalLabel, style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700, color: C.ink)),
             money(total),
-            const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, fontFeatures: tabular),
+            const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: C.ink, fontFeatures: tabular),
             key: totalKey,
-            bg: C.soft,
-            border: const Border(top: BorderSide(color: C.cardLine, width: 1.5)),
+            bg: C.headBg,
+            border: const Border(top: BorderSide(color: C.rule, width: 1.5)),
             vpad: 14),
       ]),
     ]);
@@ -137,7 +137,9 @@ class ExpenseTable extends StatelessWidget {
   Widget _row(Expense e, int i, Border bottom) {
     final row = Tbl.pair(
       Row(children: [
-        SizedBox(width: 20, child: Text('${i + 1}.', style: const TextStyle(fontSize: 13, color: C.muted))),
+        SizedBox(
+            width: 22,
+            child: Text('${i + 1}.', style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w600, color: C.label))),
         Expanded(child: Text(e.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: _cell)),
       ]),
       money(e.amount),

@@ -24,12 +24,11 @@ import '../widgets/ui.dart';
 const _periods = ['day', 'week', 'month', 'year'];
 const _tabs = ['Siku', 'Wiki', 'Mwezi', 'Mwaka'];
 
-/// Rangi za muundo wa Ripoti (vidoti vya safu na grafu).
-const _mauzoDot = Color(0xFF73ADD6);
-const _mtajiDot = Color(0xFFD85A30);
-const _gharamaDot = Color(0xFFBA7517);
-const _fill = Color(0xFFF3F4F6); // uso wa kijivu (kichwa cha jedwali, kidonge)
-const _softRed = Color(0xFFF9D6D6); // mstari wa faida hasi
+/// Rangi za muundo wa Ripoti (vidoti vya safu na grafu) — zote ziko theme.dart.
+const _mauzoDot = C.dotSales;
+const _mtajiDot = C.dotCapital;
+const _gharamaDot = C.dotExpense;
+const _fill = C.headBg; // #F3F4F6 — kichwa cha jedwali na kidonge cha idadi
 
 /// Kiasi pamoja na "Sh" (shilingi) — kama zinavyoonekana kwenye risiti.
 String _sh(num v) => '${money(v)} Sh';
@@ -253,16 +252,16 @@ class _Body extends StatelessWidget {
     final w = <Widget>[
       _ProfitCard('Faida halisi ya ${r.title}', r.summary),
       if (!r.isDay) ...[
-        SectionTitle(_chartTitle(r.period), trailing: 'gusa kuona ripoti yake', padding: gap),
+        SectionTitle(_chartTitle(r.period), trailing: 'gusa kuona ripoti yake', weight: FontWeight.w700, padding: gap),
         _ChartCard(bars: r.bars, onOpen: onBarTap),
       ],
       // Bidhaa 5 zilizouzika zaidi na 5 zenye mauzo ya chini; zisizouzika hazionyeshwi.
       if (top.isNotEmpty) ...[
-        SectionTitle('Zilizouzika zaidi', trailing: '5 za juu', padding: gap),
+        SectionTitle('Zilizouzika zaidi', trailing: '5 za juu', weight: FontWeight.w700, padding: gap),
         _ProductTable(top),
       ],
       if (low.isNotEmpty) ...[
-        SectionTitle('Zilizouzwa kidogo', trailing: 'za chini', padding: gap),
+        SectionTitle('Zilizouzwa kidogo', trailing: 'za chini', weight: FontWeight.w700, padding: gap),
         _ProductTable(low),
       ],
       const SizedBox(height: 20),
@@ -288,7 +287,7 @@ class _PeriodNav extends StatelessWidget {
           padding: EdgeInsets.zero,
           visualDensity: VisualDensity.compact,
           onPressed: on ? tap : null,
-          icon: Icon(icon, size: 22, color: on ? C.blue : const Color(0xFFD1D5DB)),
+          icon: Icon(icon, size: 22, color: on ? C.profit : C.faint),
         ),
       );
 
@@ -298,7 +297,7 @@ class _PeriodNav extends StatelessWidget {
         Expanded(
           child: FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+            child: Text(label, textAlign: TextAlign.center, style: Txt.period),
           ),
         ),
         _arrow(Icons.chevron_right_rounded, next, onNext),
@@ -315,23 +314,23 @@ class _ProfitCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Box(
         radius: 16,
-        border: C.cardLine,
+        border: C.rule,
         padding: const EdgeInsets.fromLTRB(16, 15, 16, 4),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: const TextStyle(fontSize: 13, color: C.muted)),
+          Text(label, style: Txt.metric.copyWith(color: C.heading, fontWeight: FontWeight.w500)),
           const SizedBox(height: 3),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Row(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
-              Text(money(s.net), style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w500, color: C.blue, fontFeatures: tabular)),
-              const SizedBox(width: 4),
-              const Text('Sh', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: C.muted)),
+              Text(money(s.net), style: Txt.big44),
+              const SizedBox(width: 5),
+              Text('Sh', style: Txt.stat.copyWith(color: C.heading, fontWeight: FontWeight.w500)),
             ]),
           ),
           // Kiasi kwa maneno ya Kiswahili: 128,000 -> "Laki 1 na elfu 28"
-          Text(amountInWords(s.net), style: const TextStyle(fontSize: 13, color: C.muted)),
-          const SizedBox(height: 6),
+          Text(amountInWords(s.net), style: Txt.note.copyWith(color: C.heading)),
+          const SizedBox(height: 8),
           _MetricRow(_mauzoDot, 'Mauzo', s.sales),
           _MetricRow(_mtajiDot, 'Mtaji', s.capital),
           _MetricRow(_gharamaDot, 'Gharama', s.expenses),
@@ -348,23 +347,28 @@ class _MetricRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 11),
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.softLine))),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.rule))),
         child: Row(children: [
-          Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+          Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+              Text(name, style: Txt.metric),
+              const SizedBox(height: 1),
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
-                child: Text(amountInWords(amount), maxLines: 1, style: const TextStyle(fontSize: 12, color: C.muted)),
+                child: Text(amountInWords(amount), maxLines: 1, style: Txt.note),
               ),
             ]),
           ),
           const SizedBox(width: 8),
-          Text(_sh(amount), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, fontFeatures: tabular)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text(_sh(amount), maxLines: 1, style: Txt.metricValue),
+          ),
         ]),
       );
 }
@@ -378,7 +382,7 @@ class _ChartCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Box(
         radius: 14,
-        border: C.cardLine,
+        border: C.rule,
         padding: const EdgeInsets.fromLTRB(8, 12, 8, 10),
         child: _BarChart(bars: bars, onOpen: onOpen),
       );
@@ -439,7 +443,7 @@ class _BarChartState extends State<_BarChart> {
     final per = bars.length > 7 ? (bars.length / 2).ceil() : bars.length;
     return Column(children: [
       for (var start = 0; start < bars.length; start += per) ...[
-        if (start > 0) const Divider(height: 22, color: C.softLine),
+        if (start > 0) const Divider(height: 22, color: C.rule),
         _row(start, math.min(start + per, bars.length)),
       ],
     ]);
@@ -449,7 +453,6 @@ class _BarChartState extends State<_BarChart> {
     final bars = widget.bars;
     final nets = [for (final b in bars) if (b.net != null) b.net!];
     final mx = nets.isEmpty ? 1 : nets.reduce(math.max);
-    final dense = bars.length > 7;
     return Row(children: [
       for (var i = start; i < end; i++)
         Expanded(
@@ -460,11 +463,13 @@ class _BarChartState extends State<_BarChart> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 SizedBox(
-                  height: 15,
+                  height: 18,
                   child: FittedBox(
+                    fit: BoxFit.scaleDown,
                     child: Text(
+                      // Bila data: hakuna namba kabisa (si maandishi hafifu).
                       bars[i].net == null ? '' : moneyBar(bars[i].net!),
-                      style: TextStyle(fontSize: dense ? 10 : 11, fontWeight: FontWeight.w600, color: i == _sel ? C.blue : C.muted),
+                      style: Txt.chart.copyWith(color: i == _sel ? C.profit : C.heading),
                     ),
                   ),
                 ),
@@ -472,14 +477,13 @@ class _BarChartState extends State<_BarChart> {
                 SizedBox(height: 108, child: Align(alignment: Alignment.bottomCenter, child: _bar(bars[i], i, mx))),
                 const SizedBox(height: 6),
                 SizedBox(
-                  height: 15,
+                  height: 18,
                   child: FittedBox(
+                    fit: BoxFit.scaleDown,
                     child: Text(
                       bars[i].label,
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: i == _sel ? FontWeight.w600 : FontWeight.w400,
-                        color: bars[i].net == null ? const Color(0xFFD1D5DB) : (i == _sel ? C.blue : C.muted),
+                      style: Txt.chart.copyWith(
+                        color: bars[i].net == null ? C.muted : (i == _sel ? C.profit : C.heading),
                       ),
                     ),
                   ),
@@ -499,14 +503,15 @@ class _BarChartState extends State<_BarChart> {
       width: double.infinity,
       constraints: const BoxConstraints(maxWidth: 28),
       decoration: BoxDecoration(
-        color: n == null ? C.cardLine : (i == _sel ? C.blue : _mauzoDot),
+        color: n == null ? C.rule : (i == _sel ? C.profit : C.bar),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(5), bottom: Radius.circular(2)),
       ),
     );
   }
 }
 
-/// Jedwali la bidhaa: namba, jina + mstari wa faida, idadi kwenye kidonge, faida.
+/// Jedwali la bidhaa: namba, jina (mistari 2) + mstari wa maendeleo, idadi
+/// kwenye kidonge chenye upana maalum, faida (upana 104).
 class _ProductTable extends StatelessWidget {
   final List<RProduct> rows;
   const _ProductTable(this.rows);
@@ -517,15 +522,15 @@ class _ProductTable extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
       child: Container(
-        decoration: BoxDecoration(border: Border.all(color: C.cardLine), borderRadius: BorderRadius.circular(14)),
+        decoration: BoxDecoration(border: Border.all(color: C.rule), borderRadius: BorderRadius.circular(14)),
         child: Column(children: [
           Container(
             color: _fill,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: const Row(children: [
               Expanded(child: Text('BIDHAA', style: _head)),
-              SizedBox(width: 52, child: Text('IDADI', style: _head, textAlign: TextAlign.center)),
-              SizedBox(width: 92, child: Text('FAIDA', style: _head, textAlign: TextAlign.right)),
+              SizedBox(width: 48, child: Text('IDADI', style: _head, textAlign: TextAlign.center)),
+              SizedBox(width: 104, child: Text('FAIDA', style: _head, textAlign: TextAlign.right)),
             ]),
           ),
           for (var i = 0; i < rows.length; i++) _row(rows[i], i, mx),
@@ -535,57 +540,70 @@ class _ProductTable extends StatelessWidget {
   }
 
   Widget _row(RProduct p, int i, int mx) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.cardLine))),
-        child: Row(children: [
+        padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
+        decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.rule))),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Container(
-            width: 24,
-            height: 24,
+            width: 26,
+            height: 26,
             alignment: Alignment.center,
-            decoration: const BoxDecoration(color: _fill, shape: BoxShape.circle),
-            child: Text('${i + 1}', style: const TextStyle(fontSize: 12, color: C.muted)),
+            decoration: const BoxDecoration(color: C.rankBg, shape: BoxShape.circle),
+            child: Text('${i + 1}', style: Txt.badge),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(p.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+              Text(p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: Txt.row),
               const SizedBox(height: 6),
-              FractionallySizedBox(
-                widthFactor: (p.profit.abs() / (mx == 0 ? 1 : mx)).clamp(0.06, 1.0),
-                child: Container(
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: p.profit < 0 ? _softRed : _mauzoDot,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
+              _Progress(p.profit.abs() / (mx == 0 ? 1 : mx), negative: p.profit < 0),
             ]),
           ),
           SizedBox(
-            width: 52,
+            width: 48,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(color: _fill, borderRadius: BorderRadius.circular(10)),
-                child: Text('${p.qty}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: _fill, borderRadius: BorderRadius.circular(8)),
+                child: FittedBox(fit: BoxFit.scaleDown, child: Text('${p.qty}', style: Txt.qty)),
               ),
             ),
           ),
           SizedBox(
-            width: 92,
+            width: 104,
             child: FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerRight,
               child: Text(_sh(p.profit),
                   textAlign: TextAlign.right,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: p.profit < 0 ? C.red : C.blue, fontFeatures: tabular)),
+                  style: Txt.rowProfit.copyWith(color: p.profit < 0 ? C.loss : C.profit)),
             ),
           ),
         ]),
       );
 
-  static const _head = TextStyle(fontSize: 11, letterSpacing: .5, color: C.blue, fontWeight: FontWeight.w500);
+  static const _head = Txt.tableHead;
+}
+
+/// Mstari wa maendeleo chini ya jina la bidhaa:
+/// track #E5E7EB · faida #4F8FC4 · hasara #EF4444.
+class _Progress extends StatelessWidget {
+  final double value;
+  final bool negative;
+  const _Progress(this.value, {required this.negative});
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+        borderRadius: BorderRadius.circular(3),
+        child: Container(
+          height: 5,
+          color: C.rankBg,
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft,
+            widthFactor: value.clamp(.04, 1.0),
+            child: ColoredBox(color: negative ? C.barLoss : C.bar),
+          ),
+        ),
+      );
 }
 
 /// Kadi ya PDF (Ripoti ya siku/wiki/mwezi/mwaka + short_label) na vitufe
@@ -599,21 +617,21 @@ class _PdfCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Box(
         radius: 14,
-        border: C.cardLine,
+        border: C.rule,
         padding: const EdgeInsets.all(12),
         child: Row(children: [
           Container(
-            width: 42,
+            width: 50,
             height: 42,
-            decoration: BoxDecoration(color: C.blue2, borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: C.netBg, borderRadius: BorderRadius.circular(10)),
             alignment: Alignment.center,
-            child: const Text('PDF', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: C.blue)),
+            child: Text('PDF', style: Txt.chip.copyWith(fontSize: 14, fontWeight: FontWeight.w700)),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Ripoti ya ${r.title}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800)),
-              Text(r.shortLabel, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: C.muted)),
+              Text('Ripoti ya ${r.title}', style: Txt.item),
+              Text(r.shortLabel, maxLines: 1, overflow: TextOverflow.ellipsis, style: Txt.note),
             ]),
           ),
           const SizedBox(width: 8),
@@ -641,9 +659,9 @@ class _ReportAction extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: C.blue, width: 1.2),
+            border: Border.all(color: C.profit, width: 1.5),
           ),
-          child: Center(child: busy ? const DotsLoader(color: C.blue, size: 5) : AppIcon(icon, size: 21, color: C.blue)),
+          child: Center(child: busy ? const DotsLoader(color: C.profit, size: 5) : AppIcon(icon, size: 21, color: C.profit)),
         ),
       );
 }

@@ -19,7 +19,7 @@ class StockScreen extends StatefulWidget {
 }
 
 /// Ukubwa wa kadi moja kwenye gridi (unatumika pia kusogeza hadi kadi mpya).
-const double _tileH = 106, _tileGap = 10;
+const double _tileH = 130, _tileGap = 10;
 
 class _StockScreenState extends State<StockScreen> {
   late Future<StockList> _f = Api.i.stock();
@@ -116,7 +116,10 @@ class _StockScreenState extends State<StockScreen> {
   /// Ukurasa + fomu ya "Bidhaa mpya" iliyokaa CHINI kama sehemu ya ukurasa
   /// (haielea juu ya orodha): orodha inasogea juu yake, fomu haizibi kadi.
   Widget _content(StockList list) => LayoutBuilder(builder: (context, cons) {
-        final maxForm = (cons.maxHeight * .72).clamp(180.0, 640.0);
+        // Fomu inachukua nafasi iliyobaki juu ya kibodi (haikatwi wala
+        // kufunikwa); nafasi ikipungua, fomu inajisogeza yenyewe na
+        // keepFieldInView huhakikisha kisanduku kinachogusiwa kinaonekana.
+        final maxForm = (cons.maxHeight - 24).clamp(0.0, 640.0);
         return Column(children: [
           Expanded(child: _body(list)),
           if (_adding)
@@ -155,7 +158,10 @@ class _StockScreenState extends State<StockScreen> {
       if (shown.isEmpty)
         const Padding(
           padding: EdgeInsets.symmetric(vertical: 30),
-          child: Center(child: Text('Hakuna bidhaa inayolingana', style: TextStyle(fontSize: 13, color: C.muted))),
+          child: Center(
+            child: Text('Hakuna bidhaa inayolingana',
+                style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: C.label)),
+          ),
         )
       else
         GridView.builder(
@@ -175,20 +181,25 @@ class _StockScreenState extends State<StockScreen> {
     return Box(
       radius: 14,
       color: hl ? C.blue3 : null,
-      border: hl ? C.blue : C.cardLine,
+      border: hl ? C.blue : C.rule,
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       onTap: () => _open(p),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
+        // Jina linatumia nafasi iliyobaki na mistari 2; "aina N" inabaki juu
+        // kulia kwenye mstari mmoja na jina.
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Expanded(
-            child: Text(p.name,
-                maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: C.text)),
+            child: Text(p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: Txt.item),
           ),
-          if (p.hasVariants) Text('aina ${p.variants}', style: const TextStyle(fontSize: 11, color: C.muted)),
+          if (p.hasVariants) ...[
+            const SizedBox(width: 8),
+            Text('aina ${p.variants}', style: Txt.tag),
+          ],
         ]),
         const SizedBox(height: 6),
-        Text('${p.qty}', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w500, color: C.text, fontFeatures: tabular)),
-        Text('mtaji ${money(p.capital)}', style: const TextStyle(fontSize: 12, color: C.muted)),
+        Text('${p.qty}', style: Txt.tally),
+        const SizedBox(height: 2),
+        Text('mtaji ${money(p.capital)}', style: Txt.meta),
       ]),
     );
   }
@@ -201,24 +212,24 @@ class _SearchField extends StatelessWidget {
   const _SearchField({required this.controller, required this.onChanged});
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 44,
+        height: 50,
         child: TextField(
           controller: controller,
           onChanged: (_) => onChanged(),
           textInputAction: TextInputAction.search,
-          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500, color: C.text),
+          style: Txt.searchIn,
           decoration: InputDecoration(
             isDense: true,
             hintText: 'Tafuta bidhaa...',
-            hintStyle: const TextStyle(fontSize: 13.5, color: C.faint, fontWeight: FontWeight.w400),
-            prefixIcon: const Icon(Icons.search_rounded, size: 18, color: C.muted),
-            prefixIconConstraints: const BoxConstraints(minWidth: 38, minHeight: 18),
-            contentPadding: const EdgeInsets.fromLTRB(0, 13, 12, 13),
+            hintStyle: Txt.searchHint,
+            prefixIcon: const Icon(Icons.search_rounded, size: 20, color: C.label),
+            prefixIconConstraints: const BoxConstraints(minWidth: 42, minHeight: 20),
+            contentPadding: const EdgeInsets.fromLTRB(0, 14, 14, 14),
             filled: true,
             fillColor: Colors.white,
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.cardLine, width: 1)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.blue, width: 1.5)),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.cardLine, width: 1)),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.faint, width: 1)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.profit, width: 1.5)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: C.faint, width: 1)),
           ),
         ),
       );
@@ -231,26 +242,25 @@ class _TwoStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Box(
         radius: 14,
-        border: C.cardLine,
+        border: C.rule,
         child: IntrinsicHeight(
           child: Row(children: [
             Expanded(child: _cell(a, false)),
-            const VerticalDivider(width: 1, color: C.line),
+            const VerticalDivider(width: 1, thickness: 1, color: C.rule),
             Expanded(child: _cell(b, true)),
           ]),
         ),
       );
 
   Widget _cell((String, String) x, bool blue) => Padding(
-        padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(x.$1, style: const TextStyle(fontSize: 11, color: C.muted, fontWeight: FontWeight.w500)),
+        padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(x.$1, maxLines: 1, overflow: TextOverflow.ellipsis, style: Txt.label),
           const SizedBox(height: 3),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: Text(x.$2,
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: blue ? C.blue : C.text, fontFeatures: tabular)),
+            child: Text(x.$2, maxLines: 1, style: Txt.stat.copyWith(color: blue ? C.profit : C.ink)),
           ),
         ]),
       );
@@ -292,7 +302,14 @@ class _NewProductCardState extends State<_NewProductCard> {
     super.dispose();
   }
 
-  bool get _canSave => !_busy && _name.text.trim().isNotEmpty && (_has || (_qty.text.isNotEmpty && _buy.text.isNotEmpty && parseMoney(_sell.text) > 0));
+  // Sehemu zote zinaonekana kwa chaguo zote mbili, hivyo sharti ni lile lile:
+  // jina, idadi, buying na selling (namba halali) — bila kujali aina.
+  bool get _canSave =>
+      !_busy &&
+      _name.text.trim().isNotEmpty &&
+      _qty.text.isNotEmpty &&
+      _buy.text.isNotEmpty &&
+      parseMoney(_sell.text) > 0;
 
   Future<void> _save() async {
     if (!_canSave) return;
@@ -300,23 +317,34 @@ class _NewProductCardState extends State<_NewProductCard> {
       _busy = true;
       _error = null;
     });
+    final qty = parseMoney(_qty.text), buying = parseMoney(_buy.text), selling = parseMoney(_sell.text);
+    StockProduct? created;
     try {
-      final p = await Api.i.addStockProduct(
+      created = await Api.i.addStockProduct(
         name: _name.text.trim(),
         hasVariants: _has,
-        qty: parseMoney(_qty.text),
-        buying: parseMoney(_buy.text),
-        selling: parseMoney(_sell.text),
+        qty: qty,
+        buying: buying,
+        selling: selling,
       );
+      // "Ina aina": kile kilichojazwa kinakuwa aina ya kwanza ya bidhaa (K3),
+      // ili aina nyingine ziongezwe baadaye kwenye ukurasa wa bidhaa.
+      final saved = _has
+          ? await Api.i.addStockVariant(created.id, name: created.name, qty: qty, buying: buying, selling: selling)
+          : created;
       if (!mounted) return;
-      widget.onSaved(p);
+      widget.onSaved(saved);
       // Fomu inabaki wazi kwa bidhaa inayofuata; inafungwa kwa ✕ pekee.
       for (final c in [_name, _qty, _buy, _sell]) {
         c.clear();
       }
       _fName.requestFocus();
     } catch (e) {
-      if (mounted) setState(() => _error = '$e');
+      if (!mounted) return;
+      // Bidhaa iliundwa lakini aina yake ya kwanza haikuundwa: ionyeshwe
+      // kwenye orodha, na ujumbe umwelekeze kuongeza aina kwenye bidhaa.
+      if (created != null) widget.onSaved(created);
+      setState(() => _error = created == null ? '$e' : '$e — bidhaa imehifadhiwa, ongeza aina kwenye ukurasa wa bidhaa');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -355,13 +383,7 @@ class _NewProductCardState extends State<_NewProductCard> {
           hint: 'Jina la bidhaa…',
           autofocus: true,
           onChanged: (_) => setState(() {}),
-          onSubmitted: (_) {
-            if (_has) {
-              _save();
-            } else {
-              _fQty.requestFocus();
-            }
-          },
+          onSubmitted: (_) => _fQty.requestFocus(),
         ),
         const SizedBox(height: 12),
         Row(children: [
@@ -370,33 +392,29 @@ class _NewProductCardState extends State<_NewProductCard> {
           Expanded(child: _ChoiceBtn('Haina aina', selected: !_has, onTap: () => setState(() => _has = false))),
         ]),
         const SizedBox(height: 12),
+        // Sehemu zote zinaonekana kwa chaguo ZOTE MBILI (Ina aina / Haina aina):
+        // kubadilisha chaguo hakubadilishi umbo wala urefu wa fomu.
         // Mstari wa kwanza: Idadi · Buying. Mstari wa pili: Selling · Hifadhi.
-        if (!_has) ...[
-          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(
-              child: DialogField(
-                  label: 'Idadi', controller: _qty, focus: _fQty, number: true, hint: '0', align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fBuy.requestFocus()),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: DialogField(
-                  label: 'Buying', controller: _buy, focus: _fBuy, money: true, hint: '0', align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fSell.requestFocus()),
-            ),
-          ]),
-          const SizedBox(height: 10),
-          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(
-              child: DialogField(
-                  label: 'Selling', controller: _sell, focus: _fSell, money: true, hint: '0', align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _save()),
-            ),
-            const SizedBox(width: 10),
-            PrimaryButton('Hifadhi', onTap: _canSave ? _save : null, busy: _busy),
-          ]),
-        ] else
-          Align(
-            alignment: Alignment.centerRight,
-            child: PrimaryButton('Hifadhi', onTap: _canSave ? _save : null, busy: _busy),
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Expanded(
+            child: DialogField(
+                label: 'Idadi', controller: _qty, focus: _fQty, number: true, hint: '0', align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fBuy.requestFocus()),
           ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: DialogField(
+                label: 'Buying', controller: _buy, focus: _fBuy, money: true, hint: '0', align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _fSell.requestFocus()),
+          ),
+        ]),
+        const SizedBox(height: 10),
+        Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          Expanded(
+            child: DialogField(
+                label: 'Selling', controller: _sell, focus: _fSell, money: true, hint: '0', align: TextAlign.center, onChanged: (_) => setState(() {}), onSubmitted: (_) => _save()),
+          ),
+          const SizedBox(width: 10),
+          PrimaryButton('Hifadhi', onTap: _canSave ? _save : null, busy: _busy),
+        ]),
         if (_error != null) ErrorText(_error!),
       ])),
     );
