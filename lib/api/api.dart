@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config.dart';
 import '../models/models.dart';
 import '../utils/format.dart';
+import 'cache.dart';
 import 'mock_api.dart';
 
 class ApiException implements Exception {
@@ -85,9 +86,54 @@ class HttpApi extends Api {
     return _token;
   }
 
+  /// Maombi ya GET yanahifadhiwa kwa [ApiCache.ttl]; ombi la kuandika linafuta
+  /// kashe yote. Hivyo kurasa zinazorudi hazipakui data tena, na zinaonyesha
+  /// zilizopo hata bila mtandao.
+  final Map<String, Future<dynamic>> _inflight = {};
+
   Future<dynamic> _send(String method, String path, {Object? body, Map<String, String>? query}) async {
     final t = await _getToken();
     final uri = Uri.parse('$kBaseUrl$path').replace(queryParameters: query);
+    final get = method == 'GET';
+    final key = get ? (uri.query.isEmpty ? uri.path : '${uri.path}?${uri.query}') : '';
+
+    if (get) {
+      final hit = await ApiCache.read(key);
+      if (hit != null && !hit.stale) return hit.data; // hakuna kupakua tena
+      final running = _inflight[key]; // ombi lilelile linaendelea
+      if (running != null) return running;
+    }
+
+    final f = _load(method, uri, t, body, get ? key : null);
+    if (get) {
+      _inflight[key] = f;
+      f.then<void>((_) {}, onError: (_) {}).whenComplete(() => _inflight.remove(key));
+    }
+    return f;
+  }
+
+  /// Ombi halisi + kuhifadhi/kufuta kashe + kutumia kashe bila mtandao.
+  Future<dynamic> _load(String method, Uri uri, String? t, Object? body, String? key) async {
+    try {
+      final data = await _request(method, uri, t, body);
+      if (key != null) {
+        await ApiCache.write(key, data);
+      } else {
+        await ApiCache.clear(); // data ilibadilika — kashe yote si sahihi tena
+      }
+      return data;
+    } catch (e) {
+      // Bila mtandao: tumia jibu la mwisho lililohifadhiwa (hata limepitwa na ttl).
+      final auth = e is ApiException && e.status == 401;
+      if (key != null && !auth) {
+        final old = await ApiCache.read(key);
+        if (old != null) return old.data;
+      }
+      rethrow;
+    }
+  }
+
+  Future<dynamic> _request(String method, Uri uri, String? t, Object? body) async {
     final headers = {'Content-Type': 'application/json', if (t != null) 'Authorization': 'Bearer $t'};
     http.Response r;
     try {
@@ -144,6 +190,7 @@ class HttpApi extends Api {
       await _send('POST', '/auth/logout');
     } catch (_) {}
     _token = null;
+    await ApiCache.clear();
     final sp = await SharedPreferences.getInstance();
     await sp.remove('token');
   }

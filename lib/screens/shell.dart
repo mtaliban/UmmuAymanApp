@@ -8,7 +8,8 @@ import 'sales_screen.dart';
 import 'stock_screen.dart';
 
 /// Menyu ya chini: Nyumbani · Mauzo · Stock · Ripoti · Risiti
-/// Ukibonyeza tab, ukurasa unapakia data upya.
+/// Kurasa zinaundwa mara moja tu (IndexedStack) — kurudi kwenye tab
+/// hakupakui data upya wala kufuta kile ulichokuwa umeandika.
 class Shell extends StatefulWidget {
   const Shell({super.key});
   static ShellState? of(BuildContext c) => c.findAncestorStateOfType<ShellState>();
@@ -17,8 +18,12 @@ class Shell extends StatefulWidget {
 }
 
 class ShellState extends State<Shell> {
+  static const _count = 5;
+
   int _tab = 0;
-  int _reload = 0;
+
+  /// Kurasa zilizotembelewa; ile isiyotembelewa ni tupu (haipaki kitu mapema).
+  final List<Widget?> _pages = List<Widget?>.filled(_count, null);
 
   late final void Function(int) _link = go;
 
@@ -26,6 +31,7 @@ class ShellState extends State<Shell> {
   void initState() {
     super.initState();
     AppNav.onSelect = _link;
+    _pages[0] = _build(0);
   }
 
   @override
@@ -34,30 +40,35 @@ class ShellState extends State<Shell> {
     super.dispose();
   }
 
-  void go(int i) => setState(() {
-        _tab = i;
-        _reload++;
-      });
-
-  Widget _page() {
-    final k = ValueKey('$_tab-$_reload');
-    switch (_tab) {
+  Widget _build(int i) {
+    switch (i) {
       case 1:
-        return SalesScreen(key: k);
+        return const SalesScreen();
       case 2:
-        return StockScreen(key: k);
+        return const StockScreen();
       case 3:
-        return ReportsScreen(key: k);
+        return const ReportsScreen();
       case 4:
-        return ReceiptsScreen(key: k);
+        return const ReceiptsScreen();
       default:
-        return HomeScreen(key: k);
+        return const HomeScreen();
     }
+  }
+
+  void go(int i) {
+    if (i == _tab) return;
+    setState(() {
+      _tab = i;
+      _pages[i] ??= _build(i); // mara ya kwanza pekee
+    });
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: AnimatedSwitcher(duration: const Duration(milliseconds: 180), child: _page()),
+        body: IndexedStack(
+          index: _tab,
+          children: [for (var i = 0; i < _count; i++) _pages[i] ?? const SizedBox.shrink()],
+        ),
         // Icons za mstari mwembamba (Chaguo B) — zinatofautishwa kwa rangi
         bottomNavigationBar: AppNav(index: _tab),
       );
